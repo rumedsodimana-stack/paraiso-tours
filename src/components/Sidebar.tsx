@@ -15,15 +15,15 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/client", label: "Client Portal", icon: UserCircle },
-  { href: "/leads", label: "Leads", icon: Users },
-  { href: "/packages", label: "Tour Packages", icon: Package },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/quotations", label: "Quotations", icon: FileText },
-  { href: "/payments", label: "Payments", icon: Banknote },
-  { href: "/hotels", label: "Hotels & Suppliers", icon: MapPin },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/", label: "Client Portal", icon: UserCircle },
+  { href: "/admin/bookings", label: "Bookings", icon: Users },
+  { href: "/admin/packages", label: "Tour Packages", icon: Package },
+  { href: "/admin/calendar", label: "Calendar", icon: Calendar },
+  { href: "/admin/quotations", label: "Quotations", icon: FileText },
+  { href: "/admin/payments", label: "Payments", icon: Banknote },
+  { href: "/admin/hotels", label: "Hotels & Suppliers", icon: MapPin },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -41,7 +41,9 @@ export function Sidebar() {
       </div>
       <nav className="mt-4 space-y-0.5 px-3">
         {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href || (href !== "/" && pathname.startsWith(href));
+          const isActive =
+            pathname === href ||
+            (href !== "/" && pathname.startsWith(href + "/"));
           return (
             <Link
               key={href}

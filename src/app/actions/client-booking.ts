@@ -39,9 +39,8 @@ export async function createClientBookingAction(
     packageId: pkg.id,
   });
 
-  revalidatePath("/leads");
+  revalidatePath("/admin/bookings");
   revalidatePath("/");
-  revalidatePath("/client");
-  revalidatePath("/client/my-bookings");
+  revalidatePath("/my-bookings");
   return { success: true, leadId: lead.id, reference: lead.reference ?? undefined };
 }

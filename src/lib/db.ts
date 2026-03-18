@@ -141,9 +141,7 @@ export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedA
   const leads = await getLeads();
   const now = new Date().toISOString();
   const id = `lead_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  const reference = data.source === "Client Portal"
-    ? (data.reference ?? generateReference())
-    : data.reference;
+  const reference = data.reference ?? generateReference();
   const lead: Lead = { ...data, id, reference, createdAt: now, updatedAt: now };
   leads.push(lead);
   await writeJson("leads.json", leads);
@@ -180,6 +178,11 @@ export async function getPackages(): Promise<TourPackage[]> {
 export async function getPackage(id: string): Promise<TourPackage | null> {
   const packages = await getPackages();
   return packages.find((p) => p.id === id) ?? null;
+}
+
+export async function getPackagesForClient(): Promise<TourPackage[]> {
+  const packages = await getPackages();
+  return packages.filter((p) => p.published !== false);
 }
 
 export async function createPackage(data: Omit<TourPackage, "id" | "createdAt">): Promise<TourPackage> {
@@ -256,16 +259,18 @@ export type ClientBookingResult =
 
 export async function getTourForClient(
   bookingRef: string,
-  email: string
+  email?: string
 ): Promise<ClientBookingResult | null> {
   const ref = bookingRef.trim();
-  const emailNorm = email.trim().toLowerCase();
+  const emailNorm = email?.trim().toLowerCase() ?? "";
+  const verifyEmail = emailNorm.length > 0;
 
   // Try as tour id first
   const tour = await getTour(ref);
   if (tour) {
     const lead = await getLead(tour.leadId);
-    if (!lead || lead.email.toLowerCase() !== emailNorm) return null;
+    if (!lead) return null;
+    if (verifyEmail && lead.email.toLowerCase() !== emailNorm) return null;
     const pkg = await getPackage(tour.packageId);
     if (!pkg) return null;
     return { tour, package: pkg };
@@ -273,7 +278,8 @@ export async function getTourForClient(
 
   // Try as lead reference (e.g. PCT-20260312-A3B7)
   const lead = await getLeadByReference(ref);
-  if (!lead || lead.email.toLowerCase() !== emailNorm) return null;
+  if (!lead) return null;
+  if (verifyEmail && lead.email.toLowerCase() !== emailNorm) return null;
 
   // Check if there's a tour for this lead
   const tours = await getTours();
@@ -298,8 +304,7 @@ export async function getClientBookings(email: string): Promise<{
   const tours = await getTours();
 
   const clientLeads = leads.filter(
-    (l) =>
-      l.source === "Client Portal" && l.email.toLowerCase() === emailNorm
+    (l) => l.email.toLowerCase() === emailNorm
   );
   const leadIds = new Set(clientLeads.map((l) => l.id));
   const clientTours = tours.filter((t) => leadIds.has(t.leadId));

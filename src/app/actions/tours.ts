@@ -45,7 +45,7 @@ export async function createTourAction(formData: FormData) {
     currency: pkg.currency,
   });
 
-  revalidatePath("/calendar");
+  revalidatePath("/admin/calendar");
   revalidatePath("/");
   return { success: true, id: tour.id };
 }
@@ -54,7 +54,7 @@ export async function updateTourStatusAction(id: string, status: TourStatus) {
   const updated = await updateTour(id, { status });
   if (!updated) return { error: "Tour not found" };
 
-  revalidatePath("/calendar");
+  revalidatePath("/admin/calendar");
   revalidatePath("/");
   return { success: true };
 }
@@ -63,7 +63,7 @@ export async function deleteTourAction(id: string) {
   const ok = await deleteTour(id);
   if (!ok) return { error: "Tour not found" };
 
-  revalidatePath("/calendar");
+  revalidatePath("/admin/calendar");
   revalidatePath("/");
   return { success: true };
 }

@@ -8,16 +8,16 @@ export function Header({ title }: { title?: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentSearchQuery =
-    pathname === "/leads" ? (searchParams.get("q") ?? "") : "";
+    pathname === "/admin/bookings" ? (searchParams.get("q") ?? "") : "";
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const q = String(formData.get("q") ?? "").trim();
     if (q) {
-      router.push(`/leads?q=${encodeURIComponent(q)}`);
+      router.push(`/admin/bookings?q=${encodeURIComponent(q)}`);
     } else {
-      router.push("/leads");
+      router.push("/admin/bookings");
     }
   }
 
@@ -37,7 +37,7 @@ export function Header({ title }: { title?: string }) {
             <input
               type="text"
               name="q"
-              placeholder="Search leads..."
+              placeholder="Search bookings..."
               defaultValue={currentSearchQuery}
               className="h-9 w-56 rounded-xl border border-white/40 bg-white/40 pl-9 pr-4 text-sm placeholder:text-stone-500 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
             />

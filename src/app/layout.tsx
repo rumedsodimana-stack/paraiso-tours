@@ -12,7 +12,7 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: "Paraíso Ceylon Tours | Travel Operations",
-  description: "Lead management, tour packages, and operations for Paraíso Ceylon Tours",
+  description: "Booking management, tour packages, and operations for Paraíso Ceylon Tours",
 };
 
 export default function RootLayout({

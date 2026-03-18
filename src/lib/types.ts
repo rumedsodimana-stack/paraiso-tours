@@ -29,6 +29,13 @@ export interface TourPackage {
   inclusions: string[];
   exclusions: string[];
   createdAt: string;
+  rating?: number;
+  reviewCount?: number;
+  featured?: boolean;
+  region?: string;
+  published?: boolean;
+  imageUrl?: string;
+  cancellationPolicy?: string;
 }
 
 export interface ItineraryDay {

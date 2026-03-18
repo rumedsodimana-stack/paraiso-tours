@@ -29,13 +29,27 @@ function parseList(formData: FormData, key: string): string[] {
   return val.split("\n").map((s) => s.trim()).filter(Boolean);
 }
 
+function parseOptionalNum(formData: FormData, key: string): number | undefined {
+  const v = formData.get(key) as string;
+  if (!v?.trim()) return undefined;
+  const n = parseFloat(v);
+  return isNaN(n) ? undefined : n;
+}
+
 export async function createPackageAction(formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
   const duration = (formData.get("duration") as string)?.trim();
   const destination = (formData.get("destination") as string)?.trim();
+  const region = (formData.get("region") as string)?.trim() || undefined;
   const price = parseFloat((formData.get("price") as string) || "0");
   const currency = (formData.get("currency") as string) || "USD";
   const description = (formData.get("description") as string)?.trim();
+  const cancellationPolicy = (formData.get("cancellationPolicy") as string)?.trim() || undefined;
+  const imageUrl = (formData.get("imageUrl") as string)?.trim() || undefined;
+  const rating = parseOptionalNum(formData, "rating");
+  const reviewCount = parseOptionalNum(formData, "reviewCount") ?? undefined;
+  const featured = formData.get("featured") === "on";
+  const published = formData.get("published") === "on";
 
   if (!name || !destination) {
     return { error: "Name and destination are required" };
@@ -49,15 +63,22 @@ export async function createPackageAction(formData: FormData) {
     name,
     duration: duration || `${itinerary.length} Days / ${Math.max(0, itinerary.length - 1)} Nights`,
     destination,
+    region,
     price,
     currency,
     description: description || "",
     itinerary,
     inclusions,
     exclusions,
+    rating,
+    reviewCount: reviewCount != null ? Math.floor(reviewCount) : undefined,
+    featured,
+    published: published !== false,
+    cancellationPolicy,
+    imageUrl,
   });
 
-  revalidatePath("/packages");
+  revalidatePath("/admin/packages");
   revalidatePath("/");
   return { success: true, id: pkg.id };
 }
@@ -66,9 +87,16 @@ export async function updatePackageAction(id: string, formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
   const duration = (formData.get("duration") as string)?.trim();
   const destination = (formData.get("destination") as string)?.trim();
+  const region = (formData.get("region") as string)?.trim() || undefined;
   const price = parseFloat((formData.get("price") as string) || "0");
   const currency = (formData.get("currency") as string) || "USD";
   const description = (formData.get("description") as string)?.trim();
+  const cancellationPolicy = (formData.get("cancellationPolicy") as string)?.trim() || undefined;
+  const imageUrl = (formData.get("imageUrl") as string)?.trim() || undefined;
+  const rating = parseOptionalNum(formData, "rating");
+  const reviewCount = parseOptionalNum(formData, "reviewCount");
+  const featured = formData.get("featured") === "on";
+  const published = formData.get("published") === "on";
 
   if (!name || !destination) {
     return { error: "Name and destination are required" };
@@ -82,18 +110,25 @@ export async function updatePackageAction(id: string, formData: FormData) {
     name,
     duration: duration || `${itinerary.length} Days / ${Math.max(0, itinerary.length - 1)} Nights`,
     destination,
+    region,
     price,
     currency,
     description: description || "",
     itinerary,
     inclusions,
     exclusions,
+    rating,
+    reviewCount: reviewCount != null ? Math.floor(reviewCount) : undefined,
+    featured,
+    published,
+    cancellationPolicy,
+    imageUrl,
   });
 
   if (!updated) return { error: "Package not found" };
 
-  revalidatePath("/packages");
-  revalidatePath(`/packages/${id}`);
+  revalidatePath("/admin/packages");
+  revalidatePath(`/admin/packages/${id}`);
   revalidatePath("/");
   return { success: true };
 }
@@ -102,7 +137,7 @@ export async function deletePackageAction(id: string) {
   const ok = await deletePackage(id);
   if (!ok) return { error: "Package not found" };
 
-  revalidatePath("/packages");
+  revalidatePath("/admin/packages");
   revalidatePath("/");
   return { success: true };
 }

@@ -66,7 +66,14 @@ export const mockPackages: TourPackage[] = [
     name: "Ceylon Heritage & Wildlife",
     duration: "8 Days / 7 Nights",
     destination: "Sri Lanka",
+    region: "Cultural Triangle",
+    imageUrl: "https://images.unsplash.com/photo-1588668803695-82674663b423?w=800",
     price: 1890,
+    rating: 4.9,
+    reviewCount: 127,
+    featured: true,
+    published: true,
+    cancellationPolicy: "Free cancellation up to 24 hours before",
     currency: "USD",
     description: "Experience the best of Sri Lanka: ancient cities, tea country, and wildlife safaris.",
     itinerary: [
@@ -88,7 +95,14 @@ export const mockPackages: TourPackage[] = [
     name: "Beach & Culture Escape",
     duration: "5 Days / 4 Nights",
     destination: "Sri Lanka",
+    region: "Southern Coast",
+    imageUrl: "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=800",
     price: 690,
+    rating: 4.7,
+    reviewCount: 89,
+    featured: true,
+    published: true,
+    cancellationPolicy: "Free cancellation up to 24 hours before",
     currency: "USD",
     description: "A relaxing blend of Galle heritage and Unawatuna beach.",
     itinerary: [
@@ -105,7 +119,7 @@ export const mockPackages: TourPackage[] = [
 ];
 
 export const mockStats = [
-  { label: "Active Leads", value: "12", change: 8, icon: "leads" as const },
+  { label: "Active Bookings", value: "12", change: 8, icon: "bookings" as const },
   { label: "Scheduled Tours", value: "7", change: 2, icon: "tours" as const },
   { label: "Revenue (MTD)", value: "$24.5k", change: 12, icon: "revenue" as const },
   { label: "Conversion Rate", value: "34%", change: -2, icon: "conversion" as const },
