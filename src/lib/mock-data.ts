@@ -1,0 +1,152 @@
+import type { Lead, TourPackage, Tour } from "@/lib/types";
+
+export const mockLeads: Lead[] = [
+  {
+    id: "1",
+    name: "John & Sarah Mitchell",
+    email: "john.mitchell@email.com",
+    phone: "+44 7700 900123",
+    source: "Website",
+    status: "quoted",
+    destination: "Sri Lanka",
+    travelDate: "2026-04-15",
+    pax: 4,
+    notes: "Family trip, interested in cultural + wildlife",
+    createdAt: "2026-03-01T10:00:00Z",
+    updatedAt: "2026-03-10T14:30:00Z",
+  },
+  {
+    id: "2",
+    name: "Marie Dubois",
+    email: "marie.d@outlook.fr",
+    phone: "+33 6 12 34 56 78",
+    source: "Referral",
+    status: "contacted",
+    destination: "Sri Lanka",
+    travelDate: "2026-05-20",
+    pax: 2,
+    notes: "Honeymoon, beach focus",
+    createdAt: "2026-03-08T09:00:00Z",
+    updatedAt: "2026-03-09T11:00:00Z",
+  },
+  {
+    id: "3",
+    name: "Zhang Wei",
+    email: "zhang.wei@company.cn",
+    phone: "+86 138 0000 1234",
+    source: "Instagram",
+    status: "new",
+    destination: "Sri Lanka",
+    pax: 6,
+    notes: "Corporate retreat",
+    createdAt: "2026-03-12T08:00:00Z",
+    updatedAt: "2026-03-12T08:00:00Z",
+  },
+  {
+    id: "4",
+    name: "Emma Wilson",
+    email: "emma.w@email.com",
+    phone: "+1 555 123 4567",
+    source: "Client Portal",
+    status: "new",
+    destination: "Sri Lanka",
+    travelDate: "2026-06-10",
+    pax: 2,
+    packageId: "p2",
+    reference: "PCT-20260312-X7K2",
+    notes: "Beach & Culture Escape request",
+    createdAt: "2026-03-12T10:00:00Z",
+    updatedAt: "2026-03-12T10:00:00Z",
+  },
+];
+
+export const mockPackages: TourPackage[] = [
+  {
+    id: "p1",
+    name: "Ceylon Heritage & Wildlife",
+    duration: "8 Days / 7 Nights",
+    destination: "Sri Lanka",
+    price: 1890,
+    currency: "USD",
+    description: "Experience the best of Sri Lanka: ancient cities, tea country, and wildlife safaris.",
+    itinerary: [
+      { day: 1, title: "Arrival - Colombo", description: "Airport pickup, transfer to Negombo.", accommodation: "Jetwing Lagoon" },
+      { day: 2, title: "Sigiriya & Dambulla", description: "Lion Rock fortress, cave temples.", accommodation: "Heritance Kandalama" },
+      { day: 3, title: "Sigiriya to Kandy", description: "Temple of the Tooth, cultural show.", accommodation: "Cinnamon Citadel" },
+      { day: 4, title: "Tea Country", description: "Nuwara Eliya, tea factory tour.", accommodation: "Heritance Tea Factory" },
+      { day: 5, title: "Yala Safari", description: "Full day safari in Yala National Park.", accommodation: "Cinnamon Wild" },
+      { day: 6, title: "Galle Coast", description: "Galle Fort, beach time.", accommodation: "Fort Bazaar" },
+      { day: 7, title: "Southern Coast", description: "Free day, optional activities.", accommodation: "Fort Bazaar" },
+      { day: 8, title: "Departure", description: "Transfer to Colombo airport." },
+    ],
+    inclusions: ["All accommodation", "Meals as specified", "Private vehicle", "Safari jeep", "Entrance fees"],
+    exclusions: ["International flights", "Travel insurance", "Personal expenses"],
+    createdAt: "2026-01-15T00:00:00Z",
+  },
+  {
+    id: "p2",
+    name: "Beach & Culture Escape",
+    duration: "5 Days / 4 Nights",
+    destination: "Sri Lanka",
+    price: 690,
+    currency: "USD",
+    description: "A relaxing blend of Galle heritage and Unawatuna beach.",
+    itinerary: [
+      { day: 1, title: "Arrival - Galle", description: "Transfer from airport, explore Galle Fort.", accommodation: "Fort Bazaar" },
+      { day: 2, title: "Galle Fort", description: "Walking tour, lighthouse, boutiques.", accommodation: "Fort Bazaar" },
+      { day: 3, title: "Unawatuna Beach", description: "Beach day, optional snorkeling.", accommodation: "Fort Bazaar" },
+      { day: 4, title: "Free Day", description: "Spa, cooking class, or relaxation.", accommodation: "Fort Bazaar" },
+      { day: 5, title: "Departure", description: "Transfer to airport." },
+    ],
+    inclusions: ["Accommodation", "Breakfast", "Airport transfers", "Fort walk"],
+    exclusions: ["Lunch & dinner", "International flights", "Activities"],
+    createdAt: "2026-01-15T00:00:00Z",
+  },
+];
+
+export const mockStats = [
+  { label: "Active Leads", value: "12", change: 8, icon: "leads" as const },
+  { label: "Scheduled Tours", value: "7", change: 2, icon: "tours" as const },
+  { label: "Revenue (MTD)", value: "$24.5k", change: 12, icon: "revenue" as const },
+  { label: "Conversion Rate", value: "34%", change: -2, icon: "conversion" as const },
+];
+
+export const mockUpcomingTours = [
+  { id: "t1", client: "John & Sarah Mitchell", destination: "Ceylon Heritage & Wildlife", date: "Apr 15, 2026", days: 8 },
+  { id: "t2", client: "Marie Dubois", destination: "Beach & Culture Escape", date: "May 20, 2026", days: 5 },
+];
+
+export const mockRecentLeads = [
+  { id: "3", name: "Zhang Wei", source: "Instagram", status: "new" as const },
+  { id: "2", name: "Marie Dubois", source: "Referral", status: "contacted" as const },
+  { id: "1", name: "John & Sarah Mitchell", source: "Website", status: "quoted" as const },
+];
+
+export const mockTours: Tour[] = [
+  {
+    id: "t1",
+    packageId: "p1",
+    packageName: "Ceylon Heritage & Wildlife",
+    leadId: "1",
+    clientName: "John & Sarah Mitchell",
+    startDate: "2026-04-15",
+    endDate: "2026-04-22",
+    pax: 4,
+    status: "scheduled",
+    totalValue: 7560,
+    currency: "USD",
+  },
+  {
+    id: "t2",
+    packageId: "p2",
+    packageName: "Beach & Culture Escape",
+    leadId: "2",
+    clientName: "Marie Dubois",
+    startDate: "2026-05-20",
+    endDate: "2026-05-24",
+    pax: 2,
+    status: "confirmed",
+    totalValue: 1380,
+    currency: "USD",
+  },
+];
