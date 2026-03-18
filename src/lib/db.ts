@@ -1,10 +1,26 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
 import type { Lead, TourPackage, Tour, ItineraryDay } from "./types";
+import { mockLeads, mockPackages, mockTours } from "./mock-data";
 
 const DATA_DIR = path.join(process.cwd(), "data");
+const IS_VERCEL = process.env.VERCEL === "1";
+
+// In-memory store for Vercel (read-only filesystem)
+let memoryStore: { leads: Lead[]; packages: TourPackage[]; tours: Tour[] } | null = null;
+function getMemoryStore() {
+  if (!memoryStore) {
+    memoryStore = {
+      leads: JSON.parse(JSON.stringify(mockLeads)),
+      packages: JSON.parse(JSON.stringify(mockPackages)),
+      tours: JSON.parse(JSON.stringify(mockTours)),
+    };
+  }
+  return memoryStore;
+}
 
 async function ensureDataDir() {
+  if (IS_VERCEL) return;
   try {
     await mkdir(DATA_DIR, { recursive: true });
   } catch {
@@ -13,6 +29,13 @@ async function ensureDataDir() {
 }
 
 async function readJson<T>(file: string, fallback: T): Promise<T> {
+  if (IS_VERCEL) {
+    const store = getMemoryStore();
+    if (file === "leads.json") return store.leads as T;
+    if (file === "packages.json") return store.packages as T;
+    if (file === "tours.json") return store.tours as T;
+    return fallback;
+  }
   await ensureDataDir();
   const filePath = path.join(DATA_DIR, file);
   try {
@@ -24,6 +47,13 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
 }
 
 async function writeJson<T>(file: string, data: T): Promise<void> {
+  if (IS_VERCEL) {
+    const store = getMemoryStore();
+    if (file === "leads.json") store.leads = data as Lead[];
+    else if (file === "packages.json") store.packages = data as TourPackage[];
+    else if (file === "tours.json") store.tours = data as Tour[];
+    return;
+  }
   await ensureDataDir();
   const filePath = path.join(DATA_DIR, file);
   await writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
@@ -32,10 +62,11 @@ async function writeJson<T>(file: string, data: T): Promise<void> {
 // --- SEED (run once when empty) ---
 const SEED_FLAG = ".seed_done";
 async function maybeSeed() {
+  if (IS_VERCEL) return;
   const flagPath = path.join(DATA_DIR, SEED_FLAG);
   try {
     await readFile(flagPath, "utf-8");
-    return; // already seeded
+    return;
   } catch {
     // seed
   }
@@ -52,6 +83,14 @@ async function maybeSeed() {
 // --- BACKFILL: Client Portal leads missing references (run once) ---
 const REF_BACKFILL_FLAG = ".ref_backfill_done";
 async function maybeBackfillReferences(leads: Lead[]): Promise<Lead[]> {
+  if (IS_VERCEL) {
+    for (let i = 0; i < leads.length; i++) {
+      if (leads[i].source === "Client Portal" && !leads[i].reference) {
+        leads[i] = { ...leads[i], reference: generateReference(), updatedAt: new Date().toISOString() };
+      }
+    }
+    return leads;
+  }
   const flagPath = path.join(DATA_DIR, REF_BACKFILL_FLAG);
   try {
     await readFile(flagPath, "utf-8");
@@ -66,9 +105,7 @@ async function maybeBackfillReferences(leads: Lead[]): Promise<Lead[]> {
       changed = true;
     }
   }
-  if (changed) {
-    await writeJson("leads.json", leads);
-  }
+  if (changed) await writeJson("leads.json", leads);
   await writeFile(flagPath, "done", "utf-8");
   return leads;
 }
