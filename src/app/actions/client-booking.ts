@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createLead } from "@/lib/db";
 import { getPackage } from "@/lib/db";
+import { debugLog } from "@/lib/debug";
 
 export async function createClientBookingAction(
   packageId: string,
@@ -16,6 +17,12 @@ export async function createClientBookingAction(
     ? parseInt(String(formData.get("pax")), 10)
     : undefined;
   const notes = (formData.get("notes") as string)?.trim();
+  const selectedAccommodationOptionId = (formData.get("selectedAccommodationOptionId") as string)?.trim();
+  const selectedTransportOptionId = (formData.get("selectedTransportOptionId") as string)?.trim();
+  const selectedMealOptionId = (formData.get("selectedMealOptionId") as string)?.trim();
+  const totalPrice = formData.get("totalPrice")
+    ? parseFloat(String(formData.get("totalPrice")))
+    : undefined;
 
   if (!name || !email) {
     return { error: "Name and email are required" };
@@ -26,6 +33,7 @@ export async function createClientBookingAction(
     return { error: "Package not found" };
   }
 
+  debugLog("createClientBooking", { packageId, pax, totalPrice });
   const lead = await createLead({
     name,
     email,
@@ -37,6 +45,10 @@ export async function createClientBookingAction(
     pax: pax ?? 1,
     notes: notes || undefined,
     packageId: pkg.id,
+    selectedAccommodationOptionId: selectedAccommodationOptionId || undefined,
+    selectedTransportOptionId: selectedTransportOptionId || undefined,
+    selectedMealOptionId: selectedMealOptionId || undefined,
+    totalPrice: totalPrice,
   });
 
   revalidatePath("/admin/bookings");

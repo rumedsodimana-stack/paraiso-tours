@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 
+export const runtime = "edge";
+
 export async function POST(request: Request) {
   try {
     const { password } = await request.json();

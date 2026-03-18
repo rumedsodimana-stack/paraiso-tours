@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { PackageForm } from "../../PackageForm";
 import { updatePackageAction } from "@/app/actions/packages";
-import type { TourPackage } from "@/lib/types";
+import type { TourPackage, HotelSupplier } from "@/lib/types";
 
-export function UpdatePackageForm({ pkg }: { pkg: TourPackage }) {
+export function UpdatePackageForm({ pkg, hotels = [] }: { pkg: TourPackage; hotels?: HotelSupplier[] }) {
   const router = useRouter();
 
   async function handleSubmit(formData: FormData) {
@@ -15,5 +15,5 @@ export function UpdatePackageForm({ pkg }: { pkg: TourPackage }) {
     router.refresh();
   }
 
-  return <PackageForm pkg={pkg} onSubmit={handleSubmit} />;
+  return <PackageForm pkg={pkg} hotels={hotels} onSubmit={handleSubmit} />;
 }

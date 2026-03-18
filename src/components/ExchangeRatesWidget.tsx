@@ -19,9 +19,13 @@ export function ExchangeRatesWidget() {
   useEffect(() => {
     async function fetchRates() {
       try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         const res = await fetch(
-          "https://api.frankfurter.app/latest?from=LKR&to=USD,EUR,GBP"
+          "https://api.frankfurter.app/latest?from=LKR&to=USD,EUR,GBP",
+          { signal: controller.signal }
         );
+        clearTimeout(timeout);
         if (res.ok) {
           const data = await res.json();
           // Convert from "1 LKR = X USD" to "1 USD = X LKR"

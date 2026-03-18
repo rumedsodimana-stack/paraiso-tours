@@ -1,16 +1,10 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { PackageForm } from "../PackageForm";
-import { createPackageAction } from "@/app/actions/packages";
+import { getHotels } from "@/lib/db";
+import { NewPackageForm } from "./NewPackageForm";
 
-export default function NewPackagePage() {
-  async function handleSubmit(formData: FormData) {
-    const result = await createPackageAction(formData);
-    if (result.error) return { error: result.error };
-    window.location.href = "/admin/packages";
-  }
+export default async function NewPackagePage() {
+  const hotels = await getHotels();
 
   return (
     <div className="space-y-6">
@@ -24,7 +18,7 @@ export default function NewPackagePage() {
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
         <h1 className="text-2xl font-semibold text-stone-900">Create Tour Package</h1>
         <p className="mt-1 text-stone-600">Build a new package with itinerary</p>
-        <PackageForm onSubmit={handleSubmit} />
+        <NewPackageForm hotels={hotels} />
       </div>
     </div>
   );

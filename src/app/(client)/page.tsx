@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ClientLookupForm } from "./ClientLookupForm";
 import { getPackagesForClient } from "@/lib/db";
+import { getFromPrice } from "@/lib/package-price";
 
 const DESTINATIONS = [
   { name: "Kandy", slug: "Kandy", tours: "Cultural" },
@@ -201,10 +202,8 @@ export default async function ClientPortalPage() {
                   </p>
                   <div className="mt-4 flex items-end justify-between gap-4">
                     <span className="text-lg font-bold text-teal-600">
-                      From ${pkg.price.toLocaleString()}{" "}
-                      <span className="text-sm font-medium text-stone-500">
-                        / person
-                      </span>
+                      From {getFromPrice(pkg).toLocaleString()} {pkg.currency}
+                      <span className="text-sm font-medium text-stone-500"> / person</span>
                     </span>
                     <span className="text-teal-600 font-medium group-hover:text-teal-700">
                       Book now →

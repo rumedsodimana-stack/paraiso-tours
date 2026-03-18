@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   Users,
   Package,
@@ -179,8 +180,12 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WorldClockWidget />
-        <ExchangeRatesWidget />
+        <Suspense fallback={<div className="rounded-2xl border border-white/20 bg-white/40 p-5 h-64 animate-pulse" />}>
+          <WorldClockWidget />
+        </Suspense>
+        <Suspense fallback={<div className="rounded-2xl border border-white/20 bg-white/40 p-5 h-64 animate-pulse" />}>
+          <ExchangeRatesWidget />
+        </Suspense>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -13,6 +13,10 @@ export interface Lead {
   pax?: number;
   notes?: string;
   packageId?: string; // Selected package when client requests from portal
+  selectedAccommodationOptionId?: string;
+  selectedTransportOptionId?: string;
+  selectedMealOptionId?: string;
+  totalPrice?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,6 +40,10 @@ export interface TourPackage {
   published?: boolean;
   imageUrl?: string;
   cancellationPolicy?: string;
+  mealOptions?: PackageOption[];
+  transportOptions?: PackageOption[];
+  accommodationOptions?: PackageOption[];
+  customOptions?: PackageOption[];
 }
 
 export interface ItineraryDay {
@@ -45,6 +53,29 @@ export interface ItineraryDay {
   accommodation?: string;
 }
 
+export type PriceType = "per_person" | "total" | "per_night" | "per_day";
+
+export interface PackageOption {
+  id: string;
+  label: string;
+  price: number;
+  priceType: PriceType;
+  costPrice?: number;
+  supplierId?: string;
+  isDefault?: boolean;
+}
+
+export interface HotelSupplier {
+  id: string;
+  name: string;
+  type: "hotel" | "transport" | "supplier";
+  location?: string;
+  contact?: string;
+  defaultPricePerNight?: number;
+  currency: string;
+  notes?: string;
+  createdAt: string;
+}
 
 export type TourStatus =
   | "scheduled"
@@ -65,4 +96,28 @@ export interface Tour {
   status: "scheduled" | "confirmed" | "in-progress" | "completed" | "cancelled";
   totalValue: number;
   currency: string;
+}
+
+export interface Quotation {
+  id: string;
+  leadId: string;
+  clientName: string;
+  packageId: string;
+  packageName: string;
+  amount: number;
+  currency: string;
+  status: "draft" | "sent" | "accepted" | "declined";
+  createdAt: string;
+}
+
+export interface Payment {
+  id: string;
+  type: "incoming" | "outgoing";
+  amount: number;
+  currency: string;
+  description: string;
+  clientName?: string;
+  reference?: string;
+  status: "pending" | "completed" | "cancelled";
+  date: string;
 }

@@ -1,8 +1,12 @@
 "use client";
 
-import { Banknote, TrendingUp, TrendingDown } from "lucide-react";
+import { Banknote, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { mockPayments } from "@/lib/mock-data";
 
 export default function PaymentsPage() {
+  const incoming = mockPayments.filter((p) => p.type === "incoming" && p.status === "completed").reduce((s, p) => s + p.amount, 0);
+  const outgoing = mockPayments.filter((p) => p.type === "outgoing" && p.status === "completed").reduce((s, p) => s + p.amount, 0);
+
   return (
     <div className="space-y-6">
       <div>
@@ -22,7 +26,7 @@ export default function PaymentsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-stone-500 dark:text-stone-400">Incoming</p>
-              <p className="text-xl font-bold text-stone-900 dark:text-stone-50">$24,500</p>
+              <p className="text-xl font-bold text-stone-900 dark:text-stone-50">${incoming.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -33,7 +37,7 @@ export default function PaymentsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-stone-500 dark:text-stone-400">Outgoing</p>
-              <p className="text-xl font-bold text-stone-900 dark:text-stone-50">$18,200</p>
+              <p className="text-xl font-bold text-stone-900 dark:text-stone-50">${outgoing.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -44,16 +48,36 @@ export default function PaymentsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-stone-500 dark:text-stone-400">Net</p>
-              <p className="text-xl font-bold text-stone-900 dark:text-stone-50">$6,300</p>
+              <p className="text-xl font-bold text-stone-900 dark:text-stone-50">${(incoming - outgoing).toLocaleString()}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/20 bg-white/40 p-8 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
-        <p className="text-center text-stone-500 dark:text-stone-400">
-          Payment transactions will appear here.
-        </p>
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Recent Transactions</h3>
+        {mockPayments.map((p) => (
+          <div
+            key={p.id}
+            className="flex items-center justify-between rounded-2xl border border-white/30 bg-white/50 px-4 py-3 shadow-sm backdrop-blur-sm"
+          >
+            <div className="flex items-center gap-3">
+              <div className={`rounded-lg p-2 ${p.type === "incoming" ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                {p.type === "incoming" ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+              </div>
+              <div>
+                <p className="font-medium text-stone-900 dark:text-stone-50">{p.description}</p>
+                <p className="text-xs text-stone-500">{p.date}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className={`font-semibold ${p.type === "incoming" ? "text-emerald-600" : "text-rose-600"}`}>
+                {p.type === "incoming" ? "+" : "-"}{p.amount.toLocaleString()} {p.currency}
+              </p>
+              <span className={`text-xs ${p.status === "completed" ? "text-stone-500" : "text-amber-600"}`}>{p.status}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

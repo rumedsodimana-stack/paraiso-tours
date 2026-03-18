@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MapPin, Clock, DollarSign, ChevronRight, Star, Shield, Check, X } from "lucide-react";
 import { getPackage } from "@/lib/db";
+import { getFromPrice } from "@/lib/package-price";
 
 export default async function PackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,7 +49,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             )}
             <div className="mt-6 flex flex-wrap items-center gap-4">
               <span className="flex items-center gap-1 text-2xl font-bold text-teal-600">
-                <DollarSign className="h-6 w-6" />From {pkg.price.toLocaleString()} <span className="text-base font-medium text-stone-500">{pkg.currency} / person</span>
+                <DollarSign className="h-6 w-6" />From {getFromPrice(pkg).toLocaleString()} <span className="text-base font-medium text-stone-500">{pkg.currency} / person</span>
               </span>
               <Link href={`/packages/${pkg.id}/book`} className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-teal-700">Book now<ChevronRight className="h-5 w-5" /></Link>
             </div>

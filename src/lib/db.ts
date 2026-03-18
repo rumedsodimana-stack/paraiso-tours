@@ -1,19 +1,26 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
-import type { Lead, TourPackage, Tour, ItineraryDay } from "./types";
-import { mockLeads, mockPackages, mockTours } from "./mock-data";
+import type { Lead, TourPackage, Tour, ItineraryDay, HotelSupplier } from "./types";
+import { mockLeads, mockPackages, mockTours, mockHotels } from "./mock-data";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const IS_VERCEL = process.env.VERCEL === "1";
 
+// In-memory cache for local dev (avoids repeated disk reads)
+let localCache: { leads?: Lead[]; tours?: Tour[] } | null = null;
+function invalidateLocalCache() {
+  localCache = null;
+}
+
 // In-memory store for Vercel (read-only filesystem)
-let memoryStore: { leads: Lead[]; packages: TourPackage[]; tours: Tour[] } | null = null;
+let memoryStore: { leads: Lead[]; packages: TourPackage[]; tours: Tour[]; hotels: HotelSupplier[] } | null = null;
 function getMemoryStore() {
   if (!memoryStore) {
     memoryStore = {
       leads: JSON.parse(JSON.stringify(mockLeads)),
       packages: JSON.parse(JSON.stringify(mockPackages)),
       tours: JSON.parse(JSON.stringify(mockTours)),
+      hotels: JSON.parse(JSON.stringify(mockHotels)),
     };
   }
   return memoryStore;
@@ -34,6 +41,7 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
     if (file === "leads.json") return store.leads as T;
     if (file === "packages.json") return store.packages as T;
     if (file === "tours.json") return store.tours as T;
+    if (file === "hotels.json") return store.hotels as T;
     return fallback;
   }
   await ensureDataDir();
@@ -52,6 +60,7 @@ async function writeJson<T>(file: string, data: T): Promise<void> {
     if (file === "leads.json") store.leads = data as Lead[];
     else if (file === "packages.json") store.packages = data as TourPackage[];
     else if (file === "tours.json") store.tours = data as Tour[];
+    else if (file === "hotels.json") store.hotels = data as HotelSupplier[];
     return;
   }
   await ensureDataDir();
@@ -74,9 +83,11 @@ async function maybeSeed() {
   const { mockLeads } = await import("./mock-data");
   const { mockPackages } = await import("./mock-data");
   const { mockTours } = await import("./mock-data");
+  const { mockHotels } = await import("./mock-data");
   await writeJson("leads.json", mockLeads);
   await writeJson("packages.json", mockPackages);
   await writeJson("tours.json", mockTours);
+  await writeJson("hotels.json", mockHotels);
   await writeFile(flagPath, "seeded", "utf-8");
 }
 
@@ -112,12 +123,17 @@ async function maybeBackfillReferences(leads: Lead[]): Promise<Lead[]> {
 
 // --- LEADS ---
 export async function getLeads(): Promise<Lead[]> {
+  if (!IS_VERCEL && localCache?.leads) return localCache.leads;
   let leads = await readJson<Lead[]>("leads.json", []);
   if (leads.length === 0) {
     await maybeSeed();
     leads = await readJson<Lead[]>("leads.json", []);
   }
   leads = await maybeBackfillReferences(leads);
+  if (!IS_VERCEL) {
+    localCache = localCache ?? {};
+    localCache.leads = leads;
+  }
   return leads;
 }
 
@@ -138,6 +154,7 @@ function generateReference(): string {
 }
 
 export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead> {
+  invalidateLocalCache();
   const leads = await getLeads();
   const now = new Date().toISOString();
   const id = `lead_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -149,6 +166,7 @@ export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedA
 }
 
 export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "createdAt">>): Promise<Lead | null> {
+  invalidateLocalCache();
   const leads = await getLeads();
   const idx = leads.findIndex((l) => l.id === id);
   if (idx === -1) return null;
@@ -158,6 +176,7 @@ export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "cr
 }
 
 export async function deleteLead(id: string): Promise<boolean> {
+  invalidateLocalCache();
   const leads = await getLeads();
   const filtered = leads.filter((l) => l.id !== id);
   if (filtered.length === leads.length) return false;
@@ -165,13 +184,57 @@ export async function deleteLead(id: string): Promise<boolean> {
   return true;
 }
 
+// --- BACKFILL: Packages missing meal/transport/stay options (run once) ---
+const PKG_OPTIONS_BACKFILL_FLAG = ".pkg_options_backfill_done";
+async function maybeBackfillPackageOptions(pkgs: TourPackage[]): Promise<TourPackage[]> {
+  if (IS_VERCEL) return pkgs;
+  const needsOptions = pkgs.some(
+    (p) =>
+      !p.accommodationOptions?.length ||
+      !p.transportOptions?.length ||
+      !p.mealOptions?.length
+  );
+  if (!needsOptions) return pkgs;
+  const flagPath = path.join(DATA_DIR, PKG_OPTIONS_BACKFILL_FLAG);
+  try {
+    await readFile(flagPath, "utf-8");
+    return pkgs;
+  } catch {
+    // run backfill
+  }
+  const mockById = new Map(mockPackages.map((m) => [m.id, m]));
+  let changed = false;
+  const updated = pkgs.map((p) => {
+    const mock = mockById.get(p.id);
+    if (!mock) return p;
+    const next = { ...p };
+    if (!next.accommodationOptions?.length && mock.accommodationOptions?.length) {
+      next.accommodationOptions = mock.accommodationOptions;
+      changed = true;
+    }
+    if (!next.transportOptions?.length && mock.transportOptions?.length) {
+      next.transportOptions = mock.transportOptions;
+      changed = true;
+    }
+    if (!next.mealOptions?.length && mock.mealOptions?.length) {
+      next.mealOptions = mock.mealOptions;
+      changed = true;
+    }
+    return next;
+  });
+  if (changed) await writeJson("packages.json", updated);
+  await writeFile(flagPath, "done", "utf-8");
+  return updated;
+}
+
 // --- PACKAGES ---
 export async function getPackages(): Promise<TourPackage[]> {
-  const pkgs = await readJson<TourPackage[]>("packages.json", []);
+  let pkgs = await readJson<TourPackage[]>("packages.json", []);
   if (pkgs.length === 0) {
     await maybeSeed();
-    return readJson<TourPackage[]>("packages.json", []);
+    pkgs = await readJson<TourPackage[]>("packages.json", []);
   }
+  pkgs = await maybeBackfillPackageOptions(pkgs);
   return pkgs;
 }
 
@@ -213,10 +276,20 @@ export async function deletePackage(id: string): Promise<boolean> {
 
 // --- TOURS ---
 export async function getTours(): Promise<Tour[]> {
+  if (!IS_VERCEL && localCache?.tours) return localCache.tours;
   const tours = await readJson<Tour[]>("tours.json", []);
   if (tours.length === 0) {
     await maybeSeed();
-    return readJson<Tour[]>("tours.json", []);
+    const t = await readJson<Tour[]>("tours.json", []);
+    if (!IS_VERCEL) {
+      localCache = localCache ?? {};
+      localCache.tours = t;
+    }
+    return t;
+  }
+  if (!IS_VERCEL) {
+    localCache = localCache ?? {};
+    localCache.tours = tours;
   }
   return tours;
 }
@@ -227,6 +300,7 @@ export async function getTour(id: string): Promise<Tour | null> {
 }
 
 export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
+  invalidateLocalCache();
   const tours = await getTours();
   const id = `tour_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const tour: Tour = { ...data, id };
@@ -236,6 +310,7 @@ export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
 }
 
 export async function updateTour(id: string, data: Partial<Omit<Tour, "id">>): Promise<Tour | null> {
+  invalidateLocalCache();
   const tours = await getTours();
   const idx = tours.findIndex((t) => t.id === id);
   if (idx === -1) return null;
@@ -245,10 +320,52 @@ export async function updateTour(id: string, data: Partial<Omit<Tour, "id">>): P
 }
 
 export async function deleteTour(id: string): Promise<boolean> {
+  invalidateLocalCache();
   const tours = await getTours();
   const filtered = tours.filter((t) => t.id !== id);
   if (filtered.length === tours.length) return false;
   await writeJson("tours.json", filtered);
+  return true;
+}
+
+// --- HOTELS & SUPPLIERS ---
+export async function getHotels(): Promise<HotelSupplier[]> {
+  const hotels = await readJson<HotelSupplier[]>("hotels.json", []);
+  if (hotels.length === 0 && !IS_VERCEL) {
+    await maybeSeed();
+    return readJson<HotelSupplier[]>("hotels.json", mockHotels);
+  }
+  return hotels;
+}
+
+export async function getHotel(id: string): Promise<HotelSupplier | null> {
+  const hotels = await getHotels();
+  return hotels.find((h) => h.id === id) ?? null;
+}
+
+export async function createHotel(data: Omit<HotelSupplier, "id" | "createdAt">): Promise<HotelSupplier> {
+  const hotels = await getHotels();
+  const id = `h_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const hotel: HotelSupplier = { ...data, id, createdAt: new Date().toISOString() };
+  hotels.push(hotel);
+  await writeJson("hotels.json", hotels);
+  return hotel;
+}
+
+export async function updateHotel(id: string, data: Partial<Omit<HotelSupplier, "id" | "createdAt">>): Promise<HotelSupplier | null> {
+  const hotels = await getHotels();
+  const idx = hotels.findIndex((h) => h.id === id);
+  if (idx === -1) return null;
+  hotels[idx] = { ...hotels[idx], ...data };
+  await writeJson("hotels.json", hotels);
+  return hotels[idx];
+}
+
+export async function deleteHotel(id: string): Promise<boolean> {
+  const hotels = await getHotels();
+  const filtered = hotels.filter((h) => h.id !== id);
+  if (filtered.length === hotels.length) return false;
+  await writeJson("hotels.json", filtered);
   return true;
 }
 

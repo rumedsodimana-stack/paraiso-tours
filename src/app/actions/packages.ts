@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createPackage, updatePackage, deletePackage } from "@/lib/db";
-import type { ItineraryDay } from "@/lib/types";
+import type { ItineraryDay, PackageOption } from "@/lib/types";
 
 function parseItinerary(formData: FormData): ItineraryDay[] {
   const days: ItineraryDay[] = [];
@@ -36,6 +36,17 @@ function parseOptionalNum(formData: FormData, key: string): number | undefined {
   return isNaN(n) ? undefined : n;
 }
 
+function parseOptions(formData: FormData, key: string): PackageOption[] {
+  const v = formData.get(key) as string;
+  if (!v?.trim()) return [];
+  try {
+    const arr = JSON.parse(v);
+    return Array.isArray(arr) ? arr.filter((o) => o && (o.label || o.supplierId)) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function createPackageAction(formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
   const duration = (formData.get("duration") as string)?.trim();
@@ -58,6 +69,10 @@ export async function createPackageAction(formData: FormData) {
   const itinerary = parseItinerary(formData);
   const inclusions = parseList(formData, "inclusions");
   const exclusions = parseList(formData, "exclusions");
+  const mealOptions = parseOptions(formData, "mealOptions");
+  const transportOptions = parseOptions(formData, "transportOptions");
+  const accommodationOptions = parseOptions(formData, "accommodationOptions");
+  const customOptions = parseOptions(formData, "customOptions");
 
   const pkg = await createPackage({
     name,
@@ -76,6 +91,10 @@ export async function createPackageAction(formData: FormData) {
     published: published !== false,
     cancellationPolicy,
     imageUrl,
+    mealOptions: mealOptions.length ? mealOptions : undefined,
+    transportOptions: transportOptions.length ? transportOptions : undefined,
+    accommodationOptions: accommodationOptions.length ? accommodationOptions : undefined,
+    customOptions: customOptions.length ? customOptions : undefined,
   });
 
   revalidatePath("/admin/packages");
@@ -105,6 +124,10 @@ export async function updatePackageAction(id: string, formData: FormData) {
   const itinerary = parseItinerary(formData);
   const inclusions = parseList(formData, "inclusions");
   const exclusions = parseList(formData, "exclusions");
+  const mealOptions = parseOptions(formData, "mealOptions");
+  const transportOptions = parseOptions(formData, "transportOptions");
+  const accommodationOptions = parseOptions(formData, "accommodationOptions");
+  const customOptions = parseOptions(formData, "customOptions");
 
   const updated = await updatePackage(id, {
     name,
@@ -123,6 +146,10 @@ export async function updatePackageAction(id: string, formData: FormData) {
     published,
     cancellationPolicy,
     imageUrl,
+    mealOptions: mealOptions.length ? mealOptions : undefined,
+    transportOptions: transportOptions.length ? transportOptions : undefined,
+    accommodationOptions: accommodationOptions.length ? accommodationOptions : undefined,
+    customOptions: customOptions.length ? customOptions : undefined,
   });
 
   if (!updated) return { error: "Package not found" };

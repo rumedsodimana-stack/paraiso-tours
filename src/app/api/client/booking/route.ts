@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTourForClient } from "@/lib/db";
+import { debugLog } from "@/lib/debug";
 
 export async function GET(request: NextRequest) {
   const ref = request.nextUrl.searchParams.get("ref")?.trim();
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, redirect: "/my-bookings", email });
   }
 
-  // Reference (with optional email)
+  debugLog("API booking lookup", { ref, hasEmail: !!email });
   const result = await getTourForClient(ref!, email?.toLowerCase());
   if (!result) {
     return NextResponse.json(

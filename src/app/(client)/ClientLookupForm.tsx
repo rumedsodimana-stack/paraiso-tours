@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, MapPin } from "lucide-react";
+import { debugClient } from "@/lib/debug";
 
 export function ClientLookupForm() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export function ClientLookupForm() {
       return;
     }
     setLoading(true);
+    debugClient("ClientLookup: search", { ref: refTrim || undefined, email: emailTrim ? "***" : undefined });
     try {
       const params = new URLSearchParams();
       if (refTrim) params.set("ref", refTrim);
@@ -36,6 +38,7 @@ export function ClientLookupForm() {
       const res = await fetch(`/api/client/booking?${params.toString()}`);
       const data = await res.json();
       if (data.ok) {
+        debugClient("ClientLookup: found", { redirect: data.redirect, hasEmail: !!data.email });
         if (data.redirect === "/my-bookings" && data.email) {
           router.push(`/my-bookings?email=${encodeURIComponent(data.email)}`);
         } else {
@@ -46,7 +49,8 @@ export function ClientLookupForm() {
       } else {
         setError(data.error || "Booking not found. Please check your reference or email.");
       }
-    } catch {
+    } catch (err) {
+      debugClient("ClientLookup: error", err);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -118,8 +122,10 @@ export function ClientLookupForm() {
       </div>
 
       <p className="mt-6 text-center text-sm text-stone-500">
-        Demo: Reference <code className="rounded bg-stone-200 px-1">PCT-20260312-X7K2</code> or email{" "}
-        <code className="rounded bg-stone-200 px-1">john.mitchell@email.com</code>
+        Demo: <code className="rounded bg-stone-200 px-1">PCT-20260312-A3B7</code> or{" "}
+        <code className="rounded bg-stone-200 px-1">john.mitchell@email.com</code> ·{" "}
+        <code className="rounded bg-stone-200 px-1">marie.d@outlook.fr</code> ·{" "}
+        <code className="rounded bg-stone-200 px-1">zhang.wei@company.cn</code>
       </p>
     </div>
   );

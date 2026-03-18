@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, MapPin, Clock, DollarSign, Check, X, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, DollarSign, Check, X, Calculator } from "lucide-react";
 import { getPackage } from "@/lib/db";
 import { PackageActions } from "./PackageActions";
+import { CostBreakdown } from "./CostBreakdown";
 
 export default async function PackageDetailPage({
   params,
@@ -101,6 +102,8 @@ export default async function PackageDetailPage({
               </div>
             </section>
           )}
+
+          <CostBreakdown pkg={pkg} />
 
           <div className="grid gap-6 sm:grid-cols-2">
             <section>

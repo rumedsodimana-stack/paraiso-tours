@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { PackageFilters } from "./PackageFilters";
 import { getPackagesForClient } from "@/lib/db";
+import { getFromPrice } from "@/lib/package-price";
 
 const REGIONS = [
   "All",
@@ -54,9 +55,9 @@ export default async function ClientPackagesPage({
   }
 
   if (sortBy === "price") {
-    packages = [...packages].sort((a, b) => a.price - b.price);
+    packages = [...packages].sort((a, b) => getFromPrice(a) - getFromPrice(b));
   } else if (sortBy === "price-desc") {
-    packages = [...packages].sort((a, b) => b.price - a.price);
+    packages = [...packages].sort((a, b) => getFromPrice(b) - getFromPrice(a));
   } else if (sortBy === "rating") {
     packages = [...packages].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
   } else if (sortBy === "name") {
@@ -166,7 +167,7 @@ export default async function ClientPackagesPage({
               <div className="mt-4 flex items-end justify-between gap-4">
                 <span className="flex items-center gap-1 text-lg font-bold text-teal-600">
                   <DollarSign className="h-5 w-5" />
-                  From {pkg.price.toLocaleString()}{" "}
+                  From {getFromPrice(pkg).toLocaleString()}{" "}
                   <span className="text-sm font-medium text-stone-500">
                     {pkg.currency} / person
                   </span>

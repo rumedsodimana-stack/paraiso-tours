@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import type { TourPackage, ItineraryDay } from "@/lib/types";
+import type { TourPackage, ItineraryDay, HotelSupplier, PackageOption } from "@/lib/types";
+import { OptionsEditor } from "./OptionsEditor";
 
 export function PackageForm({
   pkg,
+  hotels = [],
   onSubmit,
 }: {
   pkg?: TourPackage;
+  hotels?: HotelSupplier[];
   onSubmit: (formData: FormData) => Promise<{ error?: string } | void>;
 }) {
   const [error, setError] = useState<string>("");
@@ -17,6 +20,10 @@ export function PackageForm({
       ? pkg.itinerary
       : [{ day: 1, title: "", description: "", accommodation: "" }]
   );
+  const [mealOptions, setMealOptions] = useState<PackageOption[]>(pkg?.mealOptions ?? []);
+  const [transportOptions, setTransportOptions] = useState<PackageOption[]>(pkg?.transportOptions ?? []);
+  const [accommodationOptions, setAccommodationOptions] = useState<PackageOption[]>(pkg?.accommodationOptions ?? []);
+  const [customOptions, setCustomOptions] = useState<PackageOption[]>(pkg?.customOptions ?? []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,6 +39,11 @@ export function PackageForm({
         formData.set(`itinerary_${i}_accommodation`, day.accommodation || "");
       }
     });
+
+    formData.set("mealOptions", JSON.stringify(mealOptions));
+    formData.set("transportOptions", JSON.stringify(transportOptions));
+    formData.set("accommodationOptions", JSON.stringify(accommodationOptions));
+    formData.set("customOptions", JSON.stringify(customOptions));
 
     const result = await onSubmit(formData);
     if (result && "error" in result && result.error) {
@@ -328,6 +340,32 @@ export function PackageForm({
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-stone-700">Meal, Transport & Stay Options</h3>
+        <p className="text-xs text-stone-500">Base price applies; options add to total. Set cost price for margin calc.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <OptionsEditor title="Meal plans (BB, HB, FB, etc.)" options={mealOptions} onChange={setMealOptions} />
+          <OptionsEditor
+            title="Transport (from Vehicles list)"
+            options={transportOptions}
+            onChange={setTransportOptions}
+            hotels={hotels}
+            showSupplier
+            supplierType="transport"
+          />
+          <OptionsEditor
+            title="Accommodation (from Hotels list)"
+            options={accommodationOptions}
+            onChange={setAccommodationOptions}
+            hotels={hotels}
+            showSupplier
+            supplierType="hotel"
+            allowCustom={false}
+          />
+          <OptionsEditor title="Custom add-ons" options={customOptions} onChange={setCustomOptions} />
         </div>
       </div>
 

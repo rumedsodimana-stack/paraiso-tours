@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { getPackage } from "@/lib/db";
+import { getPackage, getHotels } from "@/lib/db";
 import { UpdatePackageForm } from "./UpdatePackageForm";
 
 export default async function EditPackagePage({
@@ -9,7 +9,7 @@ export default async function EditPackagePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const pkg = await getPackage(id);
+  const [pkg, hotels] = await Promise.all([getPackage(id), getHotels()]);
 
   if (!pkg) {
     return (
@@ -34,7 +34,7 @@ export default async function EditPackagePage({
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
         <h1 className="text-2xl font-semibold text-stone-900">Edit Package</h1>
         <p className="mt-1 text-stone-600">{pkg.name}</p>
-        <UpdatePackageForm pkg={pkg} />
+        <UpdatePackageForm pkg={pkg} hotels={hotels} />
       </div>
     </div>
   );
