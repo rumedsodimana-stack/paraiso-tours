@@ -185,6 +185,31 @@ CREATE TABLE IF NOT EXISTS todos (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE leads
+  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
+ALTER TABLE packages
+  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
+ALTER TABLE tours
+  ADD COLUMN IF NOT EXISTS availability_status TEXT;
+
+ALTER TABLE tours
+  ADD COLUMN IF NOT EXISTS availability_warnings JSONB NOT NULL DEFAULT '[]';
+
+ALTER TABLE hotels
+  ADD COLUMN IF NOT EXISTS max_concurrent_bookings INTEGER;
+
+ALTER TABLE hotels
+  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
+ALTER TABLE employees
+  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
+UPDATE tours
+SET availability_warnings = '[]'
+WHERE availability_warnings IS NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tours_lead_id_unique
   ON tours(lead_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_lead_id_unique
