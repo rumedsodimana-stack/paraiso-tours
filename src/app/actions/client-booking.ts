@@ -6,6 +6,10 @@ import { getPackage } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 import { sendBookingRequestConfirmation } from "@/lib/email";
 import {
+  calculateBookingSelectionsTotal,
+  normalizeSelectedAccommodationByNight,
+} from "@/lib/booking-pricing";
+import {
   isWhatsAppConfigured,
   sendWhatsAppBookingConfirmation,
 } from "@/lib/whatsapp";
@@ -36,7 +40,7 @@ export async function createClientBookingAction(
   }
   const selectedTransportOptionId = (formData.get("selectedTransportOptionId") as string)?.trim();
   const selectedMealOptionId = (formData.get("selectedMealOptionId") as string)?.trim();
-  const totalPrice = formData.get("totalPrice")
+  const clientReportedTotalPrice = formData.get("totalPrice")
     ? parseFloat(String(formData.get("totalPrice")))
     : undefined;
 
@@ -49,7 +53,37 @@ export async function createClientBookingAction(
     return { error: "Package not found" };
   }
 
-  debugLog("createClientBooking", { packageId, pax, totalPrice });
+  const normalizedAccommodationByNight =
+    normalizeSelectedAccommodationByNight(selectedAccommodationByNight);
+  const pricing = calculateBookingSelectionsTotal({
+    pkg,
+    pax: pax ?? 1,
+    selectedAccommodationOptionId: selectedAccommodationOptionId || undefined,
+    selectedAccommodationByNight: normalizedAccommodationByNight,
+    selectedTransportOptionId: selectedTransportOptionId || undefined,
+    selectedMealOptionId: selectedMealOptionId || undefined,
+  });
+
+  if (pricing.errors.length > 0) {
+    return { error: pricing.errors[0] };
+  }
+
+  if (
+    clientReportedTotalPrice != null &&
+    Math.abs(clientReportedTotalPrice - pricing.totalPrice) > 0.01
+  ) {
+    debugLog("Client booking total mismatch", {
+      packageId,
+      clientReportedTotalPrice,
+      computedTotalPrice: pricing.totalPrice,
+    });
+  }
+
+  debugLog("createClientBooking", {
+    packageId,
+    pax,
+    totalPrice: pricing.totalPrice,
+  });
   const lead = await createLead({
     name,
     email,
@@ -62,9 +96,10 @@ export async function createClientBookingAction(
     notes: notes || undefined,
     packageId: pkg.id,
     selectedAccommodationOptionId: selectedAccommodationOptionId || undefined,
+    selectedAccommodationByNight: normalizedAccommodationByNight,
     selectedTransportOptionId: selectedTransportOptionId || undefined,
     selectedMealOptionId: selectedMealOptionId || undefined,
-    totalPrice: totalPrice,
+    totalPrice: pricing.totalPrice,
   });
 
   revalidatePath("/admin/bookings");

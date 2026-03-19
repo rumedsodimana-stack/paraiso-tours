@@ -1,34 +1,314 @@
 import { supabase } from "./supabase";
-import type { Lead, TourPackage, Tour, ItineraryDay } from "./types";
+import { mockPackages } from "./mock-data";
+import { generateDocumentNumber } from "./document-number";
+import type {
+  Employee,
+  HotelSupplier,
+  Invoice,
+  Lead,
+  PayrollRun,
+  Todo,
+  Tour,
+  TourPackage,
+  ItineraryDay,
+  Payment,
+  PackageOption,
+} from "./types";
 
-// --- LEADS ---
+function generateId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function toTimestamp(value: unknown): string | undefined {
+  if (!value) return undefined;
+  return String(value).replace("Z", "").replace("+00", "");
+}
+
+function toNullable<T>(value: T | undefined): T | null {
+  return value === undefined ? null : value;
+}
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function asObject<T extends object>(value: unknown): T | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  return value as T;
+}
+
 function toLead(row: Record<string, unknown>): Lead {
   return {
-    id: row.id as string,
-    reference: row.reference as string | undefined,
-    name: row.name as string,
-    email: row.email as string,
-    phone: (row.phone as string) || "",
-    source: row.source as string,
+    id: String(row.id),
+    reference: (row.reference as string | null) ?? undefined,
+    name: String(row.name),
+    email: String(row.email),
+    phone: (row.phone as string | null) ?? "",
+    source: String(row.source),
     status: row.status as Lead["status"],
-    destination: row.destination as string | undefined,
-    travelDate: row.travel_date as string | undefined,
-    pax: row.pax as number | undefined,
-    notes: row.notes as string | undefined,
-    packageId: row.package_id as string | undefined,
-    createdAt: (row.created_at as string).replace("Z", "").replace("+00", ""),
-    updatedAt: (row.updated_at as string).replace("Z", "").replace("+00", ""),
+    destination: (row.destination as string | null) ?? undefined,
+    travelDate: (row.travel_date as string | null) ?? undefined,
+    pax: (row.pax as number | null) ?? undefined,
+    accompaniedGuestName:
+      (row.accompanied_guest_name as string | null) ?? undefined,
+    notes: (row.notes as string | null) ?? undefined,
+    packageId: (row.package_id as string | null) ?? undefined,
+    selectedAccommodationOptionId:
+      (row.selected_accommodation_option_id as string | null) ?? undefined,
+    selectedAccommodationByNight: asObject<Record<string, string>>(
+      row.selected_accommodation_by_night
+    ),
+    selectedTransportOptionId:
+      (row.selected_transport_option_id as string | null) ?? undefined,
+    selectedMealOptionId:
+      (row.selected_meal_option_id as string | null) ?? undefined,
+    totalPrice:
+      row.total_price == null ? undefined : Number(row.total_price),
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+    updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
   };
 }
 
-export async function getLeads(): Promise<Lead[]> {
-  const { data, error } = await supabase!.from("leads").select("*").order("created_at", { ascending: false });
+function toPackage(row: Record<string, unknown>): TourPackage {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    duration: String(row.duration),
+    destination: String(row.destination),
+    price: Number(row.price),
+    currency: String(row.currency),
+    description: String(row.description),
+    itinerary: asArray<ItineraryDay>(row.itinerary),
+    inclusions: asArray<string>(row.inclusions),
+    exclusions: asArray<string>(row.exclusions),
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+    rating: row.rating == null ? undefined : Number(row.rating),
+    reviewCount:
+      row.review_count == null ? undefined : Number(row.review_count),
+    featured: row.featured == null ? undefined : Boolean(row.featured),
+    region: (row.region as string | null) ?? undefined,
+    published: row.published == null ? undefined : Boolean(row.published),
+    imageUrl: (row.image_url as string | null) ?? undefined,
+    cancellationPolicy:
+      (row.cancellation_policy as string | null) ?? undefined,
+    mealOptions: asArray<PackageOption>(row.meal_options),
+    transportOptions: asArray<PackageOption>(row.transport_options),
+    accommodationOptions: asArray<PackageOption>(row.accommodation_options),
+    customOptions: asArray<PackageOption>(row.custom_options),
+  };
+}
+
+function toTour(row: Record<string, unknown>): Tour {
+  return {
+    id: String(row.id),
+    packageId: String(row.package_id),
+    packageName: String(row.package_name),
+    leadId: String(row.lead_id),
+    clientName: String(row.client_name),
+    startDate: String(row.start_date),
+    endDate: String(row.end_date),
+    pax: Number(row.pax),
+    status: row.status as Tour["status"],
+    totalValue: Number(row.total_value),
+    currency: String(row.currency),
+    clientConfirmationSentAt:
+      (row.client_confirmation_sent_at as string | null) ?? undefined,
+    supplierNotificationsSentAt:
+      (row.supplier_notifications_sent_at as string | null) ?? undefined,
+    paymentReceiptSentAt:
+      (row.payment_receipt_sent_at as string | null) ?? undefined,
+    createdAt: toTimestamp(row.created_at),
+    updatedAt: toTimestamp(row.updated_at),
+  };
+}
+
+function toHotel(row: Record<string, unknown>): HotelSupplier {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    type: row.type as HotelSupplier["type"],
+    location: (row.location as string | null) ?? undefined,
+    email: (row.email as string | null) ?? undefined,
+    contact: (row.contact as string | null) ?? undefined,
+    defaultPricePerNight:
+      row.default_price_per_night == null
+        ? undefined
+        : Number(row.default_price_per_night),
+    currency: String(row.currency),
+    starRating:
+      row.star_rating == null ? undefined : Number(row.star_rating),
+    notes: (row.notes as string | null) ?? undefined,
+    bankName: (row.bank_name as string | null) ?? undefined,
+    bankBranch: (row.bank_branch as string | null) ?? undefined,
+    accountName: (row.account_name as string | null) ?? undefined,
+    accountNumber: (row.account_number as string | null) ?? undefined,
+    swiftCode: (row.swift_code as string | null) ?? undefined,
+    bankCurrency: (row.bank_currency as string | null) ?? undefined,
+    paymentReference: (row.payment_reference as string | null) ?? undefined,
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function toInvoice(row: Record<string, unknown>): Invoice {
+  return {
+    id: String(row.id),
+    leadId: String(row.lead_id),
+    reference: (row.reference as string | null) ?? undefined,
+    invoiceNumber: String(row.invoice_number),
+    status: row.status as Invoice["status"],
+    clientName: String(row.client_name),
+    clientEmail: String(row.client_email),
+    clientPhone: (row.client_phone as string | null) ?? undefined,
+    packageName: String(row.package_name),
+    travelDate: (row.travel_date as string | null) ?? undefined,
+    pax: row.pax == null ? undefined : Number(row.pax),
+    baseAmount: Number(row.base_amount),
+    lineItems: asArray<Invoice["lineItems"][number]>(row.line_items),
+    totalAmount: Number(row.total_amount),
+    currency: String(row.currency),
+    notes: (row.notes as string | null) ?? undefined,
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+    updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
+    paidAt: (row.paid_at as string | null) ?? undefined,
+  };
+}
+
+function toEmployee(row: Record<string, unknown>): Employee {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    email: String(row.email),
+    phone: (row.phone as string | null) ?? undefined,
+    role: String(row.role),
+    department: (row.department as string | null) ?? undefined,
+    payType: row.pay_type as Employee["payType"],
+    salary: row.salary == null ? undefined : Number(row.salary),
+    commissionPct:
+      row.commission_pct == null ? undefined : Number(row.commission_pct),
+    hourlyRate:
+      row.hourly_rate == null ? undefined : Number(row.hourly_rate),
+    taxPct: row.tax_pct == null ? undefined : Number(row.tax_pct),
+    benefitsAmount:
+      row.benefits_amount == null ? undefined : Number(row.benefits_amount),
+    currency: String(row.currency),
+    bankName: (row.bank_name as string | null) ?? undefined,
+    accountNumber: (row.account_number as string | null) ?? undefined,
+    status: row.status as Employee["status"],
+    startDate: (row.start_date as string | null) ?? undefined,
+    endDate: (row.end_date as string | null) ?? undefined,
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+    updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+function toPayrollRun(row: Record<string, unknown>): PayrollRun {
+  return {
+    id: String(row.id),
+    periodStart: String(row.period_start),
+    periodEnd: String(row.period_end),
+    payDate: String(row.pay_date),
+    status: row.status as PayrollRun["status"],
+    items: asArray<PayrollRun["items"][number]>(row.items),
+    totalGross: Number(row.total_gross),
+    totalDeductions: Number(row.total_deductions),
+    totalNet: Number(row.total_net),
+    currency: String(row.currency),
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+    updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
+    paidAt: (row.paid_at as string | null) ?? undefined,
+  };
+}
+
+function toPayment(row: Record<string, unknown>): Payment {
+  return {
+    id: String(row.id),
+    type: row.type as Payment["type"],
+    amount: Number(row.amount),
+    currency: String(row.currency),
+    description: String(row.description),
+    clientName: (row.client_name as string | null) ?? undefined,
+    reference: (row.reference as string | null) ?? undefined,
+    leadId: (row.lead_id as string | null) ?? undefined,
+    tourId: (row.tour_id as string | null) ?? undefined,
+    invoiceId: (row.invoice_id as string | null) ?? undefined,
+    supplierId: (row.supplier_id as string | null) ?? undefined,
+    payrollRunId: (row.payroll_run_id as string | null) ?? undefined,
+    payableWeekStart:
+      (row.payable_week_start as string | null) ?? undefined,
+    payableWeekEnd: (row.payable_week_end as string | null) ?? undefined,
+    supplierName: (row.supplier_name as string | null) ?? undefined,
+    status: row.status as Payment["status"],
+    date: String(row.date),
+    createdAt: (row.created_at as string | null) ?? undefined,
+  };
+}
+
+function toTodo(row: Record<string, unknown>): Todo {
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    completed: Boolean(row.completed),
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function packageToRow(
+  data: Omit<TourPackage, "id" | "createdAt"> & { id?: string; createdAt?: string }
+): Record<string, unknown> {
+  return {
+    id: data.id ?? generateId("pkg"),
+    name: data.name,
+    duration: data.duration,
+    destination: data.destination,
+    price: data.price,
+    currency: data.currency,
+    description: data.description,
+    itinerary: data.itinerary ?? [],
+    inclusions: data.inclusions ?? [],
+    exclusions: data.exclusions ?? [],
+    region: toNullable(data.region),
+    image_url: toNullable(data.imageUrl),
+    rating: toNullable(data.rating),
+    review_count: toNullable(data.reviewCount),
+    featured: data.featured ?? false,
+    published: data.published ?? true,
+    cancellation_policy: toNullable(data.cancellationPolicy),
+    meal_options: data.mealOptions ?? [],
+    transport_options: data.transportOptions ?? [],
+    accommodation_options: data.accommodationOptions ?? [],
+    custom_options: data.customOptions ?? [],
+    created_at: data.createdAt ?? new Date().toISOString(),
+  };
+}
+
+async function seedPackagesIfEmpty(): Promise<void> {
+  const { count, error } = await supabase!
+    .from("packages")
+    .select("*", { count: "exact", head: true });
   if (error) throw error;
-  return (data ?? []).map((r) => toLead(r));
+  if ((count ?? 0) > 0) return;
+
+  const { error: insertError } = await supabase!
+    .from("packages")
+    .insert(mockPackages.map((pkg) => packageToRow(pkg)));
+  if (insertError) throw insertError;
+}
+
+export async function getLeads(): Promise<Lead[]> {
+  const { data, error } = await supabase!
+    .from("leads")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => toLead(row));
 }
 
 export async function getLead(id: string): Promise<Lead | null> {
-  const { data, error } = await supabase!.from("leads").select("*").eq("id", id).single();
+  const { data, error } = await supabase!
+    .from("leads")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   if (error || !data) return null;
   return toLead(data);
 }
@@ -43,54 +323,106 @@ export async function getLeadByReference(ref: string): Promise<Lead | null> {
   return toLead(data);
 }
 
-function generateReference(): string {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `PCT-${date}-${random}`;
-}
-
-export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead> {
+export async function createLead(
+  data: Omit<Lead, "id" | "createdAt" | "updatedAt">
+): Promise<Lead> {
   const now = new Date().toISOString();
-  const id = `lead_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  const reference = data.reference ?? generateReference();
-
+  const reference =
+    data.reference ??
+    `PCT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random()
+      .toString(36)
+      .slice(2, 6)
+      .toUpperCase()}`;
   const row = {
-    id,
+    id: generateId("lead"),
     reference,
     name: data.name,
     email: data.email,
     phone: data.phone || "",
     source: data.source,
     status: data.status,
-    destination: data.destination ?? null,
-    travel_date: data.travelDate ?? null,
-    pax: data.pax ?? null,
-    notes: data.notes ?? null,
-    package_id: data.packageId ?? null,
+    destination: toNullable(data.destination),
+    travel_date: toNullable(data.travelDate),
+    pax: toNullable(data.pax),
+    accompanied_guest_name: toNullable(data.accompaniedGuestName),
+    notes: toNullable(data.notes),
+    package_id: toNullable(data.packageId),
+    selected_accommodation_option_id: toNullable(
+      data.selectedAccommodationOptionId
+    ),
+    selected_accommodation_by_night: toNullable(
+      data.selectedAccommodationByNight
+    ),
+    selected_transport_option_id: toNullable(data.selectedTransportOptionId),
+    selected_meal_option_id: toNullable(data.selectedMealOptionId),
+    total_price: toNullable(data.totalPrice),
     created_at: now,
     updated_at: now,
   };
-
-  const { data: inserted, error } = await supabase!.from("leads").insert(row).select().single();
+  const { data: inserted, error } = await supabase!
+    .from("leads")
+    .insert(row)
+    .select("*")
+    .single();
   if (error) throw error;
   return toLead(inserted);
 }
 
-export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "createdAt">>): Promise<Lead | null> {
-  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+export async function updateLead(
+  id: string,
+  data: Partial<Omit<Lead, "id" | "createdAt">>
+): Promise<Lead | null> {
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
   if (data.reference !== undefined) update.reference = data.reference;
   if (data.name !== undefined) update.name = data.name;
   if (data.email !== undefined) update.email = data.email;
   if (data.phone !== undefined) update.phone = data.phone;
   if (data.source !== undefined) update.source = data.source;
   if (data.status !== undefined) update.status = data.status;
-  if (data.destination !== undefined) update.destination = data.destination;
-  if (data.travelDate !== undefined) update.travel_date = data.travelDate;
-  if (data.pax !== undefined) update.pax = data.pax;
-  if (data.notes !== undefined) update.notes = data.notes;
-  if (data.packageId !== undefined) update.package_id = data.packageId;
+  if (data.destination !== undefined) {
+    update.destination = toNullable(data.destination);
+  }
+  if (data.travelDate !== undefined) {
+    update.travel_date = toNullable(data.travelDate);
+  }
+  if (data.pax !== undefined) update.pax = toNullable(data.pax);
+  if (data.accompaniedGuestName !== undefined) {
+    update.accompanied_guest_name = toNullable(data.accompaniedGuestName);
+  }
+  if (data.notes !== undefined) update.notes = toNullable(data.notes);
+  if (data.packageId !== undefined) {
+    update.package_id = toNullable(data.packageId);
+  }
+  if (data.selectedAccommodationOptionId !== undefined) {
+    update.selected_accommodation_option_id = toNullable(
+      data.selectedAccommodationOptionId
+    );
+  }
+  if (data.selectedAccommodationByNight !== undefined) {
+    update.selected_accommodation_by_night = toNullable(
+      data.selectedAccommodationByNight
+    );
+  }
+  if (data.selectedTransportOptionId !== undefined) {
+    update.selected_transport_option_id = toNullable(
+      data.selectedTransportOptionId
+    );
+  }
+  if (data.selectedMealOptionId !== undefined) {
+    update.selected_meal_option_id = toNullable(data.selectedMealOptionId);
+  }
+  if (data.totalPrice !== undefined) {
+    update.total_price = toNullable(data.totalPrice);
+  }
 
-  const { data: updated, error } = await supabase!.from("leads").update(update).eq("id", id).select().single();
+  const { data: updated, error } = await supabase!
+    .from("leads")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
   if (error || !updated) return null;
   return toLead(updated);
 }
@@ -100,52 +432,40 @@ export async function deleteLead(id: string): Promise<boolean> {
   return !error;
 }
 
-// --- PACKAGES ---
-function toPackage(row: Record<string, unknown>): TourPackage {
-  return {
-    id: row.id as string,
-    name: row.name as string,
-    duration: row.duration as string,
-    destination: row.destination as string,
-    price: Number(row.price),
-    currency: row.currency as string,
-    description: row.description as string,
-    itinerary: (row.itinerary as ItineraryDay[]) ?? [],
-    inclusions: (row.inclusions as string[]) ?? [],
-    exclusions: (row.exclusions as string[]) ?? [],
-    createdAt: (row.created_at as string).replace("Z", "").replace("+00", ""),
-  };
-}
-
 export async function getPackages(): Promise<TourPackage[]> {
-  const { data, error } = await supabase!.from("packages").select("*").order("created_at", { ascending: false });
+  await seedPackagesIfEmpty();
+  const { data, error } = await supabase!
+    .from("packages")
+    .select("*")
+    .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((r) => toPackage(r));
+  return (data ?? []).map((row) => toPackage(row));
 }
 
 export async function getPackage(id: string): Promise<TourPackage | null> {
-  const { data, error } = await supabase!.from("packages").select("*").eq("id", id).single();
+  await seedPackagesIfEmpty();
+  const { data, error } = await supabase!
+    .from("packages")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   if (error || !data) return null;
   return toPackage(data);
 }
 
-export async function createPackage(data: Omit<TourPackage, "id" | "createdAt">): Promise<TourPackage> {
-  const id = `pkg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  const now = new Date().toISOString();
-  const row = {
-    id,
-    name: data.name,
-    duration: data.duration,
-    destination: data.destination,
-    price: data.price,
-    currency: data.currency,
-    description: data.description,
-    itinerary: data.itinerary,
-    inclusions: data.inclusions,
-    exclusions: data.exclusions,
-    created_at: now,
-  };
-  const { data: inserted, error } = await supabase!.from("packages").insert(row).select().single();
+export async function getPackagesForClient(): Promise<TourPackage[]> {
+  const packages = await getPackages();
+  return packages.filter((pkg) => pkg.published !== false);
+}
+
+export async function createPackage(
+  data: Omit<TourPackage, "id" | "createdAt">
+): Promise<TourPackage> {
+  const { data: inserted, error } = await supabase!
+    .from("packages")
+    .insert(packageToRow(data))
+    .select("*")
+    .single();
   if (error) throw error;
   return toPackage(inserted);
 }
@@ -164,9 +484,32 @@ export async function updatePackage(
   if (data.itinerary !== undefined) update.itinerary = data.itinerary;
   if (data.inclusions !== undefined) update.inclusions = data.inclusions;
   if (data.exclusions !== undefined) update.exclusions = data.exclusions;
-  if (Object.keys(update).length === 0) return getPackage(id);
+  if (data.region !== undefined) update.region = toNullable(data.region);
+  if (data.imageUrl !== undefined) update.image_url = toNullable(data.imageUrl);
+  if (data.rating !== undefined) update.rating = toNullable(data.rating);
+  if (data.reviewCount !== undefined) {
+    update.review_count = toNullable(data.reviewCount);
+  }
+  if (data.featured !== undefined) update.featured = data.featured;
+  if (data.published !== undefined) update.published = data.published;
+  if (data.cancellationPolicy !== undefined) {
+    update.cancellation_policy = toNullable(data.cancellationPolicy);
+  }
+  if (data.mealOptions !== undefined) update.meal_options = data.mealOptions;
+  if (data.transportOptions !== undefined) {
+    update.transport_options = data.transportOptions;
+  }
+  if (data.accommodationOptions !== undefined) {
+    update.accommodation_options = data.accommodationOptions;
+  }
+  if (data.customOptions !== undefined) update.custom_options = data.customOptions;
 
-  const { data: updated, error } = await supabase!.from("packages").update(update).eq("id", id).select().single();
+  const { data: updated, error } = await supabase!
+    .from("packages")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
   if (error || !updated) return null;
   return toPackage(updated);
 }
@@ -176,39 +519,29 @@ export async function deletePackage(id: string): Promise<boolean> {
   return !error;
 }
 
-// --- TOURS ---
-function toTour(row: Record<string, unknown>): Tour {
-  return {
-    id: row.id as string,
-    packageId: row.package_id as string,
-    packageName: row.package_name as string,
-    leadId: row.lead_id as string,
-    clientName: row.client_name as string,
-    startDate: row.start_date as string,
-    endDate: row.end_date as string,
-    pax: Number(row.pax),
-    status: row.status as Tour["status"],
-    totalValue: Number(row.total_value),
-    currency: row.currency as string,
-  };
-}
-
 export async function getTours(): Promise<Tour[]> {
-  const { data, error } = await supabase!.from("tours").select("*").order("start_date", { ascending: false });
+  const { data, error } = await supabase!
+    .from("tours")
+    .select("*")
+    .order("start_date", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((r) => toTour(r));
+  return (data ?? []).map((row) => toTour(row));
 }
 
 export async function getTour(id: string): Promise<Tour | null> {
-  const { data, error } = await supabase!.from("tours").select("*").eq("id", id).single();
+  const { data, error } = await supabase!
+    .from("tours")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   if (error || !data) return null;
   return toTour(data);
 }
 
 export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
-  const id = `tour_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const now = new Date().toISOString();
   const row = {
-    id,
+    id: generateId("tour"),
     package_id: data.packageId,
     package_name: data.packageName,
     lead_id: data.leadId,
@@ -219,14 +552,31 @@ export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
     status: data.status,
     total_value: data.totalValue,
     currency: data.currency,
+    client_confirmation_sent_at: toNullable(data.clientConfirmationSentAt),
+    supplier_notifications_sent_at: toNullable(
+      data.supplierNotificationsSentAt
+    ),
+    payment_receipt_sent_at: toNullable(data.paymentReceiptSentAt),
+    created_at: now,
+    updated_at: now,
   };
-  const { data: inserted, error } = await supabase!.from("tours").insert(row).select().single();
+
+  const { data: inserted, error } = await supabase!
+    .from("tours")
+    .insert(row)
+    .select("*")
+    .single();
   if (error) throw error;
   return toTour(inserted);
 }
 
-export async function updateTour(id: string, data: Partial<Omit<Tour, "id">>): Promise<Tour | null> {
-  const update: Record<string, unknown> = {};
+export async function updateTour(
+  id: string,
+  data: Partial<Omit<Tour, "id">>
+): Promise<Tour | null> {
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
   if (data.packageId !== undefined) update.package_id = data.packageId;
   if (data.packageName !== undefined) update.package_name = data.packageName;
   if (data.leadId !== undefined) update.lead_id = data.leadId;
@@ -237,9 +587,26 @@ export async function updateTour(id: string, data: Partial<Omit<Tour, "id">>): P
   if (data.status !== undefined) update.status = data.status;
   if (data.totalValue !== undefined) update.total_value = data.totalValue;
   if (data.currency !== undefined) update.currency = data.currency;
-  if (Object.keys(update).length === 0) return getTour(id);
+  if (data.clientConfirmationSentAt !== undefined) {
+    update.client_confirmation_sent_at = toNullable(
+      data.clientConfirmationSentAt
+    );
+  }
+  if (data.supplierNotificationsSentAt !== undefined) {
+    update.supplier_notifications_sent_at = toNullable(
+      data.supplierNotificationsSentAt
+    );
+  }
+  if (data.paymentReceiptSentAt !== undefined) {
+    update.payment_receipt_sent_at = toNullable(data.paymentReceiptSentAt);
+  }
 
-  const { data: updated, error } = await supabase!.from("tours").update(update).eq("id", id).select().single();
+  const { data: updated, error } = await supabase!
+    .from("tours")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
   if (error || !updated) return null;
   return toTour(updated);
 }
@@ -249,34 +616,587 @@ export async function deleteTour(id: string): Promise<boolean> {
   return !error;
 }
 
-// --- CLIENT PORTAL ---
+export async function getHotels(): Promise<HotelSupplier[]> {
+  const { data, error } = await supabase!
+    .from("hotels")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => toHotel(row));
+}
+
+export async function getHotel(id: string): Promise<HotelSupplier | null> {
+  const { data, error } = await supabase!
+    .from("hotels")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toHotel(data);
+}
+
+export async function createHotel(
+  data: Omit<HotelSupplier, "id" | "createdAt">
+): Promise<HotelSupplier> {
+  const row = {
+    id: generateId("h"),
+    name: data.name,
+    type: data.type,
+    location: toNullable(data.location),
+    email: toNullable(data.email),
+    contact: toNullable(data.contact),
+    default_price_per_night: toNullable(data.defaultPricePerNight),
+    currency: data.currency,
+    star_rating: toNullable(data.starRating),
+    notes: toNullable(data.notes),
+    bank_name: toNullable(data.bankName),
+    bank_branch: toNullable(data.bankBranch),
+    account_name: toNullable(data.accountName),
+    account_number: toNullable(data.accountNumber),
+    swift_code: toNullable(data.swiftCode),
+    bank_currency: toNullable(data.bankCurrency),
+    payment_reference: toNullable(data.paymentReference),
+    created_at: new Date().toISOString(),
+  };
+  const { data: inserted, error } = await supabase!
+    .from("hotels")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toHotel(inserted);
+}
+
+export async function updateHotel(
+  id: string,
+  data: Partial<Omit<HotelSupplier, "id" | "createdAt">>
+): Promise<HotelSupplier | null> {
+  const update: Record<string, unknown> = {};
+  if (data.name !== undefined) update.name = data.name;
+  if (data.type !== undefined) update.type = data.type;
+  if (data.location !== undefined) update.location = toNullable(data.location);
+  if (data.email !== undefined) update.email = toNullable(data.email);
+  if (data.contact !== undefined) update.contact = toNullable(data.contact);
+  if (data.defaultPricePerNight !== undefined) {
+    update.default_price_per_night = toNullable(data.defaultPricePerNight);
+  }
+  if (data.currency !== undefined) update.currency = data.currency;
+  if (data.starRating !== undefined) {
+    update.star_rating = toNullable(data.starRating);
+  }
+  if (data.notes !== undefined) update.notes = toNullable(data.notes);
+  if (data.bankName !== undefined) update.bank_name = toNullable(data.bankName);
+  if (data.bankBranch !== undefined) {
+    update.bank_branch = toNullable(data.bankBranch);
+  }
+  if (data.accountName !== undefined) {
+    update.account_name = toNullable(data.accountName);
+  }
+  if (data.accountNumber !== undefined) {
+    update.account_number = toNullable(data.accountNumber);
+  }
+  if (data.swiftCode !== undefined) {
+    update.swift_code = toNullable(data.swiftCode);
+  }
+  if (data.bankCurrency !== undefined) {
+    update.bank_currency = toNullable(data.bankCurrency);
+  }
+  if (data.paymentReference !== undefined) {
+    update.payment_reference = toNullable(data.paymentReference);
+  }
+
+  const { data: updated, error } = await supabase!
+    .from("hotels")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error || !updated) return null;
+  return toHotel(updated);
+}
+
+export async function deleteHotel(id: string): Promise<boolean> {
+  const { error } = await supabase!.from("hotels").delete().eq("id", id);
+  return !error;
+}
+
+export async function getInvoices(): Promise<Invoice[]> {
+  const { data, error } = await supabase!
+    .from("invoices")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => toInvoice(row));
+}
+
+export async function getInvoice(id: string): Promise<Invoice | null> {
+  const { data, error } = await supabase!
+    .from("invoices")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toInvoice(data);
+}
+
+export async function getInvoiceByLeadId(leadId: string): Promise<Invoice | null> {
+  const { data, error } = await supabase!
+    .from("invoices")
+    .select("*")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  return toInvoice(data[0]);
+}
+
+export async function createInvoice(
+  data: Omit<Invoice, "id" | "createdAt" | "updatedAt">
+): Promise<Invoice> {
+  const now = new Date().toISOString();
+  const row = {
+    id: generateId("inv"),
+    lead_id: data.leadId,
+    reference: toNullable(data.reference),
+    invoice_number: data.invoiceNumber ?? generateDocumentNumber("INV"),
+    status: data.status,
+    client_name: data.clientName,
+    client_email: data.clientEmail,
+    client_phone: toNullable(data.clientPhone),
+    package_name: data.packageName,
+    travel_date: toNullable(data.travelDate),
+    pax: toNullable(data.pax),
+    base_amount: data.baseAmount,
+    line_items: data.lineItems,
+    total_amount: data.totalAmount,
+    currency: data.currency,
+    notes: toNullable(data.notes),
+    created_at: now,
+    updated_at: now,
+    paid_at: toNullable(data.paidAt),
+  };
+  const { data: inserted, error } = await supabase!
+    .from("invoices")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toInvoice(inserted);
+}
+
+export async function updateInvoice(
+  id: string,
+  data: Partial<Omit<Invoice, "id" | "createdAt">>
+): Promise<Invoice | null> {
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.reference !== undefined) update.reference = toNullable(data.reference);
+  if (data.invoiceNumber !== undefined) update.invoice_number = data.invoiceNumber;
+  if (data.status !== undefined) update.status = data.status;
+  if (data.clientName !== undefined) update.client_name = data.clientName;
+  if (data.clientEmail !== undefined) update.client_email = data.clientEmail;
+  if (data.clientPhone !== undefined) {
+    update.client_phone = toNullable(data.clientPhone);
+  }
+  if (data.packageName !== undefined) update.package_name = data.packageName;
+  if (data.travelDate !== undefined) {
+    update.travel_date = toNullable(data.travelDate);
+  }
+  if (data.pax !== undefined) update.pax = toNullable(data.pax);
+  if (data.baseAmount !== undefined) update.base_amount = data.baseAmount;
+  if (data.lineItems !== undefined) update.line_items = data.lineItems;
+  if (data.totalAmount !== undefined) update.total_amount = data.totalAmount;
+  if (data.currency !== undefined) update.currency = data.currency;
+  if (data.notes !== undefined) update.notes = toNullable(data.notes);
+  if (data.paidAt !== undefined) update.paid_at = toNullable(data.paidAt);
+
+  const { data: updated, error } = await supabase!
+    .from("invoices")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error || !updated) return null;
+  return toInvoice(updated);
+}
+
+export async function getEmployees(): Promise<Employee[]> {
+  const { data, error } = await supabase!
+    .from("employees")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => toEmployee(row));
+}
+
+export async function getEmployee(id: string): Promise<Employee | null> {
+  const { data, error } = await supabase!
+    .from("employees")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toEmployee(data);
+}
+
+export async function createEmployee(
+  data: Omit<Employee, "id" | "createdAt" | "updatedAt">
+): Promise<Employee> {
+  const now = new Date().toISOString();
+  const row = {
+    id: generateId("emp"),
+    name: data.name,
+    email: data.email,
+    phone: toNullable(data.phone),
+    role: data.role,
+    department: toNullable(data.department),
+    pay_type: data.payType,
+    salary: toNullable(data.salary),
+    commission_pct: toNullable(data.commissionPct),
+    hourly_rate: toNullable(data.hourlyRate),
+    tax_pct: toNullable(data.taxPct),
+    benefits_amount: toNullable(data.benefitsAmount),
+    currency: data.currency,
+    bank_name: toNullable(data.bankName),
+    account_number: toNullable(data.accountNumber),
+    status: data.status,
+    start_date: toNullable(data.startDate),
+    end_date: toNullable(data.endDate),
+    created_at: now,
+    updated_at: now,
+  };
+  const { data: inserted, error } = await supabase!
+    .from("employees")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toEmployee(inserted);
+}
+
+export async function updateEmployee(
+  id: string,
+  data: Partial<Omit<Employee, "id" | "createdAt">>
+): Promise<Employee | null> {
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.name !== undefined) update.name = data.name;
+  if (data.email !== undefined) update.email = data.email;
+  if (data.phone !== undefined) update.phone = toNullable(data.phone);
+  if (data.role !== undefined) update.role = data.role;
+  if (data.department !== undefined) {
+    update.department = toNullable(data.department);
+  }
+  if (data.payType !== undefined) update.pay_type = data.payType;
+  if (data.salary !== undefined) update.salary = toNullable(data.salary);
+  if (data.commissionPct !== undefined) {
+    update.commission_pct = toNullable(data.commissionPct);
+  }
+  if (data.hourlyRate !== undefined) {
+    update.hourly_rate = toNullable(data.hourlyRate);
+  }
+  if (data.taxPct !== undefined) update.tax_pct = toNullable(data.taxPct);
+  if (data.benefitsAmount !== undefined) {
+    update.benefits_amount = toNullable(data.benefitsAmount);
+  }
+  if (data.currency !== undefined) update.currency = data.currency;
+  if (data.bankName !== undefined) update.bank_name = toNullable(data.bankName);
+  if (data.accountNumber !== undefined) {
+    update.account_number = toNullable(data.accountNumber);
+  }
+  if (data.status !== undefined) update.status = data.status;
+  if (data.startDate !== undefined) {
+    update.start_date = toNullable(data.startDate);
+  }
+  if (data.endDate !== undefined) update.end_date = toNullable(data.endDate);
+
+  const { data: updated, error } = await supabase!
+    .from("employees")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error || !updated) return null;
+  return toEmployee(updated);
+}
+
+export async function deleteEmployee(id: string): Promise<boolean> {
+  const { error } = await supabase!.from("employees").delete().eq("id", id);
+  return !error;
+}
+
+export async function getPayrollRuns(): Promise<PayrollRun[]> {
+  const { data, error } = await supabase!
+    .from("payroll_runs")
+    .select("*")
+    .order("period_end", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => toPayrollRun(row));
+}
+
+export async function getPayrollRun(id: string): Promise<PayrollRun | null> {
+  const { data, error } = await supabase!
+    .from("payroll_runs")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toPayrollRun(data);
+}
+
+export async function createPayrollRun(
+  data: Omit<PayrollRun, "id" | "createdAt" | "updatedAt">
+): Promise<PayrollRun> {
+  const now = new Date().toISOString();
+  const row = {
+    id: generateId("pr"),
+    period_start: data.periodStart,
+    period_end: data.periodEnd,
+    pay_date: data.payDate,
+    status: data.status,
+    items: data.items,
+    total_gross: data.totalGross,
+    total_deductions: data.totalDeductions,
+    total_net: data.totalNet,
+    currency: data.currency,
+    created_at: now,
+    updated_at: now,
+    paid_at: toNullable(data.paidAt),
+  };
+  const { data: inserted, error } = await supabase!
+    .from("payroll_runs")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toPayrollRun(inserted);
+}
+
+export async function updatePayrollRun(
+  id: string,
+  data: Partial<Omit<PayrollRun, "id" | "createdAt">>
+): Promise<PayrollRun | null> {
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.periodStart !== undefined) update.period_start = data.periodStart;
+  if (data.periodEnd !== undefined) update.period_end = data.periodEnd;
+  if (data.payDate !== undefined) update.pay_date = data.payDate;
+  if (data.status !== undefined) update.status = data.status;
+  if (data.items !== undefined) update.items = data.items;
+  if (data.totalGross !== undefined) update.total_gross = data.totalGross;
+  if (data.totalDeductions !== undefined) {
+    update.total_deductions = data.totalDeductions;
+  }
+  if (data.totalNet !== undefined) update.total_net = data.totalNet;
+  if (data.currency !== undefined) update.currency = data.currency;
+  if (data.paidAt !== undefined) update.paid_at = toNullable(data.paidAt);
+
+  const { data: updated, error } = await supabase!
+    .from("payroll_runs")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error || !updated) return null;
+  return toPayrollRun(updated);
+}
+
+export async function getPayment(id: string): Promise<Payment | null> {
+  const { data, error } = await supabase!
+    .from("payments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toPayment(data);
+}
+
+export async function getPaymentByTourId(tourId: string): Promise<Payment | null> {
+  const { data, error } = await supabase!
+    .from("payments")
+    .select("*")
+    .eq("tour_id", tourId)
+    .order("date", { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  return toPayment(data[0]);
+}
+
+export async function getPayments(): Promise<Payment[]> {
+  const { data, error } = await supabase!
+    .from("payments")
+    .select("*")
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => toPayment(row));
+}
+
+export async function createPayment(
+  data: Omit<Payment, "id">
+): Promise<Payment> {
+  const row = {
+    id: generateId("pay"),
+    type: data.type,
+    amount: data.amount,
+    currency: data.currency,
+    description: data.description,
+    client_name: toNullable(data.clientName),
+    reference: toNullable(data.reference),
+    lead_id: toNullable(data.leadId),
+    tour_id: toNullable(data.tourId),
+    invoice_id: toNullable(data.invoiceId),
+    supplier_id: toNullable(data.supplierId),
+    payroll_run_id: toNullable(data.payrollRunId),
+    payable_week_start: toNullable(data.payableWeekStart),
+    payable_week_end: toNullable(data.payableWeekEnd),
+    supplier_name: toNullable(data.supplierName),
+    status: data.status,
+    date: data.date,
+    created_at: new Date().toISOString(),
+  };
+  const { data: inserted, error } = await supabase!
+    .from("payments")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toPayment(inserted);
+}
+
+export async function updatePayment(
+  id: string,
+  data: Partial<Omit<Payment, "id">>
+): Promise<Payment | null> {
+  const update: Record<string, unknown> = {};
+  if (data.type !== undefined) update.type = data.type;
+  if (data.amount !== undefined) update.amount = data.amount;
+  if (data.currency !== undefined) update.currency = data.currency;
+  if (data.description !== undefined) update.description = data.description;
+  if (data.clientName !== undefined) {
+    update.client_name = toNullable(data.clientName);
+  }
+  if (data.reference !== undefined) update.reference = toNullable(data.reference);
+  if (data.leadId !== undefined) update.lead_id = toNullable(data.leadId);
+  if (data.tourId !== undefined) update.tour_id = toNullable(data.tourId);
+  if (data.invoiceId !== undefined) {
+    update.invoice_id = toNullable(data.invoiceId);
+  }
+  if (data.supplierId !== undefined) {
+    update.supplier_id = toNullable(data.supplierId);
+  }
+  if (data.payrollRunId !== undefined) {
+    update.payroll_run_id = toNullable(data.payrollRunId);
+  }
+  if (data.payableWeekStart !== undefined) {
+    update.payable_week_start = toNullable(data.payableWeekStart);
+  }
+  if (data.payableWeekEnd !== undefined) {
+    update.payable_week_end = toNullable(data.payableWeekEnd);
+  }
+  if (data.supplierName !== undefined) {
+    update.supplier_name = toNullable(data.supplierName);
+  }
+  if (data.status !== undefined) update.status = data.status;
+  if (data.date !== undefined) update.date = data.date;
+
+  const { data: updated, error } = await supabase!
+    .from("payments")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error || !updated) return null;
+  return toPayment(updated);
+}
+
+export async function getTodos(): Promise<Todo[]> {
+  const { data, error } = await supabase!
+    .from("todos")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => toTodo(row));
+}
+
+export async function createTodo(
+  data: Omit<Todo, "id" | "createdAt">
+): Promise<Todo> {
+  const row = {
+    id: generateId("todo"),
+    title: data.title,
+    completed: data.completed,
+    created_at: new Date().toISOString(),
+  };
+  const { data: inserted, error } = await supabase!
+    .from("todos")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toTodo(inserted);
+}
+
+export async function updateTodo(
+  id: string,
+  data: Partial<Omit<Todo, "id" | "createdAt">>
+): Promise<Todo | null> {
+  const update: Record<string, unknown> = {};
+  if (data.title !== undefined) update.title = data.title;
+  if (data.completed !== undefined) update.completed = data.completed;
+
+  const { data: updated, error } = await supabase!
+    .from("todos")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error || !updated) return null;
+  return toTodo(updated);
+}
+
+export async function deleteTodo(id: string): Promise<boolean> {
+  const { error } = await supabase!.from("todos").delete().eq("id", id);
+  return !error;
+}
+
 export type ClientBookingResult =
   | { tour: Tour; package: TourPackage }
   | { pending: true; lead: Lead; package: TourPackage | null };
 
 export async function getTourForClient(
   bookingRef: string,
-  email: string
+  email?: string
 ): Promise<ClientBookingResult | null> {
   const ref = bookingRef.trim();
-  const emailNorm = email.trim().toLowerCase();
+  const emailNorm = email?.trim().toLowerCase() ?? "";
+  const verifyEmail = emailNorm.length > 0;
+
   const tour = await getTour(ref);
   if (tour) {
     const lead = await getLead(tour.leadId);
-    if (!lead || lead.email.toLowerCase() !== emailNorm) return null;
+    if (!lead) return null;
+    if (verifyEmail && lead.email.toLowerCase() !== emailNorm) return null;
     const pkg = await getPackage(tour.packageId);
     if (!pkg) return null;
     return { tour, package: pkg };
   }
+
   const lead = await getLeadByReference(ref);
-  if (!lead || lead.email.toLowerCase() !== emailNorm) return null;
+  if (!lead) return null;
+  if (verifyEmail && lead.email.toLowerCase() !== emailNorm) return null;
+
   const tours = await getTours();
-  const linkedTour = tours.find((t) => t.leadId === lead.id);
+  const linkedTour = tours.find((candidate) => candidate.leadId === lead.id);
   if (linkedTour) {
     const pkg = await getPackage(linkedTour.packageId);
     if (!pkg) return null;
     return { tour: linkedTour, package: pkg };
   }
+
   const pkg = lead.packageId ? await getPackage(lead.packageId) : null;
   return { pending: true, lead, package: pkg };
 }
@@ -289,21 +1209,26 @@ export async function getClientBookings(email: string): Promise<{
   const leads = await getLeads();
   const tours = await getTours();
   const clientLeads = leads.filter(
-    (l) => l.source === "Client Portal" && l.email.toLowerCase() === emailNorm
+    (lead) => lead.email.toLowerCase() === emailNorm
   );
-  const leadIds = new Set(clientLeads.map((l) => l.id));
-  const clientTours = tours.filter((t) => leadIds.has(t.leadId));
-  const tourIdsWithTour = new Set(clientTours.map((t) => t.leadId));
-  const requests = clientLeads.filter((l) => !tourIdsWithTour.has(l.id));
-  const tourWithPackages: { tour: Tour; package: TourPackage }[] = [];
-  for (const t of clientTours) {
-    const pkg = await getPackage(t.packageId);
-    if (pkg) tourWithPackages.push({ tour: t, package: pkg });
+  const leadIds = new Set(clientLeads.map((lead) => lead.id));
+  const clientTours = tours.filter((tour) => leadIds.has(tour.leadId));
+  const tourLeadIds = new Set(clientTours.map((tour) => tour.leadId));
+  const requests = clientLeads.filter((lead) => !tourLeadIds.has(lead.id));
+
+  const toursWithPackages: { tour: Tour; package: TourPackage }[] = [];
+  for (const tour of clientTours) {
+    const pkg = await getPackage(tour.packageId);
+    if (pkg) toursWithPackages.push({ tour, package: pkg });
   }
+
   return {
-    requests: requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    tours: tourWithPackages.sort(
-      (a, b) => new Date(b.tour.startDate).getTime() - new Date(a.tour.startDate).getTime()
+    requests: requests.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ),
+    tours: toursWithPackages.sort((a, b) =>
+      b.tour.startDate.localeCompare(a.tour.startDate)
     ),
   };
 }

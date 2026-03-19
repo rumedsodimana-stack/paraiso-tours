@@ -5,14 +5,10 @@ import { MessageCircle, Check, X, ExternalLink } from "lucide-react";
 
 export function WhatsAppSection() {
   const [status, setStatus] = useState<"idle" | "checking" | "configured" | "not-configured">(
-    "idle"
+    "checking"
   );
 
-  useEffect(() => {
-    checkConnection();
-  }, []);
-
-  async function checkConnection() {
+  const checkConnection = async () => {
     setStatus("checking");
     try {
       const res = await fetch("/api/whatsapp/status");
@@ -21,7 +17,27 @@ export function WhatsAppSection() {
     } catch {
       setStatus("not-configured");
     }
-  }
+  };
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/whatsapp/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (active) {
+          setStatus(data.connected ? "configured" : "not-configured");
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setStatus("not-configured");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="rounded-2xl border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">

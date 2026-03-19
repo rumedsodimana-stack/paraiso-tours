@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createHotel, updateHotel, deleteHotel } from "@/lib/db";
-import type { HotelSupplier } from "@/lib/types";
 
 function parseOptionalNum(val: string | null): number | undefined {
   if (!val?.trim()) return undefined;

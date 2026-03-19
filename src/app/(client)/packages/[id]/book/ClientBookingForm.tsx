@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Car, UtensilsCrossed } from "lucide-react";
 import type { TourPackage, PackageOption, HotelSupplier } from "@/lib/types";
@@ -75,38 +75,47 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const transportOptions = pkg.transportOptions ?? [];
-  const mealOptions = pkg.mealOptions ?? [];
   const nights = parseNights(pkg.duration) || 7;
 
-  const legacyAccommodation = hasLegacyAccommodation(pkg);
-  const legacyAccommodationOptions = pkg.accommodationOptions ?? [];
-  const perNightAccommodation = getAllAccommodationNightOptions(pkg);
+  const transportOptions = useMemo(() => pkg.transportOptions ?? [], [pkg.transportOptions]);
+  const mealOptions = useMemo(() => pkg.mealOptions ?? [], [pkg.mealOptions]);
+  const legacyAccommodation = useMemo(() => hasLegacyAccommodation(pkg), [pkg]);
+  const legacyAccommodationOptions = useMemo(
+    () => pkg.accommodationOptions ?? [],
+    [pkg.accommodationOptions]
+  );
+  const perNightAccommodation = useMemo(() => getAllAccommodationNightOptions(pkg), [pkg]);
 
   const getDefault = (opts: PackageOption[]) =>
     opts.find((o) => o.isDefault)?.id ?? opts[0]?.id ?? "";
 
-  const [transportId, setTransportId] = useState("");
-  const [mealId, setMealId] = useState("");
+  const defaultAccommodationByNight = useMemo(
+    () =>
+      Object.fromEntries(
+        perNightAccommodation.map(({ nightIndex, options }) => [
+          nightIndex,
+          getDefault(options),
+        ])
+      ) as Record<number, string>,
+    [perNightAccommodation]
+  );
+
+  const [transportId, setTransportId] = useState(() =>
+    transportOptions.length ? getDefault(transportOptions) : ""
+  );
+  const [mealId, setMealId] = useState(() =>
+    mealOptions.length ? getDefault(mealOptions) : ""
+  );
   const [pax, setPax] = useState(2);
   // Legacy: single accommodation id. Per-night: { nightIndex: optionId }
-  const [accommodationId, setAccommodationId] = useState("");
-  const [accommodationByNight, setAccommodationByNight] = useState<Record<number, string>>({});
-
-  useEffect(() => {
-    if (transportOptions.length) setTransportId(getDefault(transportOptions));
-    if (mealOptions.length) setMealId(getDefault(mealOptions));
-    if (legacyAccommodation && legacyAccommodationOptions.length) {
-      setAccommodationId(getDefault(legacyAccommodationOptions));
-    }
-    if (perNightAccommodation.length) {
-      const initial: Record<number, string> = {};
-      perNightAccommodation.forEach(({ nightIndex, options }) => {
-        initial[nightIndex] = getDefault(options);
-      });
-      setAccommodationByNight(initial);
-    }
-  }, [pkg.id]);
+  const [accommodationId, setAccommodationId] = useState(() =>
+    legacyAccommodation && legacyAccommodationOptions.length
+      ? getDefault(legacyAccommodationOptions)
+      : ""
+  );
+  const [accommodationByNight, setAccommodationByNight] = useState<Record<number, string>>(
+    defaultAccommodationByNight
+  );
 
   const totalPrice = useMemo(() => {
     let total = pkg.price * pax;

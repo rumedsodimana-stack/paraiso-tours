@@ -1,12 +1,17 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { supabase } from "./supabase";
-import type { Lead, TourPackage, Tour, ItineraryDay, HotelSupplier, Invoice, Payment, Employee, PayrollRun, Todo } from "./types";
+import { generateDocumentNumber } from "./document-number";
+import type { Lead, TourPackage, Tour, HotelSupplier, Invoice, Payment, Employee, PayrollRun, Todo } from "./types";
 import { mockPackages } from "./mock-data";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const IS_VERCEL = process.env.VERCEL === "1";
-const USE_SUPABASE_FOR_LEADS = supabase !== null;
+const USE_SUPABASE = supabase !== null;
+
+async function getSupabaseDb() {
+  return import("./db-supabase");
+}
 
 // In-memory cache for local dev (avoids repeated disk reads)
 let localCache: { leads?: Lead[]; tours?: Tour[] } | null = null;
@@ -137,9 +142,9 @@ async function maybeBackfillReferences(leads: Lead[]): Promise<Lead[]> {
 
 // --- LEADS ---
 export async function getLeads(): Promise<Lead[]> {
-  if (USE_SUPABASE_FOR_LEADS) {
+  if (USE_SUPABASE) {
     try {
-      const mod = await import("./db-supabase");
+      const mod = await getSupabaseDb();
       return await mod.getLeads();
     } catch (err) {
       // Supabase not ready (missing tables, etc.) — fall back to file/memory
@@ -163,9 +168,9 @@ export async function getLeads(): Promise<Lead[]> {
 }
 
 export async function getLead(id: string): Promise<Lead | null> {
-  if (USE_SUPABASE_FOR_LEADS) {
+  if (USE_SUPABASE) {
     try {
-      const mod = await import("./db-supabase");
+      const mod = await getSupabaseDb();
       return await mod.getLead(id);
     } catch {
       // fall through to file/memory
@@ -176,9 +181,9 @@ export async function getLead(id: string): Promise<Lead | null> {
 }
 
 export async function getLeadByReference(ref: string): Promise<Lead | null> {
-  if (USE_SUPABASE_FOR_LEADS) {
+  if (USE_SUPABASE) {
     try {
-      const mod = await import("./db-supabase");
+      const mod = await getSupabaseDb();
       return await mod.getLeadByReference(ref);
     } catch {
       // fall through to file/memory
@@ -195,9 +200,9 @@ function generateReference(): string {
 }
 
 export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead> {
-  if (USE_SUPABASE_FOR_LEADS) {
+  if (USE_SUPABASE) {
     try {
-      const mod = await import("./db-supabase");
+      const mod = await getSupabaseDb();
       return await mod.createLead(data);
     } catch {
       // fall through to file/memory
@@ -215,9 +220,9 @@ export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedA
 }
 
 export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "createdAt">>): Promise<Lead | null> {
-  if (USE_SUPABASE_FOR_LEADS) {
+  if (USE_SUPABASE) {
     try {
-      const mod = await import("./db-supabase");
+      const mod = await getSupabaseDb();
       return await mod.updateLead(id, data);
     } catch {
       // fall through to file/memory
@@ -233,9 +238,9 @@ export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "cr
 }
 
 export async function deleteLead(id: string): Promise<boolean> {
-  if (USE_SUPABASE_FOR_LEADS) {
+  if (USE_SUPABASE) {
     try {
-      const mod = await import("./db-supabase");
+      const mod = await getSupabaseDb();
       return await mod.deleteLead(id);
     } catch {
       // fall through to file/memory
@@ -294,6 +299,14 @@ async function maybeBackfillPackageOptions(pkgs: TourPackage[]): Promise<TourPac
 
 // --- PACKAGES ---
 export async function getPackages(): Promise<TourPackage[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPackages();
+    } catch {
+      // fall through to file/memory
+    }
+  }
   let pkgs = await readJson<TourPackage[]>("packages.json", []);
   if (pkgs.length === 0) {
     await maybeSeed();
@@ -304,16 +317,40 @@ export async function getPackages(): Promise<TourPackage[]> {
 }
 
 export async function getPackage(id: string): Promise<TourPackage | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPackage(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const packages = await getPackages();
   return packages.find((p) => p.id === id) ?? null;
 }
 
 export async function getPackagesForClient(): Promise<TourPackage[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPackagesForClient();
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const packages = await getPackages();
   return packages.filter((p) => p.published !== false);
 }
 
 export async function createPackage(data: Omit<TourPackage, "id" | "createdAt">): Promise<TourPackage> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createPackage(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const packages = await getPackages();
   const id = `pkg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const pkg: TourPackage = { ...data, id, createdAt: new Date().toISOString() };
@@ -323,6 +360,14 @@ export async function createPackage(data: Omit<TourPackage, "id" | "createdAt">)
 }
 
 export async function updatePackage(id: string, data: Partial<Omit<TourPackage, "id" | "createdAt">>): Promise<TourPackage | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updatePackage(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const packages = await getPackages();
   const idx = packages.findIndex((p) => p.id === id);
   if (idx === -1) return null;
@@ -332,6 +377,14 @@ export async function updatePackage(id: string, data: Partial<Omit<TourPackage, 
 }
 
 export async function deletePackage(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deletePackage(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const packages = await getPackages();
   const filtered = packages.filter((p) => p.id !== id);
   if (filtered.length === packages.length) return false;
@@ -341,6 +394,14 @@ export async function deletePackage(id: string): Promise<boolean> {
 
 // --- TOURS ---
 export async function getTours(): Promise<Tour[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getTours();
+    } catch {
+      // fall through to file/memory
+    }
+  }
   if (!IS_VERCEL && localCache?.tours) return localCache.tours;
   const tours = await readJson<Tour[]>("tours.json", []);
   if (tours.length === 0) {
@@ -360,31 +421,64 @@ export async function getTours(): Promise<Tour[]> {
 }
 
 export async function getTour(id: string): Promise<Tour | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getTour(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const tours = await getTours();
   return tours.find((t) => t.id === id) ?? null;
 }
 
 export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createTour(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   invalidateLocalCache();
   const tours = await getTours();
   const id = `tour_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  const tour: Tour = { ...data, id };
+  const now = new Date().toISOString();
+  const tour: Tour = { ...data, id, createdAt: now, updatedAt: now };
   tours.push(tour);
   await writeJson("tours.json", tours);
   return tour;
 }
 
 export async function updateTour(id: string, data: Partial<Omit<Tour, "id">>): Promise<Tour | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateTour(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   invalidateLocalCache();
   const tours = await getTours();
   const idx = tours.findIndex((t) => t.id === id);
   if (idx === -1) return null;
-  tours[idx] = { ...tours[idx], ...data };
+  tours[idx] = { ...tours[idx], ...data, updatedAt: new Date().toISOString() };
   await writeJson("tours.json", tours);
   return tours[idx];
 }
 
 export async function deleteTour(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deleteTour(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   invalidateLocalCache();
   const tours = await getTours();
   const filtered = tours.filter((t) => t.id !== id);
@@ -395,6 +489,14 @@ export async function deleteTour(id: string): Promise<boolean> {
 
 // --- HOTELS & SUPPLIERS ---
 export async function getHotels(): Promise<HotelSupplier[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getHotels();
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const hotels = await readJson<HotelSupplier[]>("hotels.json", []);
   if (hotels.length === 0 && !IS_VERCEL) {
     await maybeSeed();
@@ -404,11 +506,27 @@ export async function getHotels(): Promise<HotelSupplier[]> {
 }
 
 export async function getHotel(id: string): Promise<HotelSupplier | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getHotel(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const hotels = await getHotels();
   return hotels.find((h) => h.id === id) ?? null;
 }
 
 export async function createHotel(data: Omit<HotelSupplier, "id" | "createdAt">): Promise<HotelSupplier> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createHotel(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const hotels = await getHotels();
   const id = `h_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const hotel: HotelSupplier = { ...data, id, createdAt: new Date().toISOString() };
@@ -418,6 +536,14 @@ export async function createHotel(data: Omit<HotelSupplier, "id" | "createdAt">)
 }
 
 export async function updateHotel(id: string, data: Partial<Omit<HotelSupplier, "id" | "createdAt">>): Promise<HotelSupplier | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateHotel(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const hotels = await getHotels();
   const idx = hotels.findIndex((h) => h.id === id);
   if (idx === -1) return null;
@@ -427,6 +553,14 @@ export async function updateHotel(id: string, data: Partial<Omit<HotelSupplier, 
 }
 
 export async function deleteHotel(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deleteHotel(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const hotels = await getHotels();
   const filtered = hotels.filter((h) => h.id !== id);
   if (filtered.length === hotels.length) return false;
@@ -436,6 +570,14 @@ export async function deleteHotel(id: string): Promise<boolean> {
 
 // --- INVOICES ---
 export async function getInvoices(): Promise<Invoice[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getInvoices();
+    } catch {
+      // fall through to file/memory
+    }
+  }
   let invoices = IS_VERCEL
     ? getMemoryStore().invoices
     : await readJson<Invoice[]>("invoices.json", []);
@@ -446,31 +588,51 @@ export async function getInvoices(): Promise<Invoice[]> {
 }
 
 export async function getInvoice(id: string): Promise<Invoice | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getInvoice(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const invoices = await getInvoices();
   return invoices.find((i) => i.id === id) ?? null;
 }
 
 export async function getInvoiceByLeadId(leadId: string): Promise<Invoice | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getInvoiceByLeadId(leadId);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const invoices = await getInvoices();
   return invoices.find((i) => i.leadId === leadId) ?? null;
 }
 
-function generateInvoiceNumber(invoices: Invoice[]): string {
-  const year = new Date().getFullYear();
-  const yearPrefix = `INV-${year}-`;
-  const sameYear = invoices.filter((i) => i.invoiceNumber.startsWith(yearPrefix));
-  const nextSeq = sameYear.length + 1;
-  return `${yearPrefix}${String(nextSeq).padStart(3, "0")}`;
+function generateInvoiceNumber(): string {
+  return generateDocumentNumber("INV");
 }
 
 export async function createInvoice(data: Omit<Invoice, "id" | "createdAt" | "updatedAt">): Promise<Invoice> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createInvoice(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const invoices = await getInvoices();
   const id = `inv_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const now = new Date().toISOString();
   const invoice: Invoice = {
     ...data,
     id,
-    invoiceNumber: data.invoiceNumber ?? generateInvoiceNumber(invoices),
+    invoiceNumber: data.invoiceNumber ?? generateInvoiceNumber(),
     createdAt: now,
     updatedAt: now,
   };
@@ -480,6 +642,14 @@ export async function createInvoice(data: Omit<Invoice, "id" | "createdAt" | "up
 }
 
 export async function updateInvoice(id: string, data: Partial<Omit<Invoice, "id" | "createdAt">>): Promise<Invoice | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateInvoice(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const invoices = await getInvoices();
   const idx = invoices.findIndex((i) => i.id === id);
   if (idx === -1) return null;
@@ -490,17 +660,41 @@ export async function updateInvoice(id: string, data: Partial<Omit<Invoice, "id"
 
 // --- EMPLOYEES ---
 export async function getEmployees(): Promise<Employee[]> {
-  let employees = await readJson<Employee[]>("employees.json", []);
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getEmployees();
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const employees = await readJson<Employee[]>("employees.json", []);
   // No mock data - employees start empty
   return employees;
 }
 
 export async function getEmployee(id: string): Promise<Employee | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getEmployee(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const employees = await getEmployees();
   return employees.find((e) => e.id === id) ?? null;
 }
 
 export async function createEmployee(data: Omit<Employee, "id" | "createdAt" | "updatedAt">): Promise<Employee> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createEmployee(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const employees = await getEmployees();
   const now = new Date().toISOString();
   const id = `emp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -511,6 +705,14 @@ export async function createEmployee(data: Omit<Employee, "id" | "createdAt" | "
 }
 
 export async function updateEmployee(id: string, data: Partial<Omit<Employee, "id" | "createdAt">>): Promise<Employee | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateEmployee(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const employees = await getEmployees();
   const idx = employees.findIndex((e) => e.id === id);
   if (idx === -1) return null;
@@ -520,6 +722,14 @@ export async function updateEmployee(id: string, data: Partial<Omit<Employee, "i
 }
 
 export async function deleteEmployee(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deleteEmployee(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const employees = await getEmployees();
   const filtered = employees.filter((e) => e.id !== id);
   if (filtered.length === employees.length) return false;
@@ -529,6 +739,14 @@ export async function deleteEmployee(id: string): Promise<boolean> {
 
 // --- PAYROLL ---
 export async function getPayrollRuns(): Promise<PayrollRun[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPayrollRuns();
+    } catch {
+      // fall through to file/memory
+    }
+  }
   let runs = await readJson<PayrollRun[]>("payroll.json", []);
   if (runs.length === 0 && !IS_VERCEL) {
     runs = [];
@@ -537,11 +755,27 @@ export async function getPayrollRuns(): Promise<PayrollRun[]> {
 }
 
 export async function getPayrollRun(id: string): Promise<PayrollRun | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPayrollRun(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const runs = await getPayrollRuns();
   return runs.find((r) => r.id === id) ?? null;
 }
 
 export async function createPayrollRun(data: Omit<PayrollRun, "id" | "createdAt" | "updatedAt">): Promise<PayrollRun> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createPayrollRun(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const runs = await getPayrollRuns();
   const now = new Date().toISOString();
   const id = `pr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -552,6 +786,14 @@ export async function createPayrollRun(data: Omit<PayrollRun, "id" | "createdAt"
 }
 
 export async function updatePayrollRun(id: string, data: Partial<Omit<PayrollRun, "id" | "createdAt">>): Promise<PayrollRun | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updatePayrollRun(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const runs = await getPayrollRuns();
   const idx = runs.findIndex((r) => r.id === id);
   if (idx === -1) return null;
@@ -562,16 +804,40 @@ export async function updatePayrollRun(id: string, data: Partial<Omit<PayrollRun
 
 // --- PAYMENTS ---
 export async function getPayment(id: string): Promise<Payment | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPayment(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const payments = await getPayments();
   return payments.find((p) => p.id === id) ?? null;
 }
 
 export async function getPaymentByTourId(tourId: string): Promise<Payment | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPaymentByTourId(tourId);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const payments = await getPayments();
   return payments.find((p) => p.tourId === tourId) ?? null;
 }
 
 export async function getPayments(): Promise<Payment[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPayments();
+    } catch {
+      // fall through to file/memory
+    }
+  }
   let payments = await readJson<Payment[]>("payments.json", []);
   if (payments.length === 0 && !IS_VERCEL) {
     payments = [];
@@ -580,6 +846,14 @@ export async function getPayments(): Promise<Payment[]> {
 }
 
 export async function createPayment(data: Omit<Payment, "id">): Promise<Payment> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createPayment(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const payments = await getPayments();
   const id = `pay_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const payment: Payment = { ...data, id };
@@ -589,6 +863,14 @@ export async function createPayment(data: Omit<Payment, "id">): Promise<Payment>
 }
 
 export async function updatePayment(id: string, data: Partial<Omit<Payment, "id">>): Promise<Payment | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updatePayment(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const payments = await getPayments();
   const idx = payments.findIndex((p) => p.id === id);
   if (idx === -1) return null;
@@ -599,6 +881,14 @@ export async function updatePayment(id: string, data: Partial<Omit<Payment, "id"
 
 // --- TODOS ---
 export async function getTodos(): Promise<Todo[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getTodos();
+    } catch {
+      // fall through to file/memory
+    }
+  }
   let todos = await readJson<Todo[]>("todos.json", []);
   if (todos.length === 0 && !IS_VERCEL) {
     todos = [];
@@ -607,6 +897,14 @@ export async function getTodos(): Promise<Todo[]> {
 }
 
 export async function createTodo(data: Omit<Todo, "id" | "createdAt">): Promise<Todo> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createTodo(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const todos = await getTodos();
   const id = `todo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const now = new Date().toISOString();
@@ -617,6 +915,14 @@ export async function createTodo(data: Omit<Todo, "id" | "createdAt">): Promise<
 }
 
 export async function updateTodo(id: string, data: Partial<Omit<Todo, "id" | "createdAt">>): Promise<Todo | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateTodo(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const todos = await getTodos();
   const idx = todos.findIndex((t) => t.id === id);
   if (idx === -1) return null;
@@ -626,6 +932,14 @@ export async function updateTodo(id: string, data: Partial<Omit<Todo, "id" | "cr
 }
 
 export async function deleteTodo(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deleteTodo(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const todos = await getTodos();
   const filtered = todos.filter((t) => t.id !== id);
   if (filtered.length === todos.length) return false;
@@ -642,6 +956,14 @@ export async function getTourForClient(
   bookingRef: string,
   email?: string
 ): Promise<ClientBookingResult | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getTourForClient(bookingRef, email);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const ref = bookingRef.trim();
   const emailNorm = email?.trim().toLowerCase() ?? "";
   const verifyEmail = emailNorm.length > 0;
@@ -680,6 +1002,14 @@ export async function getClientBookings(email: string): Promise<{
   requests: Lead[];
   tours: { tour: Tour; package: TourPackage }[];
 }> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getClientBookings(email);
+    } catch {
+      // fall through to file/memory
+    }
+  }
   const emailNorm = email.trim().toLowerCase();
   const leads = await getLeads();
   const tours = await getTours();

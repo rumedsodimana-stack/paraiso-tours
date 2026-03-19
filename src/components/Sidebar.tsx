@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -49,11 +49,8 @@ const financePaths = ["/admin/finance", "/admin/payroll", "/admin/employees"];
 export function Sidebar() {
   const pathname = usePathname();
   const isFinanceActive = financePaths.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  const [financeOpen, setFinanceOpen] = useState(isFinanceActive);
-
-  useEffect(() => {
-    if (isFinanceActive) setFinanceOpen(true);
-  }, [isFinanceActive]);
+  const [financeOpen, setFinanceOpen] = useState(false);
+  const financeExpanded = isFinanceActive || financeOpen;
 
   const linkClass = (href: string) => {
     const isActive =
@@ -87,7 +84,11 @@ export function Sidebar() {
           <div className="pt-0.5">
             <button
               type="button"
-              onClick={() => setFinanceOpen(!financeOpen)}
+              onClick={() => {
+                if (!isFinanceActive) {
+                  setFinanceOpen((open) => !open);
+                }
+              }}
               className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                 isFinanceActive
                   ? "bg-teal-500/20 text-teal-800"
@@ -98,13 +99,13 @@ export function Sidebar() {
                 <PieChart className="h-5 w-5 shrink-0" />
                 Finance
               </span>
-              {financeOpen ? (
+              {financeExpanded ? (
                 <ChevronDown className="h-5 w-5 shrink-0" />
               ) : (
                 <ChevronRight className="h-5 w-5 shrink-0" />
               )}
             </button>
-            {financeOpen && (
+            {financeExpanded && (
               <div className="ml-4 mt-0.5 space-y-0.5 border-l-2 border-stone-200 pl-3">
                 {financeSubItems.map(({ href, label, icon: Icon }) => (
                   <Link

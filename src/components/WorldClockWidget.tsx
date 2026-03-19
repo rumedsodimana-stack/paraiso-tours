@@ -32,10 +32,9 @@ function formatDateShort(date: Date, timeZone: string): string {
 }
 
 export function WorldClockWidget() {
-  const [now, setNow] = useState<Date | null>(null);
+  const [now, setNow] = useState<Date | null>(() => new Date());
 
   useEffect(() => {
-    setNow(new Date());
     const tid = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(tid);
   }, []);

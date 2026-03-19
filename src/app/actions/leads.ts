@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createLead, updateLead, deleteLead } from "@/lib/db";
+import { createLead, updateLead, deleteLead, getLead } from "@/lib/db";
 import type { LeadStatus } from "@/lib/types";
 
 export async function createLeadAction(formData: FormData) {
@@ -23,7 +23,7 @@ export async function createLeadAction(formData: FormData) {
       return { error: "Name and email are required" };
     }
 
-    const lead = await createLead({
+    await createLead({
       name,
       email,
       phone: phone || "",
@@ -67,6 +67,10 @@ export async function updateLeadAction(id: string, formData: FormData) {
     return { error: "Name and email are required" };
   }
 
+  const existing = await getLead(id);
+  if (!existing) return { error: "Lead not found" };
+  const packageChanged = (existing.packageId ?? "") !== (packageId ?? "");
+
   const updated = await updateLead(id, {
     name,
     email,
@@ -79,6 +83,15 @@ export async function updateLeadAction(id: string, formData: FormData) {
     accompaniedGuestName: accompaniedGuestName || undefined,
     notes: notes || undefined,
     packageId,
+    ...(packageChanged
+      ? {
+          selectedAccommodationOptionId: undefined,
+          selectedAccommodationByNight: undefined,
+          selectedTransportOptionId: undefined,
+          selectedMealOptionId: undefined,
+          totalPrice: undefined,
+        }
+      : {}),
   });
 
   if (!updated) return { error: "Lead not found" };

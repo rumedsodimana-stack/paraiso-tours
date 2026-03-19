@@ -115,6 +115,11 @@ export interface Tour {
   status: "scheduled" | "confirmed" | "in-progress" | "completed" | "cancelled";
   totalValue: number;
   currency: string;
+  clientConfirmationSentAt?: string;
+  supplierNotificationsSentAt?: string;
+  paymentReceiptSentAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Quotation {

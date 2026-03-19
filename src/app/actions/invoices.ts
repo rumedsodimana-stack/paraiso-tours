@@ -5,7 +5,6 @@ import {
   getLead,
   getPackage,
   getHotels,
-  getInvoices,
   getInvoice,
   getInvoiceByLeadId,
   createInvoice,
@@ -15,7 +14,8 @@ import {
   createLead,
   updatePayment,
 } from "@/lib/db";
-import { getBookingBreakdownBySupplier } from "@/lib/booking-breakdown";
+import { getLeadBookingFinancials } from "@/lib/booking-pricing";
+import { generateDocumentNumber } from "@/lib/document-number";
 import type { InvoiceStatus } from "@/lib/types";
 
 export async function createInvoiceFromLead(leadId: string) {
@@ -33,28 +33,29 @@ export async function createInvoiceFromLead(leadId: string) {
   ]);
   if (!pkg) return { error: "Package not found" };
 
-  const breakdown = getBookingBreakdownBySupplier(lead, pkg, suppliers);
-  if (!breakdown) return { error: "Could not build booking breakdown" };
+  const financials = getLeadBookingFinancials(lead, pkg, suppliers);
+  const breakdown = financials.breakdown;
+  const invoiceNumber = generateDocumentNumber("INV");
+  const lineItems =
+    breakdown?.supplierItems.map((item) => {
+      const typeLabel =
+        item.supplierType === "hotel"
+          ? "Accommodation"
+          : item.supplierType === "transport"
+            ? "Transport"
+            : "Meals";
+      return {
+        description: `${typeLabel}: ${item.optionLabel}`,
+        amount: item.amount,
+      };
+    }) ?? [];
 
-  const invoices = await getInvoices();
-  const year = new Date().getFullYear();
-  const yearPrefix = `INV-${year}-`;
-  const sameYear = invoices.filter((i) => i.invoiceNumber.startsWith(yearPrefix));
-  const nextSeq = sameYear.length + 1;
-  const invoiceNumber = `${yearPrefix}${String(nextSeq).padStart(3, "0")}`;
-
-  const lineItems = breakdown.supplierItems.map((item) => {
-    const typeLabel =
-      item.supplierType === "hotel"
-        ? "Accommodation"
-        : item.supplierType === "transport"
-          ? "Transport"
-          : "Meals";
-    return {
-      description: `${typeLabel}: ${item.optionLabel}`,
-      amount: item.amount,
-    };
-  });
+  if (financials.adjustmentAmount !== 0) {
+    lineItems.push({
+      description: "Booked total adjustment",
+      amount: financials.adjustmentAmount,
+    });
+  }
 
   const invoice = await createInvoice({
     leadId: lead.id,
@@ -67,10 +68,10 @@ export async function createInvoiceFromLead(leadId: string) {
     packageName: pkg.name,
     travelDate: lead.travelDate,
     pax: lead.pax,
-    baseAmount: breakdown.baseAmount,
+    baseAmount: breakdown?.baseAmount ?? financials.totalPrice,
     lineItems,
-    totalAmount: breakdown.totalAmount,
-    currency: breakdown.currency,
+    totalAmount: financials.totalPrice,
+    currency: breakdown?.currency ?? pkg.currency,
   });
 
   revalidatePath("/admin/invoices");
@@ -119,13 +120,9 @@ export async function createInvoiceFromPayment(paymentId: string) {
     if (existing) return { success: true, invoiceId: existing.id };
   }
 
-  const invoices = await getInvoices();
-  const year = new Date().getFullYear();
-  const prefix = payment.type === "outgoing" ? "PAY" : "INV";
-  const yearPrefix = `${prefix}-${year}-`;
-  const sameYear = invoices.filter((i) => i.invoiceNumber.startsWith(yearPrefix));
-  const nextSeq = sameYear.length + 1;
-  const invoiceNumber = `${yearPrefix}${String(nextSeq).padStart(3, "0")}`;
+  const invoiceNumber = generateDocumentNumber(
+    payment.type === "outgoing" ? "PAY" : "INV"
+  );
 
   const clientName =
     payment.type === "outgoing"

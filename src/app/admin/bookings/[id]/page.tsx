@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getLead, getPackage, getHotels, getInvoiceByLeadId } from "@/lib/db";
 import { getBookingSupplierEmails } from "@/lib/booking-breakdown";
+import { getLeadBookingFinancials } from "@/lib/booking-pricing";
 import { BookingSupplierBreakdown } from "../BookingSupplierBreakdown";
 import { EmailSuppliersButton } from "../EmailSuppliersButton";
 import { InvoiceButton } from "../InvoiceButton";
@@ -30,6 +31,7 @@ export default async function BookingDetailPage({
     getInvoiceByLeadId(id),
   ]);
   const pkg = lead?.packageId ? await getPackage(lead.packageId) : null;
+  const financials = lead && pkg ? getLeadBookingFinancials(lead, pkg, suppliers) : null;
 
   if (!lead) {
     return (
@@ -175,12 +177,12 @@ export default async function BookingDetailPage({
                 </section>
               )}
 
-              {lead.totalPrice != null && (lead.selectedAccommodationOptionId || (lead.selectedAccommodationByNight && Object.keys(lead.selectedAccommodationByNight).length > 0) || lead.selectedTransportOptionId || lead.selectedMealOptionId) && (
+              {financials && (lead.selectedAccommodationOptionId || (lead.selectedAccommodationByNight && Object.keys(lead.selectedAccommodationByNight).length > 0) || lead.selectedTransportOptionId || lead.selectedMealOptionId) && (
                 <section>
                   <div className="rounded-xl border border-teal-200 bg-teal-50/50 px-4 py-3">
                     <p className="flex items-center gap-2 text-lg font-semibold text-teal-800">
                       <DollarSign className="h-5 w-5" />
-                      Total: {lead.totalPrice.toLocaleString()} {pkg.currency}
+                      Total: {financials.totalPrice.toLocaleString()} {pkg.currency}
                     </p>
                   </div>
                   <BookingSupplierBreakdown lead={lead} pkg={pkg} suppliers={suppliers} />
@@ -204,7 +206,7 @@ export default async function BookingDetailPage({
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800">
               <p className="font-medium">No package selected</p>
               <p className="mt-1 text-sm">
-                This booking doesn't have a package yet.{" "}
+                This booking doesn&apos;t have a package yet.{" "}
                 <Link href={`/admin/bookings/${lead.id}/edit`} className="underline hover:no-underline">
                   Edit the booking
                 </Link>{" "}

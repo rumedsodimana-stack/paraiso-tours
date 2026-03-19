@@ -1,4 +1,11 @@
-import type { Tour, Invoice, Payment, Lead, TourPackage } from "./types";
+import type {
+  HotelSupplier,
+  Invoice,
+  Lead,
+  Payment,
+  Tour,
+  TourPackage,
+} from "./types";
 import { getPayablesForDateRange, getCostForTour } from "./payables";
 
 export interface FinanceKPIs {
@@ -30,6 +37,12 @@ export interface AgingBucket {
   count: number;
 }
 
+interface FinanceLookupInput {
+  getLead: (id: string) => Promise<Lead | null>;
+  getPackage: (id: string) => Promise<TourPackage | null>;
+  suppliers: HotelSupplier[];
+}
+
 /**
  * Compute finance KPIs from tours, invoices, payables, and payments.
  */
@@ -37,22 +50,18 @@ export async function getFinanceKPIs(input: {
   tours: Tour[];
   invoices: Invoice[];
   payments: Payment[];
-  getLead: (id: string) => Promise<{ packageId?: string } | null>;
-  getPackage: (id: string) => Promise<{ id: string; duration: string; currency: string } | null>;
-  suppliers: { id: string }[];
-}): Promise<FinanceKPIs> {
+} & FinanceLookupInput): Promise<FinanceKPIs> {
   const { tours, invoices, payments, getLead, getPackage, suppliers } = input;
   const activeTours = tours.filter((t) => t.status !== "cancelled");
-  const today = new Date().toISOString().slice(0, 10);
   const future = new Date();
   future.setFullYear(future.getFullYear() + 2);
   const endDate = future.toISOString().slice(0, 10);
 
   const payables = await getPayablesForDateRange({
     tours: activeTours,
-    getLead: getLead as (id: string) => Promise<any>,
-    getPackage: getPackage as (id: string) => Promise<any>,
-    suppliers: suppliers as any[],
+    getLead,
+    getPackage,
+    suppliers,
     startDate: "2020-01-01",
     endDate,
   });
@@ -123,10 +132,7 @@ export function getCashFlowData(payments: Payment[], months = 6): CashFlowPoint[
 export async function getRevenueCostData(
   input: {
     tours: Tour[];
-    getLead: (id: string) => Promise<{ packageId?: string } | null>;
-    getPackage: (id: string) => Promise<{ id: string; duration: string; currency: string } | null>;
-    suppliers: { id: string }[];
-  },
+  } & FinanceLookupInput,
   months = 6
 ): Promise<RevenueCostPoint[]> {
   const { tours, getLead, getPackage, suppliers } = input;
@@ -147,9 +153,9 @@ export async function getRevenueCostData(
 
     const payables = await getPayablesForDateRange({
       tours,
-      getLead: getLead as (id: string) => Promise<any>,
-      getPackage: getPackage as (id: string) => Promise<any>,
-      suppliers: suppliers as any[],
+      getLead,
+      getPackage,
+      suppliers,
       startDate,
       endDate,
     });
@@ -236,16 +242,14 @@ export async function getMarginByPackage(input: {
   tours: Tour[];
   getLead: (id: string) => Promise<Lead | null>;
   getPackage: (id: string) => Promise<TourPackage | null>;
-  suppliers: { id: string }[];
+  suppliers: HotelSupplier[];
 }): Promise<MarginByPackage[]> {
   const { tours, getLead, getPackage, suppliers } = input;
   const activeTours = tours.filter((t) => t.status !== "cancelled");
   const byPkg = new Map<string, { revenue: number; cost: number; tourCount: number; packageName: string }>();
 
-  const { getCostForTour } = await import("./payables");
-
   for (const tour of activeTours) {
-    const cost = await getCostForTour(tour, getLead as (id: string) => Promise<any>, getPackage as (id: string) => Promise<any>, suppliers as any[]);
+    const cost = await getCostForTour(tour, getLead, getPackage, suppliers);
     const pkg = byPkg.get(tour.packageId);
     const pkgData = await getPackage(tour.packageId);
     const name = pkgData?.name ?? tour.packageName;
@@ -269,16 +273,14 @@ export async function getMarginByTour(input: {
   tours: Tour[];
   getLead: (id: string) => Promise<Lead | null>;
   getPackage: (id: string) => Promise<TourPackage | null>;
-  suppliers: { id: string }[];
+  suppliers: HotelSupplier[];
 }): Promise<MarginByTour[]> {
   const { tours, getLead, getPackage, suppliers } = input;
   const activeTours = tours.filter((t) => t.status !== "cancelled");
-
-  const { getCostForTour } = await import("./payables");
   const result: MarginByTour[] = [];
 
   for (const tour of activeTours) {
-    const cost = await getCostForTour(tour, getLead as (id: string) => Promise<any>, getPackage as (id: string) => Promise<any>, suppliers as any[]);
+    const cost = await getCostForTour(tour, getLead, getPackage, suppliers);
     const margin = tour.totalValue - cost;
     const marginPct = tour.totalValue > 0 ? (margin / tour.totalValue) * 100 : 0;
     result.push({
@@ -329,4 +331,3 @@ export function getRevenueBySource(tours: Tour[], leads: { id: string; source: s
     .map(([source, data]) => ({ source, revenue: data.revenue, tourCount: data.tourCount }))
     .sort((a, b) => b.revenue - a.revenue);
 }
-
