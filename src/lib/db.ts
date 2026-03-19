@@ -1,10 +1,12 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { supabase } from "./supabase";
 import type { Lead, TourPackage, Tour, ItineraryDay, HotelSupplier, Invoice, Payment, Employee, PayrollRun, Todo } from "./types";
 import { mockPackages } from "./mock-data";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const IS_VERCEL = process.env.VERCEL === "1";
+const USE_SUPABASE_FOR_LEADS = supabase !== null;
 
 // In-memory cache for local dev (avoids repeated disk reads)
 let localCache: { leads?: Lead[]; tours?: Tour[] } | null = null;
@@ -135,6 +137,10 @@ async function maybeBackfillReferences(leads: Lead[]): Promise<Lead[]> {
 
 // --- LEADS ---
 export async function getLeads(): Promise<Lead[]> {
+  if (USE_SUPABASE_FOR_LEADS) {
+    const mod = await import("./db-supabase");
+    return mod.getLeads();
+  }
   if (!IS_VERCEL && localCache?.leads) return localCache.leads;
   let leads = await readJson<Lead[]>("leads.json", []);
   if (leads.length === 0) {
@@ -150,11 +156,19 @@ export async function getLeads(): Promise<Lead[]> {
 }
 
 export async function getLead(id: string): Promise<Lead | null> {
+  if (USE_SUPABASE_FOR_LEADS) {
+    const mod = await import("./db-supabase");
+    return mod.getLead(id);
+  }
   const leads = await getLeads();
   return leads.find((l) => l.id === id) ?? null;
 }
 
 export async function getLeadByReference(ref: string): Promise<Lead | null> {
+  if (USE_SUPABASE_FOR_LEADS) {
+    const mod = await import("./db-supabase");
+    return mod.getLeadByReference(ref);
+  }
   const leads = await getLeads();
   return leads.find((l) => l.reference?.toUpperCase() === ref.trim().toUpperCase()) ?? null;
 }
@@ -166,6 +180,10 @@ function generateReference(): string {
 }
 
 export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead> {
+  if (USE_SUPABASE_FOR_LEADS) {
+    const mod = await import("./db-supabase");
+    return mod.createLead(data);
+  }
   invalidateLocalCache();
   const leads = await getLeads();
   const now = new Date().toISOString();
@@ -178,6 +196,10 @@ export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedA
 }
 
 export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "createdAt">>): Promise<Lead | null> {
+  if (USE_SUPABASE_FOR_LEADS) {
+    const mod = await import("./db-supabase");
+    return mod.updateLead(id, data);
+  }
   invalidateLocalCache();
   const leads = await getLeads();
   const idx = leads.findIndex((l) => l.id === id);
@@ -188,6 +210,10 @@ export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "cr
 }
 
 export async function deleteLead(id: string): Promise<boolean> {
+  if (USE_SUPABASE_FOR_LEADS) {
+    const mod = await import("./db-supabase");
+    return mod.deleteLead(id);
+  }
   invalidateLocalCache();
   const leads = await getLeads();
   const filtered = leads.filter((l) => l.id !== id);

@@ -16,14 +16,22 @@ export function LeadForm({
   onSubmit: (formData: FormData) => Promise<{ error?: string } | void>;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const formData = new FormData(e.currentTarget);
-    const result = await onSubmit(formData);
-    if (result?.error) {
-      setError(result.error);
+    setSubmitting(true);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const result = await onSubmit(formData);
+      if (result && typeof result === "object" && "error" in result && result.error) {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -206,9 +214,10 @@ export function LeadForm({
       <div className="flex gap-3">
         <button
           type="submit"
-          className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+          disabled={submitting}
+          className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {lead ? "Update Booking" : "Add Booking"}
+          {submitting ? "Saving…" : lead ? "Update Booking" : "Add Booking"}
         </button>
       </div>
     </form>

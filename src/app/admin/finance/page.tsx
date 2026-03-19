@@ -24,6 +24,8 @@ import {
   getRevenueBySource,
 } from "@/lib/finance";
 
+export const dynamic = "force-dynamic";
+
 function formatMonth(key: string): string {
   const [y, m] = key.split("-").map(Number);
   const d = new Date(y, m - 1, 1);

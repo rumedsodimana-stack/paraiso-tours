@@ -25,4 +25,20 @@
 
 ## Data on Vercel
 
-On Vercel, the filesystem is read-only. Data (leads, tours, invoices, payments, etc.) is stored in memory and resets on cold starts. For production, use a database (e.g. Prisma + PostgreSQL, Supabase).
+On Vercel, the filesystem is read-only. Without a database, data (bookings, tours, invoices, etc.) is stored in memory and **resets on cold starts** — manual bookings will disappear.
+
+### Fix: Use Supabase for persistent bookings
+
+To make manual bookings persist on Vercel:
+
+1. **Create a Supabase project** at [supabase.com](https://supabase.com).
+
+2. **Run the schema** — In Supabase Dashboard → SQL Editor, run the contents of `supabase/schema.sql` to create the `leads`, `packages`, and `tours` tables.
+
+3. **Add environment variables** in Vercel (Project Settings → Environment Variables):
+   - `NEXT_PUBLIC_SUPABASE_URL` — Your Supabase project URL
+   - `SUPABASE_SERVICE_ROLE_KEY` — Service role key (from Supabase → Settings → API)
+
+4. **Redeploy** — After adding env vars, trigger a new deployment.
+
+With these set, leads (manual bookings) persist in Supabase and will show correctly on Vercel.

@@ -52,7 +52,7 @@ function generateReference(): string {
 export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead> {
   const now = new Date().toISOString();
   const id = `lead_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  const reference = data.source === "Client Portal" ? (data.reference ?? generateReference()) : data.reference;
+  const reference = data.reference ?? generateReference();
 
   const row = {
     id,
