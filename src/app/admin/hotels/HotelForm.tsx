@@ -15,6 +15,9 @@ export function HotelForm({
 }) {
   const [error, setError] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [type, setType] = useState<HotelSupplier["type"]>(
+    hotel?.type ?? defaultType
+  );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -63,7 +66,8 @@ export function HotelForm({
           <select
             id="type"
             name="type"
-            defaultValue={hotel?.type ?? defaultType}
+            value={type}
+            onChange={(e) => setType(e.target.value as HotelSupplier["type"])}
             className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
           >
             <option value="hotel">Hotel</option>
@@ -117,7 +121,11 @@ export function HotelForm({
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <label htmlFor="defaultPricePerNight" className="block text-sm font-medium text-stone-700">
-            {(hotel?.type ?? defaultType) === "meal" ? "Default price per person" : "Default price per night"}
+            {type === "meal"
+              ? "Default price per person / day"
+              : type === "transport"
+                ? "Default vehicle rate / day"
+                : "Default rate"}
           </label>
           <input
             id="defaultPricePerNight"
@@ -130,7 +138,7 @@ export function HotelForm({
             placeholder="120"
           />
         </div>
-        {(hotel?.type ?? defaultType) === "hotel" && (
+        {type === "hotel" && (
           <div>
             <label htmlFor="starRating" className="block text-sm font-medium text-stone-700">
               Star rating (1–5)
@@ -150,6 +158,28 @@ export function HotelForm({
             </select>
           </div>
         )}
+        <div>
+          <label htmlFor="maxConcurrentBookings" className="block text-sm font-medium text-stone-700">
+            {type === "hotel"
+              ? "Max concurrent bookings"
+              : type === "transport"
+                ? "Vehicles available at once"
+                : "Capacity cap"}
+          </label>
+          <input
+            id="maxConcurrentBookings"
+            name="maxConcurrentBookings"
+            type="number"
+            min={1}
+            step={1}
+            defaultValue={hotel?.maxConcurrentBookings}
+            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            placeholder="Leave empty for unlimited"
+          />
+          <p className="mt-1 text-xs text-stone-500">
+            Used by scheduling to flag overlapping tours that exceed this supplier&apos;s capacity.
+          </p>
+        </div>
         <div>
           <label htmlFor="currency" className="block text-sm font-medium text-stone-700">
             Currency

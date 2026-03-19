@@ -89,7 +89,7 @@ export function EmployeeCard({ emp }: { emp: Employee }) {
               ? "bg-red-100 text-red-600 hover:bg-red-200"
               : "text-stone-400 hover:bg-red-50 hover:text-red-600"
           }`}
-          title={confirmDelete ? "Click again to delete" : "Delete"}
+          title={confirmDelete ? "Click again to archive" : "Archive"}
         >
           <Trash2 className="h-4 w-4" />
         </button>

@@ -5,6 +5,7 @@ import {
   getLeadBookingFinancials,
   normalizeSelectedAccommodationByNight,
 } from "./booking-pricing";
+import { calcOptionCost, calcOptionPrice } from "./package-price";
 import type { HotelSupplier, Lead, TourPackage } from "./types";
 
 const pkg: TourPackage = {
@@ -115,4 +116,38 @@ test("getLeadBookingFinancials respects stored total as booking snapshot", () =>
   assert.equal(result.totalPrice, 445);
   assert.equal(result.adjustmentAmount, 15);
   assert.ok(result.breakdown);
+});
+
+test("capacity-based option pricing uses rooms and vehicles instead of raw pax", () => {
+  assert.equal(
+    calcOptionPrice(
+      {
+        id: "room_1",
+        label: "Deluxe Room",
+        price: 80,
+        costPrice: 55,
+        priceType: "per_room_per_night",
+        capacity: 2,
+      },
+      5,
+      3
+    ),
+    720
+  );
+
+  assert.equal(
+    calcOptionCost(
+      {
+        id: "vehicle_1",
+        label: "Van",
+        price: 100,
+        costPrice: 70,
+        priceType: "per_vehicle_per_day",
+        capacity: 6,
+      },
+      10,
+      2
+    ),
+    420
+  );
 });

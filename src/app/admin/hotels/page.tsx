@@ -9,14 +9,16 @@ const typeLabels = { hotel: "Hotel", transport: "Transport", meal: "Meal Provide
 export default async function HotelsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ deleted?: string }>;
+  searchParams?: Promise<{ archived?: string; deleted?: string }>;
 }) {
-  const { deleted } = searchParams ? await searchParams : {};
+  const { archived, deleted } = searchParams ? await searchParams : {};
   const hotels = await getHotels();
 
   return (
     <div className="space-y-6">
-      {deleted === "1" ? <SaveSuccessBanner message="Deleted successfully" /> : null}
+      {archived === "1" || deleted === "1" ? (
+        <SaveSuccessBanner message="Archived successfully" />
+      ) : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">

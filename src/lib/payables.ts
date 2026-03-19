@@ -1,5 +1,6 @@
 import type { Lead, TourPackage, PackageOption, HotelSupplier } from "./types";
 import { getBookingBreakdownBySupplier } from "./booking-breakdown";
+import { calcOptionCost } from "./package-price";
 
 export interface PayableItem {
   supplierId: string;
@@ -40,24 +41,7 @@ function getSupplierCostItems(
 
   function addFromOption(opt: PackageOption, type: "hotel" | "transport" | "meal", nightsUsed: number) {
     if (!opt.supplierId || opt.supplierId.startsWith("custom_")) return;
-    const cost = opt.costPrice ?? opt.price;
-    let costAmount: number;
-    switch (opt.priceType) {
-      case "per_person":
-        costAmount = cost * pax;
-        break;
-      case "per_night":
-        costAmount = cost * nightsUsed;
-        break;
-      case "per_day":
-        costAmount = cost * Math.max(1, nightsUsed + 1);
-        break;
-      case "total":
-        costAmount = cost;
-        break;
-      default:
-        costAmount = cost;
-    }
+    const costAmount = calcOptionCost(opt, pax, nightsUsed);
     if (costAmount <= 0) return;
     const supplier = supplierMap.get(opt.supplierId);
     items.push({

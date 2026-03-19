@@ -18,7 +18,7 @@ export function DeleteHotelButton({
 
   function handleDelete() {
     const confirmed = window.confirm(
-      `Delete "${name}"? This cannot be undone.`
+      `Archive "${name}"? It will be hidden from new bookings and package design.`
     );
     if (!confirmed) return;
 
@@ -29,7 +29,7 @@ export function DeleteHotelButton({
         setError(result.error);
         return;
       }
-      router.push("/admin/hotels?deleted=1");
+      router.push("/admin/hotels?archived=1");
       router.refresh();
     });
   }
@@ -43,7 +43,7 @@ export function DeleteHotelButton({
         className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <Trash2 className="h-4 w-4" />
-        {isPending ? "Deleting..." : "Delete"}
+        {isPending ? "Archiving..." : "Archive"}
       </button>
       {error ? (
         <p className="max-w-sm text-right text-xs text-red-600">{error}</p>

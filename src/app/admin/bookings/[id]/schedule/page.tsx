@@ -86,6 +86,11 @@ export default async function BookingSchedulePage({
           </div>
         </div>
         <div className="mt-8 space-y-4">
+          <p className="text-sm text-stone-500">
+            Scheduling also checks supplier capacity and missing supplier links.
+            If attention is needed, you will be taken to the tour detail page
+            with warnings.
+          </p>
           <ScheduleTourButton
             leadId={lead.id}
             hasTravelDate={!!lead.travelDate}

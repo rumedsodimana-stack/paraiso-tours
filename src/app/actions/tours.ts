@@ -23,13 +23,14 @@ import {
 import { createInvoiceFromLead } from "@/app/actions/invoices";
 import { getLeadBookingFinancials } from "@/lib/booking-pricing";
 import { getSuppliersForSchedule } from "@/lib/booking-breakdown";
+import { assessTourAvailability } from "@/lib/tour-availability";
 import { debugLog } from "@/lib/debug";
 import {
   sendTourConfirmationWithInvoice,
   sendSupplierReservationEmail,
   sendPaymentReceiptEmail,
 } from "@/lib/email";
-import type { TourStatus } from "@/lib/types";
+import type { Lead, TourPackage, TourStatus } from "@/lib/types";
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
@@ -94,7 +95,12 @@ export async function scheduleTourFromLeadAction(
   leadId: string,
   startDate?: string,
   guestPaidOnline?: boolean
-): Promise<{ id?: string; error?: string }> {
+): Promise<{
+  id?: string;
+  error?: string;
+  warnings?: string[];
+  availabilityStatus?: "ready" | "attention_needed";
+}> {
   try {
     const lead = await getLead(leadId);
     if (!lead) return { error: "Booking not found" };
@@ -130,9 +136,55 @@ export async function scheduleTourFromLeadAction(
     const financials = getLeadBookingFinancials(lead, pkg, suppliers);
     const totalValue = financials.totalPrice;
 
-    const existingTour = (await getTours()).find(
+    const allTours = await getTours();
+    const existingTour = allTours.find(
       (tour) => tour.leadId === lead.id && tour.status !== "cancelled"
     );
+
+    const relatedLeadIds = [
+      ...new Set(
+        allTours
+          .filter((tour) => tour.id !== existingTour?.id)
+          .map((tour) => tour.leadId)
+          .filter((id) => id !== lead.id)
+      ),
+    ];
+    const relatedPackageIds = [
+      ...new Set(
+        allTours
+          .filter((tour) => tour.id !== existingTour?.id)
+          .map((tour) => tour.packageId)
+          .filter((id) => id !== pkg.id)
+      ),
+    ];
+    const [relatedLeads, relatedPackages] = await Promise.all([
+      Promise.all(relatedLeadIds.map((id) => getLead(id))),
+      Promise.all(relatedPackageIds.map((id) => getPackage(id))),
+    ]);
+    const leadsById = new Map<string, Lead>([[lead.id, lead]]);
+    const packagesById = new Map<string, TourPackage>([[pkg.id, pkg]]);
+    for (const relatedLead of relatedLeads) {
+      if (relatedLead) leadsById.set(relatedLead.id, relatedLead);
+    }
+    for (const relatedPackage of relatedPackages) {
+      if (relatedPackage) packagesById.set(relatedPackage.id, relatedPackage);
+    }
+
+    const availability = assessTourAvailability({
+      lead,
+      pkg,
+      suppliers,
+      tours: allTours,
+      startDate: date,
+      endDate,
+      currentTourId: existingTour?.id,
+      getTourContext: (tour) => {
+        const contextLead = leadsById.get(tour.leadId);
+        const contextPackage = packagesById.get(tour.packageId);
+        if (!contextLead || !contextPackage) return null;
+        return { lead: contextLead, pkg: contextPackage };
+      },
+    });
 
     let tour =
       existingTour ??
@@ -147,6 +199,8 @@ export async function scheduleTourFromLeadAction(
         status: "scheduled",
         totalValue,
         currency: pkg.currency,
+        availabilityStatus: availability.status,
+        availabilityWarnings: availability.warnings,
       }));
 
     if (existingTour) {
@@ -158,7 +212,10 @@ export async function scheduleTourFromLeadAction(
         existingTour.endDate !== endDate ||
         existingTour.pax !== pax ||
         existingTour.totalValue !== totalValue ||
-        existingTour.currency !== pkg.currency;
+        existingTour.currency !== pkg.currency ||
+        existingTour.availabilityStatus !== availability.status ||
+        JSON.stringify(existingTour.availabilityWarnings ?? []) !==
+          JSON.stringify(availability.warnings);
 
       if (needsUpdate) {
         const updatedTour = await updateTour(existingTour.id, {
@@ -170,6 +227,8 @@ export async function scheduleTourFromLeadAction(
           pax,
           totalValue,
           currency: pkg.currency,
+          availabilityStatus: availability.status,
+          availabilityWarnings: availability.warnings,
         });
         if (updatedTour) tour = updatedTour;
       }
@@ -181,9 +240,18 @@ export async function scheduleTourFromLeadAction(
     let invoice = await getInvoiceByLeadId(leadId);
     if (!invoice) {
       const invResult = await createInvoiceFromLead(leadId);
+      if (invResult.error) {
+        return { error: invResult.error };
+      }
       if (invResult.success && invResult.invoiceId) {
         invoice = await getInvoice(invResult.invoiceId);
       }
+    }
+    if (!invoice) {
+      return {
+        error:
+          "Invoice could not be created for this booking. Fix the booking data and try again.",
+      };
     }
 
     let payment = await getPaymentByTourId(tour.id);
@@ -234,6 +302,12 @@ export async function scheduleTourFromLeadAction(
           `Contact ${missingSupplier.supplierName} (${missingSupplier.supplierType}) for ${clientName} - reservation confirmation ${reference}`
         );
       }
+    }
+
+    for (const warning of availability.warnings) {
+      await ensureTodo(
+        `Review supplier availability for ${clientName} - ${warning}`
+      );
     }
 
     if (!tour.clientConfirmationSentAt && lead.email?.trim()) {
@@ -302,8 +376,13 @@ export async function scheduleTourFromLeadAction(
     revalidatePath("/admin/payments");
     revalidatePath("/admin/todos");
     revalidatePath("/admin/bookings");
+    revalidatePath(`/admin/tours/${tour.id}`);
     revalidatePath("/");
-    return { id: tour.id };
+    return {
+      id: tour.id,
+      warnings: availability.warnings,
+      availabilityStatus: availability.status,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { error: msg };

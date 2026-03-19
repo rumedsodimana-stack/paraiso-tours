@@ -20,7 +20,7 @@ export function PackagesGrid({ initialPackages }: { initialPackages: TourPackage
   async function handleDelete(id: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm("Delete this package?")) return;
+    if (!confirm("Archive this package? It will be hidden from new bookings.")) return;
     setDeleting(id);
     const result = await deletePackageAction(id);
     if (result?.success) {

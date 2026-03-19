@@ -160,6 +160,7 @@ export async function getLeads(): Promise<Lead[]> {
     leads = await readJson<Lead[]>("leads.json", []);
   }
   leads = await maybeBackfillReferences(leads);
+  leads = leads.filter((lead) => !lead.archivedAt);
   if (!IS_VERCEL) {
     localCache = localCache ?? {};
     localCache.leads = leads;
@@ -176,7 +177,8 @@ export async function getLead(id: string): Promise<Lead | null> {
       // fall through to file/memory
     }
   }
-  const leads = await getLeads();
+  let leads = await readJson<Lead[]>("leads.json", []);
+  leads = await maybeBackfillReferences(leads);
   return leads.find((l) => l.id === id) ?? null;
 }
 
@@ -189,7 +191,8 @@ export async function getLeadByReference(ref: string): Promise<Lead | null> {
       // fall through to file/memory
     }
   }
-  const leads = await getLeads();
+  let leads = await readJson<Lead[]>("leads.json", []);
+  leads = await maybeBackfillReferences(leads);
   return leads.find((l) => l.reference?.toUpperCase() === ref.trim().toUpperCase()) ?? null;
 }
 
@@ -247,10 +250,15 @@ export async function deleteLead(id: string): Promise<boolean> {
     }
   }
   invalidateLocalCache();
-  const leads = await getLeads();
-  const filtered = leads.filter((l) => l.id !== id);
-  if (filtered.length === leads.length) return false;
-  await writeJson("leads.json", filtered);
+  const leads = await readJson<Lead[]>("leads.json", []);
+  const idx = leads.findIndex((l) => l.id === id);
+  if (idx === -1 || leads[idx].archivedAt) return false;
+  leads[idx] = {
+    ...leads[idx],
+    archivedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJson("leads.json", leads);
   return true;
 }
 
@@ -313,7 +321,7 @@ export async function getPackages(): Promise<TourPackage[]> {
     pkgs = await readJson<TourPackage[]>("packages.json", []);
   }
   pkgs = await maybeBackfillPackageOptions(pkgs);
-  return pkgs;
+  return pkgs.filter((pkg) => !pkg.archivedAt);
 }
 
 export async function getPackage(id: string): Promise<TourPackage | null> {
@@ -325,7 +333,8 @@ export async function getPackage(id: string): Promise<TourPackage | null> {
       // fall through to file/memory
     }
   }
-  const packages = await getPackages();
+  let packages = await readJson<TourPackage[]>("packages.json", []);
+  packages = await maybeBackfillPackageOptions(packages);
   return packages.find((p) => p.id === id) ?? null;
 }
 
@@ -385,10 +394,14 @@ export async function deletePackage(id: string): Promise<boolean> {
       // fall through to file/memory
     }
   }
-  const packages = await getPackages();
-  const filtered = packages.filter((p) => p.id !== id);
-  if (filtered.length === packages.length) return false;
-  await writeJson("packages.json", filtered);
+  const packages = await readJson<TourPackage[]>("packages.json", []);
+  const idx = packages.findIndex((p) => p.id === id);
+  if (idx === -1 || packages[idx].archivedAt) return false;
+  packages[idx] = {
+    ...packages[idx],
+    archivedAt: new Date().toISOString(),
+  };
+  await writeJson("packages.json", packages);
   return true;
 }
 
@@ -500,9 +513,10 @@ export async function getHotels(): Promise<HotelSupplier[]> {
   const hotels = await readJson<HotelSupplier[]>("hotels.json", []);
   if (hotels.length === 0 && !IS_VERCEL) {
     await maybeSeed();
-    return readJson<HotelSupplier[]>("hotels.json", []);
+    const seeded = await readJson<HotelSupplier[]>("hotels.json", []);
+    return seeded.filter((hotel) => !hotel.archivedAt);
   }
-  return hotels;
+  return hotels.filter((hotel) => !hotel.archivedAt);
 }
 
 export async function getHotel(id: string): Promise<HotelSupplier | null> {
@@ -514,7 +528,7 @@ export async function getHotel(id: string): Promise<HotelSupplier | null> {
       // fall through to file/memory
     }
   }
-  const hotels = await getHotels();
+  const hotels = await readJson<HotelSupplier[]>("hotels.json", []);
   return hotels.find((h) => h.id === id) ?? null;
 }
 
@@ -561,10 +575,14 @@ export async function deleteHotel(id: string): Promise<boolean> {
       // fall through to file/memory
     }
   }
-  const hotels = await getHotels();
-  const filtered = hotels.filter((h) => h.id !== id);
-  if (filtered.length === hotels.length) return false;
-  await writeJson("hotels.json", filtered);
+  const hotels = await readJson<HotelSupplier[]>("hotels.json", []);
+  const idx = hotels.findIndex((h) => h.id === id);
+  if (idx === -1 || hotels[idx].archivedAt) return false;
+  hotels[idx] = {
+    ...hotels[idx],
+    archivedAt: new Date().toISOString(),
+  };
+  await writeJson("hotels.json", hotels);
   return true;
 }
 
@@ -670,7 +688,7 @@ export async function getEmployees(): Promise<Employee[]> {
   }
   const employees = await readJson<Employee[]>("employees.json", []);
   // No mock data - employees start empty
-  return employees;
+  return employees.filter((employee) => !employee.archivedAt);
 }
 
 export async function getEmployee(id: string): Promise<Employee | null> {
@@ -682,7 +700,7 @@ export async function getEmployee(id: string): Promise<Employee | null> {
       // fall through to file/memory
     }
   }
-  const employees = await getEmployees();
+  const employees = await readJson<Employee[]>("employees.json", []);
   return employees.find((e) => e.id === id) ?? null;
 }
 
@@ -730,10 +748,15 @@ export async function deleteEmployee(id: string): Promise<boolean> {
       // fall through to file/memory
     }
   }
-  const employees = await getEmployees();
-  const filtered = employees.filter((e) => e.id !== id);
-  if (filtered.length === employees.length) return false;
-  await writeJson("employees.json", filtered);
+  const employees = await readJson<Employee[]>("employees.json", []);
+  const idx = employees.findIndex((e) => e.id === id);
+  if (idx === -1 || employees[idx].archivedAt) return false;
+  employees[idx] = {
+    ...employees[idx],
+    archivedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJson("employees.json", employees);
   return true;
 }
 

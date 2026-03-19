@@ -64,6 +64,7 @@ function toLead(row: Record<string, unknown>): Lead {
       (row.selected_meal_option_id as string | null) ?? undefined,
     totalPrice:
       row.total_price == null ? undefined : Number(row.total_price),
+    archivedAt: (row.archived_at as string | null) ?? undefined,
     createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
     updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
   };
@@ -95,6 +96,7 @@ function toPackage(row: Record<string, unknown>): TourPackage {
     transportOptions: asArray<PackageOption>(row.transport_options),
     accommodationOptions: asArray<PackageOption>(row.accommodation_options),
     customOptions: asArray<PackageOption>(row.custom_options),
+    archivedAt: (row.archived_at as string | null) ?? undefined,
   };
 }
 
@@ -117,6 +119,10 @@ function toTour(row: Record<string, unknown>): Tour {
       (row.supplier_notifications_sent_at as string | null) ?? undefined,
     paymentReceiptSentAt:
       (row.payment_receipt_sent_at as string | null) ?? undefined,
+    availabilityStatus:
+      (row.availability_status as Tour["availabilityStatus"] | null) ??
+      undefined,
+    availabilityWarnings: asArray<string>(row.availability_warnings),
     createdAt: toTimestamp(row.created_at),
     updatedAt: toTimestamp(row.updated_at),
   };
@@ -135,6 +141,10 @@ function toHotel(row: Record<string, unknown>): HotelSupplier {
         ? undefined
         : Number(row.default_price_per_night),
     currency: String(row.currency),
+    maxConcurrentBookings:
+      row.max_concurrent_bookings == null
+        ? undefined
+        : Number(row.max_concurrent_bookings),
     starRating:
       row.star_rating == null ? undefined : Number(row.star_rating),
     notes: (row.notes as string | null) ?? undefined,
@@ -145,6 +155,7 @@ function toHotel(row: Record<string, unknown>): HotelSupplier {
     swiftCode: (row.swift_code as string | null) ?? undefined,
     bankCurrency: (row.bank_currency as string | null) ?? undefined,
     paymentReference: (row.payment_reference as string | null) ?? undefined,
+    archivedAt: (row.archived_at as string | null) ?? undefined,
     createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -196,6 +207,7 @@ function toEmployee(row: Record<string, unknown>): Employee {
     status: row.status as Employee["status"],
     startDate: (row.start_date as string | null) ?? undefined,
     endDate: (row.end_date as string | null) ?? undefined,
+    archivedAt: (row.archived_at as string | null) ?? undefined,
     createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
     updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
   };
@@ -277,6 +289,7 @@ function packageToRow(
     transport_options: data.transportOptions ?? [],
     accommodation_options: data.accommodationOptions ?? [],
     custom_options: data.customOptions ?? [],
+    archived_at: toNullable(data.archivedAt),
     created_at: data.createdAt ?? new Date().toISOString(),
   };
 }
@@ -298,6 +311,7 @@ export async function getLeads(): Promise<Lead[]> {
   const { data, error } = await supabase!
     .from("leads")
     .select("*")
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((row) => toLead(row));
@@ -356,6 +370,7 @@ export async function createLead(
     selected_transport_option_id: toNullable(data.selectedTransportOptionId),
     selected_meal_option_id: toNullable(data.selectedMealOptionId),
     total_price: toNullable(data.totalPrice),
+    archived_at: toNullable(data.archivedAt),
     created_at: now,
     updated_at: now,
   };
@@ -416,6 +431,9 @@ export async function updateLead(
   if (data.totalPrice !== undefined) {
     update.total_price = toNullable(data.totalPrice);
   }
+  if (data.archivedAt !== undefined) {
+    update.archived_at = toNullable(data.archivedAt);
+  }
 
   const { data: updated, error } = await supabase!
     .from("leads")
@@ -428,7 +446,14 @@ export async function updateLead(
 }
 
 export async function deleteLead(id: string): Promise<boolean> {
-  const { error } = await supabase!.from("leads").delete().eq("id", id);
+  const { error } = await supabase!
+    .from("leads")
+    .update({
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("archived_at", null);
   return !error;
 }
 
@@ -437,6 +462,7 @@ export async function getPackages(): Promise<TourPackage[]> {
   const { data, error } = await supabase!
     .from("packages")
     .select("*")
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((row) => toPackage(row));
@@ -503,6 +529,9 @@ export async function updatePackage(
     update.accommodation_options = data.accommodationOptions;
   }
   if (data.customOptions !== undefined) update.custom_options = data.customOptions;
+  if (data.archivedAt !== undefined) {
+    update.archived_at = toNullable(data.archivedAt);
+  }
 
   const { data: updated, error } = await supabase!
     .from("packages")
@@ -515,7 +544,11 @@ export async function updatePackage(
 }
 
 export async function deletePackage(id: string): Promise<boolean> {
-  const { error } = await supabase!.from("packages").delete().eq("id", id);
+  const { error } = await supabase!
+    .from("packages")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("archived_at", null);
   return !error;
 }
 
@@ -557,6 +590,8 @@ export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
       data.supplierNotificationsSentAt
     ),
     payment_receipt_sent_at: toNullable(data.paymentReceiptSentAt),
+    availability_status: toNullable(data.availabilityStatus),
+    availability_warnings: data.availabilityWarnings ?? [],
     created_at: now,
     updated_at: now,
   };
@@ -600,6 +635,12 @@ export async function updateTour(
   if (data.paymentReceiptSentAt !== undefined) {
     update.payment_receipt_sent_at = toNullable(data.paymentReceiptSentAt);
   }
+  if (data.availabilityStatus !== undefined) {
+    update.availability_status = toNullable(data.availabilityStatus);
+  }
+  if (data.availabilityWarnings !== undefined) {
+    update.availability_warnings = data.availabilityWarnings;
+  }
 
   const { data: updated, error } = await supabase!
     .from("tours")
@@ -620,6 +661,7 @@ export async function getHotels(): Promise<HotelSupplier[]> {
   const { data, error } = await supabase!
     .from("hotels")
     .select("*")
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((row) => toHotel(row));
@@ -647,6 +689,7 @@ export async function createHotel(
     contact: toNullable(data.contact),
     default_price_per_night: toNullable(data.defaultPricePerNight),
     currency: data.currency,
+    max_concurrent_bookings: toNullable(data.maxConcurrentBookings),
     star_rating: toNullable(data.starRating),
     notes: toNullable(data.notes),
     bank_name: toNullable(data.bankName),
@@ -656,6 +699,7 @@ export async function createHotel(
     swift_code: toNullable(data.swiftCode),
     bank_currency: toNullable(data.bankCurrency),
     payment_reference: toNullable(data.paymentReference),
+    archived_at: toNullable(data.archivedAt),
     created_at: new Date().toISOString(),
   };
   const { data: inserted, error } = await supabase!
@@ -681,6 +725,9 @@ export async function updateHotel(
     update.default_price_per_night = toNullable(data.defaultPricePerNight);
   }
   if (data.currency !== undefined) update.currency = data.currency;
+  if (data.maxConcurrentBookings !== undefined) {
+    update.max_concurrent_bookings = toNullable(data.maxConcurrentBookings);
+  }
   if (data.starRating !== undefined) {
     update.star_rating = toNullable(data.starRating);
   }
@@ -704,6 +751,9 @@ export async function updateHotel(
   if (data.paymentReference !== undefined) {
     update.payment_reference = toNullable(data.paymentReference);
   }
+  if (data.archivedAt !== undefined) {
+    update.archived_at = toNullable(data.archivedAt);
+  }
 
   const { data: updated, error } = await supabase!
     .from("hotels")
@@ -716,7 +766,11 @@ export async function updateHotel(
 }
 
 export async function deleteHotel(id: string): Promise<boolean> {
-  const { error } = await supabase!.from("hotels").delete().eq("id", id);
+  const { error } = await supabase!
+    .from("hotels")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("archived_at", null);
   return !error;
 }
 
@@ -825,6 +879,7 @@ export async function getEmployees(): Promise<Employee[]> {
   const { data, error } = await supabase!
     .from("employees")
     .select("*")
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((row) => toEmployee(row));
@@ -863,6 +918,7 @@ export async function createEmployee(
     status: data.status,
     start_date: toNullable(data.startDate),
     end_date: toNullable(data.endDate),
+    archived_at: toNullable(data.archivedAt),
     created_at: now,
     updated_at: now,
   };
@@ -911,6 +967,9 @@ export async function updateEmployee(
     update.start_date = toNullable(data.startDate);
   }
   if (data.endDate !== undefined) update.end_date = toNullable(data.endDate);
+  if (data.archivedAt !== undefined) {
+    update.archived_at = toNullable(data.archivedAt);
+  }
 
   const { data: updated, error } = await supabase!
     .from("employees")
@@ -923,7 +982,14 @@ export async function updateEmployee(
 }
 
 export async function deleteEmployee(id: string): Promise<boolean> {
-  const { error } = await supabase!.from("employees").delete().eq("id", id);
+  const { error } = await supabase!
+    .from("employees")
+    .update({
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("archived_at", null);
   return !error;
 }
 

@@ -24,6 +24,10 @@ export function ScheduleTourButton({ leadId, hasTravelDate }: ScheduleTourButton
     startTransition(async () => {
       const result = await scheduleTourFromLeadAction(leadId, dateToUse || undefined);
       if (result?.id) {
+        if (result.warnings?.length) {
+          window.location.href = `/admin/tours/${result.id}`;
+          return;
+        }
         window.location.href = "/admin/calendar?saved=1";
       } else if (result?.error) {
         setError(result.error);

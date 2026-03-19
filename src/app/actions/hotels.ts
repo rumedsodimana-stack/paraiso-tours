@@ -37,6 +37,7 @@ export async function createHotelAction(formData: FormData) {
   const contact = (formData.get("contact") as string)?.trim() || undefined;
   const email = (formData.get("email") as string)?.trim() || undefined;
   const defaultPricePerNight = parseOptionalNum(formData.get("defaultPricePerNight") as string);
+  const maxConcurrentBookings = parseOptionalNum(formData.get("maxConcurrentBookings") as string);
   const starRating = parseOptionalNum(formData.get("starRating") as string);
   const currency = (formData.get("currency") as string) || "USD";
   const notes = (formData.get("notes") as string)?.trim() || undefined;
@@ -57,6 +58,7 @@ export async function createHotelAction(formData: FormData) {
     contact,
     email,
     defaultPricePerNight,
+    maxConcurrentBookings,
     starRating: type === "hotel" && starRating ? starRating : undefined,
     currency,
     notes,
@@ -80,6 +82,7 @@ export async function updateHotelAction(id: string, formData: FormData) {
   const contact = (formData.get("contact") as string)?.trim() || undefined;
   const email = (formData.get("email") as string)?.trim() || undefined;
   const defaultPricePerNight = parseOptionalNum(formData.get("defaultPricePerNight") as string);
+  const maxConcurrentBookings = parseOptionalNum(formData.get("maxConcurrentBookings") as string);
   const starRating = parseOptionalNum(formData.get("starRating") as string);
   const currency = (formData.get("currency") as string) || "USD";
   const notes = (formData.get("notes") as string)?.trim() || undefined;
@@ -100,6 +103,7 @@ export async function updateHotelAction(id: string, formData: FormData) {
     contact,
     email,
     defaultPricePerNight,
+    maxConcurrentBookings,
     starRating: type === "hotel" ? (starRating ?? undefined) : undefined,
     currency,
     notes,
@@ -147,14 +151,14 @@ export async function deleteHotelAction(id: string) {
       );
     }
 
-    return { error: `Cannot delete this supplier because ${reasons.join(" ")}` };
+    return { error: `Cannot archive this supplier because ${reasons.join(" ")}` };
   }
 
   const ok = await deleteHotel(id);
   if (!ok) {
     return {
       error:
-        "Supplier could not be deleted. It may still be referenced elsewhere.",
+        "Supplier could not be archived. It may still be referenced elsewhere.",
     };
   }
 

@@ -73,12 +73,22 @@ export default async function HotelProfilePage({
           <DetailRow label="Email" value={hotel.email} />
           <DetailRow label="Phone / Contact" value={hotel.contact} />
           <DetailRow
-            label={hotel.type === "meal" ? "Default price per person" : "Default price per night"}
+            label={
+              hotel.type === "meal"
+                ? "Default price per person / day"
+                : hotel.type === "transport"
+                  ? "Default vehicle rate / day"
+                  : "Default rate"
+            }
             value={
               hotel.defaultPricePerNight != null
                 ? `${hotel.defaultPricePerNight.toLocaleString()} ${hotel.currency}`
                 : null
             }
+          />
+          <DetailRow
+            label="Concurrent capacity"
+            value={hotel.maxConcurrentBookings ?? null}
           />
           {hotel.type === "hotel" && hotel.starRating != null && (
             <DetailRow label="Star rating" value={`${hotel.starRating} Star`} />

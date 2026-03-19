@@ -22,6 +22,7 @@ export interface Lead {
   selectedTransportOptionId?: string;
   selectedMealOptionId?: string;
   totalPrice?: number;
+  archivedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +50,7 @@ export interface TourPackage {
   transportOptions?: PackageOption[];
   accommodationOptions?: PackageOption[];
   customOptions?: PackageOption[];
+  archivedAt?: string;
 }
 
 export interface ItineraryDay {
@@ -60,7 +62,16 @@ export interface ItineraryDay {
   accommodationOptions?: PackageOption[];
 }
 
-export type PriceType = "per_person" | "total" | "per_night" | "per_day";
+export type PriceType =
+  | "per_person"
+  | "total"
+  | "per_night"
+  | "per_day"
+  | "per_person_total"
+  | "per_person_per_night"
+  | "per_person_per_day"
+  | "per_room_per_night"
+  | "per_vehicle_per_day";
 
 export interface PackageOption {
   id: string;
@@ -69,6 +80,8 @@ export interface PackageOption {
   priceType: PriceType;
   costPrice?: number;
   supplierId?: string;
+  /** Persons/rooms/vehicles covered by one priced unit. Used for room and vehicle based pricing. */
+  capacity?: number;
   isDefault?: boolean;
 }
 
@@ -82,6 +95,8 @@ export interface HotelSupplier {
   contact?: string;
   defaultPricePerNight?: number;
   currency: string;
+  /** Optional cap for overlapping bookings. Leave empty for unlimited availability. */
+  maxConcurrentBookings?: number;
   /** Star rating (1-5) for hotels, set when adding supplier */
   starRating?: number;
   notes?: string;
@@ -93,6 +108,7 @@ export interface HotelSupplier {
   swiftCode?: string;
   bankCurrency?: string;
   paymentReference?: string;
+  archivedAt?: string;
   createdAt: string;
 }
 
@@ -118,6 +134,8 @@ export interface Tour {
   clientConfirmationSentAt?: string;
   supplierNotificationsSentAt?: string;
   paymentReceiptSentAt?: string;
+  availabilityStatus?: "ready" | "attention_needed";
+  availabilityWarnings?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -224,6 +242,7 @@ export interface Employee {
   status: "active" | "inactive";
   startDate?: string;
   endDate?: string;
+  archivedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -10,18 +10,52 @@ export function calcOptionPrice(
   pax: number,
   nights: number
 ): number {
+  const normalizedPax = Math.max(1, pax);
+  const normalizedNights = Math.max(1, nights);
+  const capacity = Math.max(1, opt.capacity ?? 1);
+
   switch (opt.priceType) {
     case "per_person":
-      return opt.price * pax;
+    case "per_person_total":
+      return opt.price * normalizedPax;
     case "per_night":
-      return opt.price * nights;
+      return opt.price * normalizedNights;
+    case "per_person_per_night":
+      return opt.price * normalizedPax * normalizedNights;
     case "per_day":
-      return opt.price * Math.max(1, nights + 1);
+      return opt.price * Math.max(1, normalizedNights + 1);
+    case "per_person_per_day":
+      return opt.price * normalizedPax * Math.max(1, normalizedNights + 1);
+    case "per_room_per_night":
+      return (
+        opt.price * Math.ceil(normalizedPax / capacity) * normalizedNights
+      );
+    case "per_vehicle_per_day":
+      return (
+        opt.price *
+        Math.ceil(normalizedPax / capacity) *
+        Math.max(1, normalizedNights + 1)
+      );
     case "total":
       return opt.price;
     default:
       return opt.price;
   }
+}
+
+export function calcOptionCost(
+  opt: PackageOption,
+  pax: number,
+  nights: number
+): number {
+  return calcOptionPrice(
+    {
+      ...opt,
+      price: opt.costPrice ?? opt.price,
+    },
+    pax,
+    nights
+  );
 }
 
 /** Get accommodation options for a given night (0-based). Prefer per-night from itinerary, fallback to package-level. */

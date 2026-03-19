@@ -1,25 +1,9 @@
 import type { Lead, TourPackage, PackageOption, HotelSupplier } from "./types";
-import { calcOptionPrice } from "./package-price";
+import { calcOptionCost, calcOptionPrice } from "./package-price";
 
 function parseNights(duration: string): number {
   const m = duration.match(/(\d+)\s*[Nn]ight/);
   return m ? parseInt(m[1], 10) : 0;
-}
-
-function calcOptionCost(opt: PackageOption, pax: number, nights: number): number {
-  const cost = opt.costPrice ?? opt.price;
-  switch (opt.priceType) {
-    case "per_person":
-      return cost * pax;
-    case "per_night":
-      return cost * nights;
-    case "per_day":
-      return cost * Math.max(1, nights + 1);
-    case "total":
-      return cost;
-    default:
-      return cost;
-  }
 }
 
 export interface SupplierBreakdownItem {

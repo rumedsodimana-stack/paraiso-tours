@@ -15,7 +15,7 @@ export function PackageActions({
   const router = useRouter();
 
   async function handleDelete() {
-    if (!confirm(`Delete package "${pkgName}"?`)) return;
+    if (!confirm(`Archive package "${pkgName}"? It will be hidden from new bookings.`)) return;
     const result = await deletePackageAction(pkgId);
     if (result?.success) {
       router.push("/admin/packages");
@@ -38,7 +38,7 @@ export function PackageActions({
         className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100"
       >
         <Trash2 className="h-4 w-4" />
-        Delete
+        Archive
       </button>
     </div>
   );

@@ -11,6 +11,7 @@ import {
   Users,
   Clock,
   UserPlus,
+  AlertTriangle,
 } from "lucide-react";
 import { getTour, getLead, getPackage, getHotels } from "@/lib/db";
 import { BookingSupplierBreakdown } from "../../bookings/BookingSupplierBreakdown";
@@ -122,6 +123,23 @@ export default async function TourDetailPage({
         </div>
 
         <div className="space-y-6 p-6">
+          {tour.availabilityStatus === "attention_needed" &&
+          (tour.availabilityWarnings?.length ?? 0) > 0 ? (
+            <section className="rounded-2xl border border-amber-300 bg-amber-50/90 px-4 py-4 text-amber-900">
+              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide">
+                <AlertTriangle className="h-4 w-4" />
+                Supplier Attention Needed
+              </div>
+              <ul className="mt-3 space-y-2 text-sm">
+                {tour.availabilityWarnings?.map((warning) => (
+                  <li key={warning} className="rounded-xl bg-white/60 px-3 py-2">
+                    {warning}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           {pkg ? (
             <>
               <section>

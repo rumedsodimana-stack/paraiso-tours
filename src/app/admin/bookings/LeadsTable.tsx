@@ -86,7 +86,7 @@ export function LeadsTable({
   }
 
   async function handleDelete(leadId: string) {
-    if (!confirm("Delete this lead?")) return;
+    if (!confirm("Archive this booking? It will be removed from the active pipeline.")) return;
     setDeleting(leadId);
     const result = await deleteLeadAction(leadId);
     if (result?.success) {
@@ -300,7 +300,7 @@ export function LeadsTable({
                                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
                               >
                                 <Trash2 className="h-4 w-4" />
-                                {deleting === lead.id ? "Deleting…" : "Delete"}
+                                {deleting === lead.id ? "Archiving…" : "Archive"}
                               </button>
                             </div>
                           </>

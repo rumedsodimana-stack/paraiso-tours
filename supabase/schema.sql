@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS leads (
   selected_transport_option_id TEXT,
   selected_meal_option_id TEXT,
   total_price NUMERIC,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -46,6 +47,7 @@ CREATE TABLE IF NOT EXISTS packages (
   transport_options JSONB NOT NULL DEFAULT '[]',
   accommodation_options JSONB NOT NULL DEFAULT '[]',
   custom_options JSONB NOT NULL DEFAULT '[]',
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -64,6 +66,8 @@ CREATE TABLE IF NOT EXISTS tours (
   client_confirmation_sent_at TEXT,
   supplier_notifications_sent_at TEXT,
   payment_receipt_sent_at TEXT,
+  availability_status TEXT,
+  availability_warnings JSONB NOT NULL DEFAULT '[]',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -77,6 +81,7 @@ CREATE TABLE IF NOT EXISTS hotels (
   contact TEXT,
   default_price_per_night NUMERIC,
   currency TEXT NOT NULL,
+  max_concurrent_bookings INTEGER,
   star_rating NUMERIC,
   notes TEXT,
   bank_name TEXT,
@@ -86,6 +91,7 @@ CREATE TABLE IF NOT EXISTS hotels (
   swift_code TEXT,
   bank_currency TEXT,
   payment_reference TEXT,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -130,6 +136,7 @@ CREATE TABLE IF NOT EXISTS employees (
   status TEXT NOT NULL,
   start_date TEXT,
   end_date TEXT,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -188,6 +195,8 @@ CREATE INDEX IF NOT EXISTS idx_leads_email
   ON leads(LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_packages_published
   ON packages(published);
+CREATE INDEX IF NOT EXISTS idx_packages_archived_at
+  ON packages(archived_at);
 CREATE INDEX IF NOT EXISTS idx_tours_start_date
   ON tours(start_date);
 CREATE INDEX IF NOT EXISTS idx_tours_status
@@ -200,3 +209,9 @@ CREATE INDEX IF NOT EXISTS idx_payments_date
   ON payments(date);
 CREATE INDEX IF NOT EXISTS idx_hotels_type
   ON hotels(type);
+CREATE INDEX IF NOT EXISTS idx_hotels_archived_at
+  ON hotels(archived_at);
+CREATE INDEX IF NOT EXISTS idx_employees_archived_at
+  ON employees(archived_at);
+CREATE INDEX IF NOT EXISTS idx_leads_archived_at
+  ON leads(archived_at);

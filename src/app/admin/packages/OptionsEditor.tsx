@@ -4,9 +4,14 @@ import { Plus, Trash2 } from "lucide-react";
 import type { PackageOption, HotelSupplier, PriceType } from "@/lib/types";
 
 const PRICE_TYPES: { value: PriceType; label: string }[] = [
-  { value: "per_person", label: "Per person" },
-  { value: "per_night", label: "Per night" },
-  { value: "per_day", label: "Per day" },
+  { value: "per_person_total", label: "Per person (trip)" },
+  { value: "per_person_per_night", label: "Per person / night" },
+  { value: "per_person_per_day", label: "Per person / day" },
+  { value: "per_room_per_night", label: "Per room / night" },
+  { value: "per_vehicle_per_day", label: "Per vehicle / day" },
+  { value: "per_person", label: "Legacy: per person" },
+  { value: "per_night", label: "Legacy: per night" },
+  { value: "per_day", label: "Legacy: per day" },
   { value: "total", label: "Total" },
 ];
 
@@ -18,10 +23,27 @@ function getPriceTypeForSupplierType(
   supplierType: "hotel" | "transport" | "meal"
 ): PriceType {
   return supplierType === "transport"
-    ? "per_day"
+    ? "per_vehicle_per_day"
     : supplierType === "meal"
-      ? "per_person"
-      : "per_night";
+      ? "per_person_per_day"
+      : "per_room_per_night";
+}
+
+function getDefaultCapacityForSupplierType(
+  supplierType: "hotel" | "transport" | "meal"
+): number | undefined {
+  return supplierType === "hotel"
+    ? 2
+    : supplierType === "transport"
+      ? 6
+      : undefined;
+}
+
+function usesCapacityField(priceType: PriceType): boolean {
+  return (
+    priceType === "per_room_per_night" ||
+    priceType === "per_vehicle_per_day"
+  );
 }
 
 function buildOptionFromSupplier(
@@ -38,6 +60,8 @@ function buildOptionFromSupplier(
     price: supplierRate,
     costPrice: supplierRate,
     priceType: getPriceTypeForSupplierType(supplierType),
+    capacity:
+      existing?.capacity ?? getDefaultCapacityForSupplierType(supplierType),
     isDefault: existing?.isDefault ?? false,
   };
 }
@@ -208,7 +232,14 @@ export function OptionsEditor({
                   <select
                     value={opt.priceType}
                     onChange={(e) =>
-                      update(i, { priceType: e.target.value as PriceType })
+                      update(i, {
+                        priceType: e.target.value as PriceType,
+                        capacity: usesCapacityField(
+                          e.target.value as PriceType
+                        )
+                          ? opt.capacity ?? getDefaultCapacityForSupplierType(supplierType)
+                          : undefined,
+                      })
                     }
                     className="w-32 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
                   >
@@ -234,6 +265,28 @@ export function OptionsEditor({
                     className="w-28 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
                     title="Cost (for margin)"
                   />
+                  {usesCapacityField(opt.priceType) ? (
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      placeholder={
+                        opt.priceType === "per_room_per_night"
+                          ? "Room pax"
+                          : "Vehicle pax"
+                      }
+                      value={opt.capacity ?? ""}
+                      onChange={(e) =>
+                        update(i, {
+                          capacity: e.target.value
+                            ? Math.max(1, parseInt(e.target.value, 10) || 1)
+                            : undefined,
+                        })
+                      }
+                      className="w-28 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                      title="People covered by one room or vehicle unit"
+                    />
+                  ) : null}
                   <label className="flex shrink-0 items-center gap-1 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-xs font-medium text-stone-600">
                     <input
                       type="checkbox"
@@ -289,6 +342,13 @@ export function OptionsEditor({
                       <span className="rounded-full bg-amber-100 px-2 py-1 font-medium text-amber-800">
                         Supplier is in {linkedSupplier.currency}, package is in{" "}
                         {packageCurrency}
+                      </span>
+                    ) : null}
+                    {usesCapacityField(opt.priceType) ? (
+                      <span className="rounded-full bg-stone-100 px-2 py-1 font-medium text-stone-700">
+                        {opt.priceType === "per_room_per_night"
+                          ? `Occupancy ${opt.capacity ?? 1} pax/room`
+                          : `Capacity ${opt.capacity ?? 1} pax/vehicle`}
                       </span>
                     ) : null}
                   </div>
