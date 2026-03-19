@@ -17,7 +17,7 @@ export default async function NewPackagePage() {
       </Link>
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
         <h1 className="text-2xl font-semibold text-stone-900">Create Tour Package</h1>
-        <p className="mt-1 text-stone-600">Build a new package with itinerary</p>
+        <p className="mt-1 text-stone-600">Use the composer to map nights, suppliers, and live pricing in one place.</p>
         <NewPackageForm hotels={hotels} />
       </div>
     </div>

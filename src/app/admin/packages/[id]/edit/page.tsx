@@ -33,7 +33,7 @@ export default async function EditPackagePage({
       </Link>
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
         <h1 className="text-2xl font-semibold text-stone-900">Edit Package</h1>
-        <p className="mt-1 text-stone-600">{pkg.name}</p>
+        <p className="mt-1 text-stone-600">Composer view for {pkg.name}</p>
         <UpdatePackageForm pkg={pkg} hotels={hotels} />
       </div>
     </div>

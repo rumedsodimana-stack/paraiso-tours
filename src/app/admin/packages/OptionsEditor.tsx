@@ -50,6 +50,7 @@ export function OptionsEditor({
   showSupplier,
   supplierType = "hotel",
   allowCustom = true,
+  packageCurrency,
 }: {
   title: string;
   options: PackageOption[];
@@ -58,6 +59,7 @@ export function OptionsEditor({
   showSupplier?: boolean;
   supplierType?: "hotel" | "transport" | "meal";
   allowCustom?: boolean;
+  packageCurrency?: string;
 }) {
   const defaultPriceType: PriceType =
     showSupplier
@@ -107,112 +109,193 @@ export function OptionsEditor({
       ) : null}
       <div className="space-y-2">
         {options.map((opt, i) => (
-          <div
-            key={opt.id}
-            className="flex flex-wrap items-center gap-2 rounded-lg border border-white/20 bg-white/50 p-2"
-          >
-            {showSupplier && supplierList.length > 0 ? (
-              <>
-                <select
-                  value={opt.supplierId ?? (allowCustom ? "__custom__" : "")}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (allowCustom && val === "__custom__") {
-                      update(i, {
-                        supplierId: undefined,
-                        label: "",
-                        price: 0,
-                        costPrice: undefined,
-                        priceType: defaultPriceType,
-                      });
-                    } else {
-                      const h = supplierList.find((x) => x.id === val);
-                      if (!h) return;
-                      update(i, buildOptionFromSupplier(h, supplierType, opt));
-                    }
-                  }}
-                  className="w-36 rounded-lg border border-white/30 bg-white/60 px-2 py-1.5 text-sm"
-                >
-                  {allowCustom && <option value="__custom__">Custom</option>}
-                  {!allowCustom && (
-                    <option value="" disabled>
-                      Select supplier
-                    </option>
+          (() => {
+            const linkedSupplier = opt.supplierId
+              ? supplierList.find((supplier) => supplier.id === opt.supplierId)
+              : undefined;
+            const supplierRate = linkedSupplier?.defaultPricePerNight;
+            const currentCost = opt.costPrice ?? opt.price;
+            const isSyncedToSupplier =
+              linkedSupplier &&
+              supplierRate != null &&
+              opt.price === supplierRate &&
+              currentCost === supplierRate;
+            const hasCurrencyMismatch =
+              linkedSupplier &&
+              packageCurrency &&
+              linkedSupplier.currency !== packageCurrency;
+
+            return (
+              <div
+                key={opt.id}
+                className="rounded-xl border border-white/30 bg-white/55 p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {showSupplier && supplierList.length > 0 ? (
+                    <>
+                      <select
+                        value={opt.supplierId ?? (allowCustom ? "__custom__" : "")}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (allowCustom && val === "__custom__") {
+                            update(i, {
+                              supplierId: undefined,
+                              label: "",
+                              price: 0,
+                              costPrice: undefined,
+                              priceType: defaultPriceType,
+                            });
+                          } else {
+                            const supplier = supplierList.find(
+                              (item) => item.id === val
+                            );
+                            if (!supplier) return;
+                            update(
+                              i,
+                              buildOptionFromSupplier(supplier, supplierType, opt)
+                            );
+                          }
+                        }}
+                        className="min-w-[210px] rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                      >
+                        {allowCustom ? <option value="__custom__">Custom</option> : null}
+                        {!allowCustom ? (
+                          <option value="" disabled>
+                            Select supplier
+                          </option>
+                        ) : null}
+                        {supplierList.map((supplier) => (
+                          <option key={supplier.id} value={supplier.id}>
+                            {supplier.name}
+                            {supplierType === "hotel" &&
+                            supplier.starRating != null
+                              ? ` (${supplier.starRating} ★)`
+                              : ""}
+                          </option>
+                        ))}
+                      </select>
+                      {allowCustom &&
+                      (opt.supplierId === "__custom__" || !opt.supplierId) ? (
+                        <input
+                          placeholder="Custom name"
+                          value={opt.label}
+                          onChange={(e) =>
+                            update(i, { label: e.target.value })
+                          }
+                          className="min-w-[180px] flex-1 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                        />
+                      ) : null}
+                    </>
+                  ) : (
+                    <input
+                      placeholder="Label (e.g. BB, HB)"
+                      value={opt.label}
+                      onChange={(e) => update(i, { label: e.target.value })}
+                      className="min-w-[220px] flex-1 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                    />
                   )}
-                  {supplierList.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name}
-                      {supplierType === "hotel" && h.starRating != null
-                        ? ` (${h.starRating} ★)`
-                        : ""}
-                    </option>
-                  ))}
-                </select>
-                {allowCustom && (opt.supplierId === "__custom__" || !opt.supplierId) && (
                   <input
-                    placeholder="Custom name"
-                    value={opt.label}
-                    onChange={(e) => update(i, { label: e.target.value })}
-                    className="w-28 rounded-lg border border-white/30 bg-white/60 px-2 py-1.5 text-sm"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    placeholder="Price"
+                    value={opt.price || ""}
+                    onChange={(e) =>
+                      update(i, { price: parseFloat(e.target.value) || 0 })
+                    }
+                    className="w-28 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
                   />
-                )}
-              </>
-            ) : (
-              <input
-                placeholder="Label (e.g. BB, HB)"
-                value={opt.label}
-                onChange={(e) => update(i, { label: e.target.value })}
-                className="w-28 flex-1 min-w-0 rounded-lg border border-white/30 bg-white/60 px-2 py-1.5 text-sm"
-              />
-            )}
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              placeholder="Price"
-              value={opt.price || ""}
-              onChange={(e) => update(i, { price: parseFloat(e.target.value) || 0 })}
-              className="w-20 rounded-lg border border-white/30 bg-white/60 px-2 py-1.5 text-sm"
-            />
-            <select
-              value={opt.priceType}
-              onChange={(e) => update(i, { priceType: e.target.value as PriceType })}
-              className="w-24 rounded-lg border border-white/30 bg-white/60 px-2 py-1.5 text-sm"
-            >
-              {PRICE_TYPES.map((pt) => (
-                <option key={pt.value} value={pt.value}>
-                  {pt.label}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              placeholder="Cost"
-              value={opt.costPrice ?? ""}
-              onChange={(e) =>
-                update(i, { costPrice: e.target.value ? parseFloat(e.target.value) : undefined })
-              }
-              className="w-16 rounded-lg border border-white/30 bg-white/60 px-2 py-1.5 text-sm"
-              title="Cost (for margin)"
-            />
-            <label className="flex shrink-0 items-center gap-1 text-xs">
-              <input
-                type="checkbox"
-                checked={opt.isDefault ?? false}
-                onChange={(e) => update(i, { isDefault: e.target.checked })}
-              />
-              Default
-            </label>
-            <button
-              type="button"
-              onClick={() => remove(i)}
-              className="rounded p-1 text-red-500 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
+                  <select
+                    value={opt.priceType}
+                    onChange={(e) =>
+                      update(i, { priceType: e.target.value as PriceType })
+                    }
+                    className="w-32 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                  >
+                    {PRICE_TYPES.map((priceType) => (
+                      <option key={priceType.value} value={priceType.value}>
+                        {priceType.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    placeholder="Cost"
+                    value={opt.costPrice ?? ""}
+                    onChange={(e) =>
+                      update(i, {
+                        costPrice: e.target.value
+                          ? parseFloat(e.target.value)
+                          : undefined,
+                      })
+                    }
+                    className="w-28 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                    title="Cost (for margin)"
+                  />
+                  <label className="flex shrink-0 items-center gap-1 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-xs font-medium text-stone-600">
+                    <input
+                      type="checkbox"
+                      checked={opt.isDefault ?? false}
+                      onChange={(e) =>
+                        update(i, { isDefault: e.target.checked })
+                      }
+                    />
+                    Default
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => remove(i)}
+                    className="rounded-lg p-2 text-red-500 transition hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {linkedSupplier ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-stone-50/80 px-3 py-2 text-xs text-stone-600">
+                    <span>
+                      Saved supplier rate:{" "}
+                      <strong>
+                        {supplierRate != null
+                          ? `${supplierRate.toLocaleString()} ${linkedSupplier.currency}`
+                          : `0 ${linkedSupplier.currency}`}
+                      </strong>
+                    </span>
+                    {isSyncedToSupplier ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-1 font-medium text-emerald-700">
+                        Synced
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update(
+                            i,
+                            buildOptionFromSupplier(
+                              linkedSupplier,
+                              supplierType,
+                              opt
+                            )
+                          )
+                        }
+                        className="rounded-full bg-teal-100 px-2 py-1 font-medium text-teal-700 transition hover:bg-teal-200"
+                      >
+                        Reset to supplier rate
+                      </button>
+                    )}
+                    {hasCurrencyMismatch ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-1 font-medium text-amber-800">
+                        Supplier is in {linkedSupplier.currency}, package is in{" "}
+                        {packageCurrency}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()
         ))}
       </div>
     </div>
