@@ -9,6 +9,18 @@ import {
   WandSparkles,
 } from "lucide-react";
 
+const WhatsAppSection = dynamic(
+  () =>
+    import("./whatsapp-section").then((mod) => mod.WhatsAppSection),
+  { ssr: false }
+);
+
+const ChangePasswordSection = dynamic(
+  () =>
+    import("./ChangePasswordSection").then((mod) => mod.ChangePasswordSection),
+  { ssr: false }
+);
+
 const ThemeSelector = dynamic(
   () =>
     import("@/components/theme/ThemeSelector").then((mod) => mod.ThemeSelector),
@@ -73,6 +85,10 @@ export default function SettingsPage() {
       </div>
 
       <ThemeSelector />
+
+      <ChangePasswordSection />
+
+      <WhatsAppSection />
 
       <div className="grid gap-4 xl:grid-cols-3">
         {settingCards.map(({ description, icon: Icon, title }) => (

@@ -9,12 +9,12 @@ export default async function BookingConfirmedPage({
   const { ref } = await searchParams;
 
   return (
-    <div className="mx-auto max-w-md text-center">
-      <div className="rounded-2xl border border-white/50 bg-white/70 p-8 shadow-xl backdrop-blur-xl">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
-          <CheckCircle className="h-12 w-12 text-emerald-600" />
+    <div className="mx-auto max-w-lg text-center">
+      <div className="rounded-2xl border border-white/50 bg-white/80 p-10 shadow-xl backdrop-blur-xl">
+        <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-emerald-100 shadow-inner">
+          <CheckCircle className="h-14 w-14 text-emerald-600" />
         </div>
-        <h1 className="text-2xl font-bold text-stone-900">
+        <h1 className="text-3xl font-bold text-stone-900">
           Request received!
         </h1>
         {ref && (
@@ -41,16 +41,16 @@ export default async function BookingConfirmedPage({
           </Link>{" "}
           anytime.
         </p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link
             href="/my-bookings"
-            className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-600/25 transition hover:bg-teal-700 hover:shadow-xl"
           >
             My Bookings
           </Link>
           <Link
             href="/packages"
-            className="rounded-xl border border-stone-200 bg-white px-6 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+            className="inline-flex items-center justify-center rounded-xl border-2 border-stone-200 bg-white px-8 py-3.5 text-sm font-semibold text-stone-800 transition hover:border-teal-200 hover:bg-teal-50/50"
           >
             Browse more packages
           </Link>

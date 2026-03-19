@@ -175,6 +175,20 @@ export function LeadForm({
             placeholder="2"
           />
         </div>
+        <div>
+          <label htmlFor="accompaniedGuestName" className="block text-sm font-medium text-stone-700">
+            Accompanied Guest Name
+          </label>
+          <input
+            id="accompaniedGuestName"
+            name="accompaniedGuestName"
+            type="text"
+            defaultValue={lead?.accompaniedGuestName}
+            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            placeholder="When 2+ travelers"
+          />
+          <p className="mt-1 text-xs text-stone-500">Shown on tour detail when 2+ guests</p>
+        </div>
       </div>
       <div>
         <label htmlFor="notes" className="block text-sm font-medium text-stone-700">

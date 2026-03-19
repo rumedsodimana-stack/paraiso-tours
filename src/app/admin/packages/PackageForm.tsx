@@ -17,12 +17,20 @@ export function PackageForm({
   const [error, setError] = useState<string>("");
   const [itinerary, setItinerary] = useState<ItineraryDay[]>(
     pkg?.itinerary?.length
-      ? pkg.itinerary
-      : [{ day: 1, title: "", description: "", accommodation: "" }]
+      ? pkg.itinerary.map((d) => ({
+          ...d,
+          accommodationOptions: d.accommodationOptions ?? [],
+        }))
+      : [{ day: 1, title: "", description: "", accommodation: "", accommodationOptions: [] }]
   );
+
+  function updateDay(i: number, patch: Partial<ItineraryDay>) {
+    setItinerary((prev) =>
+      prev.map((d, j) => (j === i ? { ...d, ...patch } : d))
+    );
+  }
   const [mealOptions, setMealOptions] = useState<PackageOption[]>(pkg?.mealOptions ?? []);
   const [transportOptions, setTransportOptions] = useState<PackageOption[]>(pkg?.transportOptions ?? []);
-  const [accommodationOptions, setAccommodationOptions] = useState<PackageOption[]>(pkg?.accommodationOptions ?? []);
   const [customOptions, setCustomOptions] = useState<PackageOption[]>(pkg?.customOptions ?? []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -31,18 +39,16 @@ export function PackageForm({
     const form = e.currentTarget;
     const formData = new FormData(form);
 
-    // Append itinerary
+    // Append itinerary (all days)
     itinerary.forEach((day, i) => {
-      if (day.title || day.description) {
-        formData.set(`itinerary_${i}_title`, day.title);
-        formData.set(`itinerary_${i}_description`, day.description);
-        formData.set(`itinerary_${i}_accommodation`, day.accommodation || "");
-      }
+      formData.set(`itinerary_${i}_title`, day.title);
+      formData.set(`itinerary_${i}_description`, day.description);
+      formData.set(`itinerary_${i}_accommodation`, day.accommodation || "");
+      formData.set(`itinerary_${i}_accommodationOptions`, JSON.stringify(day.accommodationOptions ?? []));
     });
 
     formData.set("mealOptions", JSON.stringify(mealOptions));
     formData.set("transportOptions", JSON.stringify(transportOptions));
-    formData.set("accommodationOptions", JSON.stringify(accommodationOptions));
     formData.set("customOptions", JSON.stringify(customOptions));
 
     const result = await onSubmit(formData);
@@ -54,7 +60,7 @@ export function PackageForm({
   function addDay() {
     setItinerary((prev) => [
       ...prev,
-      { day: prev.length + 1, title: "", description: "", accommodation: "" },
+      { day: prev.length + 1, title: "", description: "", accommodation: "", accommodationOptions: [] },
     ]);
   }
 
@@ -324,19 +330,23 @@ export function PackageForm({
                   placeholder="Description"
                   className="w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm"
                 />
-                <input
-                  type="text"
-                  value={day.accommodation || ""}
-                  onChange={(e) =>
-                    setItinerary((prev) =>
-                      prev.map((d, j) =>
-                        j === i ? { ...d, accommodation: e.target.value } : d
+                <div className="mt-3">
+                  <OptionsEditor
+                    title={`Night ${i + 1} accommodation options`}
+                    options={day.accommodationOptions ?? []}
+                    onChange={(opts) =>
+                      setItinerary((prev) =>
+                        prev.map((d, j) =>
+                          j === i ? { ...d, accommodationOptions: opts } : d
+                        )
                       )
-                    )
-                  }
-                  placeholder="Accommodation (optional)"
-                  className="w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm"
-                />
+                    }
+                    hotels={hotels}
+                    showSupplier
+                    supplierType="hotel"
+                    allowCustom={false}
+                  />
+                </div>
               </div>
             </div>
           ))}
@@ -344,10 +354,17 @@ export function PackageForm({
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-stone-700">Meal, Transport & Stay Options</h3>
-        <p className="text-xs text-stone-500">Base price applies; options add to total. Set cost price for margin calc.</p>
+        <h3 className="text-sm font-semibold text-stone-700">Meal, Transport & Custom Options</h3>
+        <p className="text-xs text-stone-500">Accommodation is configured per night above. Base price applies; options add to total.</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <OptionsEditor title="Meal plans (BB, HB, FB, etc.)" options={mealOptions} onChange={setMealOptions} />
+          <OptionsEditor
+            title="Meal plans (from Meal Providers list)"
+            options={mealOptions}
+            onChange={setMealOptions}
+            hotels={hotels}
+            showSupplier
+            supplierType="meal"
+          />
           <OptionsEditor
             title="Transport (from Vehicles list)"
             options={transportOptions}
@@ -355,15 +372,6 @@ export function PackageForm({
             hotels={hotels}
             showSupplier
             supplierType="transport"
-          />
-          <OptionsEditor
-            title="Accommodation (from Hotels list)"
-            options={accommodationOptions}
-            onChange={setAccommodationOptions}
-            hotels={hotels}
-            showSupplier
-            supplierType="hotel"
-            allowCustom={false}
           />
           <OptionsEditor title="Custom add-ons" options={customOptions} onChange={setCustomOptions} />
         </div>

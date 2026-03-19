@@ -59,7 +59,7 @@ export function ClientLookupForm() {
 
   return (
     <div className="mx-auto max-w-md">
-      <div className="rounded-2xl border border-white/50 bg-white/60 p-8 shadow-xl backdrop-blur-xl">
+      <div className="rounded-2xl border border-white/50 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-100">
             <MapPin className="h-8 w-8 text-teal-600" />
@@ -114,19 +114,13 @@ export function ClientLookupForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-teal-600 py-3 font-medium text-white transition hover:bg-teal-700 disabled:opacity-70"
+            className="w-full rounded-xl bg-teal-600 py-3.5 font-semibold text-white shadow-lg shadow-teal-600/25 transition hover:bg-teal-700 hover:shadow-xl disabled:opacity-70"
           >
             {loading ? "Checking…" : "View Booking"}
           </button>
         </form>
       </div>
 
-      <p className="mt-6 text-center text-sm text-stone-500">
-        Demo: <code className="rounded bg-stone-200 px-1">PCT-20260312-A3B7</code> or{" "}
-        <code className="rounded bg-stone-200 px-1">john.mitchell@email.com</code> ·{" "}
-        <code className="rounded bg-stone-200 px-1">marie.d@outlook.fr</code> ·{" "}
-        <code className="rounded bg-stone-200 px-1">zhang.wei@company.cn</code>
-      </p>
     </div>
   );
 }

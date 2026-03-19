@@ -1,7 +1,7 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
-import type { Lead, TourPackage, Tour, ItineraryDay, HotelSupplier } from "./types";
-import { mockLeads, mockPackages, mockTours, mockHotels } from "./mock-data";
+import type { Lead, TourPackage, Tour, ItineraryDay, HotelSupplier, Invoice, Payment, Employee, PayrollRun, Todo } from "./types";
+import { mockPackages } from "./mock-data";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const IS_VERCEL = process.env.VERCEL === "1";
@@ -12,15 +12,20 @@ function invalidateLocalCache() {
   localCache = null;
 }
 
-// In-memory store for Vercel (read-only filesystem)
-let memoryStore: { leads: Lead[]; packages: TourPackage[]; tours: Tour[]; hotels: HotelSupplier[] } | null = null;
+// In-memory store for Vercel (read-only filesystem). Only packages have data; all else is empty.
+let memoryStore: { leads: Lead[]; packages: TourPackage[]; tours: Tour[]; hotels: HotelSupplier[]; invoices: Invoice[]; payments: Payment[]; employees: Employee[]; payrollRuns: PayrollRun[]; todos: Todo[] } | null = null;
 function getMemoryStore() {
   if (!memoryStore) {
     memoryStore = {
-      leads: JSON.parse(JSON.stringify(mockLeads)),
+      leads: [],
       packages: JSON.parse(JSON.stringify(mockPackages)),
-      tours: JSON.parse(JSON.stringify(mockTours)),
-      hotels: JSON.parse(JSON.stringify(mockHotels)),
+      tours: [],
+      hotels: [],
+      invoices: [],
+      payments: [],
+      employees: [],
+      payrollRuns: [],
+      todos: [],
     };
   }
   return memoryStore;
@@ -42,6 +47,11 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
     if (file === "packages.json") return store.packages as T;
     if (file === "tours.json") return store.tours as T;
     if (file === "hotels.json") return store.hotels as T;
+    if (file === "invoices.json") return store.invoices as T;
+    if (file === "payments.json") return store.payments as T;
+    if (file === "employees.json") return store.employees as T;
+    if (file === "payroll.json") return store.payrollRuns as T;
+    if (file === "todos.json") return store.todos as T;
     return fallback;
   }
   await ensureDataDir();
@@ -61,6 +71,11 @@ async function writeJson<T>(file: string, data: T): Promise<void> {
     else if (file === "packages.json") store.packages = data as TourPackage[];
     else if (file === "tours.json") store.tours = data as Tour[];
     else if (file === "hotels.json") store.hotels = data as HotelSupplier[];
+    else if (file === "invoices.json") store.invoices = data as Invoice[];
+    else if (file === "payments.json") store.payments = data as Payment[];
+    else if (file === "employees.json") store.employees = data as Employee[];
+    else if (file === "payroll.json") store.payrollRuns = data as PayrollRun[];
+    else if (file === "todos.json") store.todos = data as Todo[];
     return;
   }
   await ensureDataDir();
@@ -80,14 +95,11 @@ async function maybeSeed() {
     // seed
   }
   await ensureDataDir();
-  const { mockLeads } = await import("./mock-data");
-  const { mockPackages } = await import("./mock-data");
-  const { mockTours } = await import("./mock-data");
-  const { mockHotels } = await import("./mock-data");
-  await writeJson("leads.json", mockLeads);
-  await writeJson("packages.json", mockPackages);
-  await writeJson("tours.json", mockTours);
-  await writeJson("hotels.json", mockHotels);
+  const { mockPackages: pkgs } = await import("./mock-data");
+  await writeJson("leads.json", []);
+  await writeJson("packages.json", pkgs);
+  await writeJson("tours.json", []);
+  await writeJson("hotels.json", []);
   await writeFile(flagPath, "seeded", "utf-8");
 }
 
@@ -333,7 +345,7 @@ export async function getHotels(): Promise<HotelSupplier[]> {
   const hotels = await readJson<HotelSupplier[]>("hotels.json", []);
   if (hotels.length === 0 && !IS_VERCEL) {
     await maybeSeed();
-    return readJson<HotelSupplier[]>("hotels.json", mockHotels);
+    return readJson<HotelSupplier[]>("hotels.json", []);
   }
   return hotels;
 }
@@ -366,6 +378,205 @@ export async function deleteHotel(id: string): Promise<boolean> {
   const filtered = hotels.filter((h) => h.id !== id);
   if (filtered.length === hotels.length) return false;
   await writeJson("hotels.json", filtered);
+  return true;
+}
+
+// --- INVOICES ---
+export async function getInvoices(): Promise<Invoice[]> {
+  let invoices = IS_VERCEL
+    ? getMemoryStore().invoices
+    : await readJson<Invoice[]>("invoices.json", []);
+  if (invoices.length === 0 && !IS_VERCEL) {
+    invoices = [];
+  }
+  return invoices;
+}
+
+export async function getInvoice(id: string): Promise<Invoice | null> {
+  const invoices = await getInvoices();
+  return invoices.find((i) => i.id === id) ?? null;
+}
+
+export async function getInvoiceByLeadId(leadId: string): Promise<Invoice | null> {
+  const invoices = await getInvoices();
+  return invoices.find((i) => i.leadId === leadId) ?? null;
+}
+
+function generateInvoiceNumber(invoices: Invoice[]): string {
+  const year = new Date().getFullYear();
+  const yearPrefix = `INV-${year}-`;
+  const sameYear = invoices.filter((i) => i.invoiceNumber.startsWith(yearPrefix));
+  const nextSeq = sameYear.length + 1;
+  return `${yearPrefix}${String(nextSeq).padStart(3, "0")}`;
+}
+
+export async function createInvoice(data: Omit<Invoice, "id" | "createdAt" | "updatedAt">): Promise<Invoice> {
+  const invoices = await getInvoices();
+  const id = `inv_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const now = new Date().toISOString();
+  const invoice: Invoice = {
+    ...data,
+    id,
+    invoiceNumber: data.invoiceNumber ?? generateInvoiceNumber(invoices),
+    createdAt: now,
+    updatedAt: now,
+  };
+  invoices.push(invoice);
+  await writeJson("invoices.json", invoices);
+  return invoice;
+}
+
+export async function updateInvoice(id: string, data: Partial<Omit<Invoice, "id" | "createdAt">>): Promise<Invoice | null> {
+  const invoices = await getInvoices();
+  const idx = invoices.findIndex((i) => i.id === id);
+  if (idx === -1) return null;
+  invoices[idx] = { ...invoices[idx], ...data, updatedAt: new Date().toISOString() };
+  await writeJson("invoices.json", invoices);
+  return invoices[idx];
+}
+
+// --- EMPLOYEES ---
+export async function getEmployees(): Promise<Employee[]> {
+  let employees = await readJson<Employee[]>("employees.json", []);
+  // No mock data - employees start empty
+  return employees;
+}
+
+export async function getEmployee(id: string): Promise<Employee | null> {
+  const employees = await getEmployees();
+  return employees.find((e) => e.id === id) ?? null;
+}
+
+export async function createEmployee(data: Omit<Employee, "id" | "createdAt" | "updatedAt">): Promise<Employee> {
+  const employees = await getEmployees();
+  const now = new Date().toISOString();
+  const id = `emp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const employee: Employee = { ...data, id, createdAt: now, updatedAt: now };
+  employees.push(employee);
+  await writeJson("employees.json", employees);
+  return employee;
+}
+
+export async function updateEmployee(id: string, data: Partial<Omit<Employee, "id" | "createdAt">>): Promise<Employee | null> {
+  const employees = await getEmployees();
+  const idx = employees.findIndex((e) => e.id === id);
+  if (idx === -1) return null;
+  employees[idx] = { ...employees[idx], ...data, updatedAt: new Date().toISOString() };
+  await writeJson("employees.json", employees);
+  return employees[idx];
+}
+
+export async function deleteEmployee(id: string): Promise<boolean> {
+  const employees = await getEmployees();
+  const filtered = employees.filter((e) => e.id !== id);
+  if (filtered.length === employees.length) return false;
+  await writeJson("employees.json", filtered);
+  return true;
+}
+
+// --- PAYROLL ---
+export async function getPayrollRuns(): Promise<PayrollRun[]> {
+  let runs = await readJson<PayrollRun[]>("payroll.json", []);
+  if (runs.length === 0 && !IS_VERCEL) {
+    runs = [];
+  }
+  return runs.sort((a, b) => b.periodEnd.localeCompare(a.periodEnd));
+}
+
+export async function getPayrollRun(id: string): Promise<PayrollRun | null> {
+  const runs = await getPayrollRuns();
+  return runs.find((r) => r.id === id) ?? null;
+}
+
+export async function createPayrollRun(data: Omit<PayrollRun, "id" | "createdAt" | "updatedAt">): Promise<PayrollRun> {
+  const runs = await getPayrollRuns();
+  const now = new Date().toISOString();
+  const id = `pr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const run: PayrollRun = { ...data, id, createdAt: now, updatedAt: now };
+  runs.unshift(run);
+  await writeJson("payroll.json", runs);
+  return run;
+}
+
+export async function updatePayrollRun(id: string, data: Partial<Omit<PayrollRun, "id" | "createdAt">>): Promise<PayrollRun | null> {
+  const runs = await getPayrollRuns();
+  const idx = runs.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  runs[idx] = { ...runs[idx], ...data, updatedAt: new Date().toISOString() };
+  await writeJson("payroll.json", runs);
+  return runs[idx];
+}
+
+// --- PAYMENTS ---
+export async function getPayment(id: string): Promise<Payment | null> {
+  const payments = await getPayments();
+  return payments.find((p) => p.id === id) ?? null;
+}
+
+export async function getPaymentByTourId(tourId: string): Promise<Payment | null> {
+  const payments = await getPayments();
+  return payments.find((p) => p.tourId === tourId) ?? null;
+}
+
+export async function getPayments(): Promise<Payment[]> {
+  let payments = await readJson<Payment[]>("payments.json", []);
+  if (payments.length === 0 && !IS_VERCEL) {
+    payments = [];
+  }
+  return payments;
+}
+
+export async function createPayment(data: Omit<Payment, "id">): Promise<Payment> {
+  const payments = await getPayments();
+  const id = `pay_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const payment: Payment = { ...data, id };
+  payments.push(payment);
+  await writeJson("payments.json", payments);
+  return payment;
+}
+
+export async function updatePayment(id: string, data: Partial<Omit<Payment, "id">>): Promise<Payment | null> {
+  const payments = await getPayments();
+  const idx = payments.findIndex((p) => p.id === id);
+  if (idx === -1) return null;
+  payments[idx] = { ...payments[idx], ...data };
+  await writeJson("payments.json", payments);
+  return payments[idx];
+}
+
+// --- TODOS ---
+export async function getTodos(): Promise<Todo[]> {
+  let todos = await readJson<Todo[]>("todos.json", []);
+  if (todos.length === 0 && !IS_VERCEL) {
+    todos = [];
+  }
+  return todos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function createTodo(data: Omit<Todo, "id" | "createdAt">): Promise<Todo> {
+  const todos = await getTodos();
+  const id = `todo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const now = new Date().toISOString();
+  const todo: Todo = { ...data, id, createdAt: now };
+  todos.unshift(todo);
+  await writeJson("todos.json", todos);
+  return todo;
+}
+
+export async function updateTodo(id: string, data: Partial<Omit<Todo, "id" | "createdAt">>): Promise<Todo | null> {
+  const todos = await getTodos();
+  const idx = todos.findIndex((t) => t.id === id);
+  if (idx === -1) return null;
+  todos[idx] = { ...todos[idx], ...data };
+  await writeJson("todos.json", todos);
+  return todos[idx];
+}
+
+export async function deleteTodo(id: string): Promise<boolean> {
+  const todos = await getTodos();
+  const filtered = todos.filter((t) => t.id !== id);
+  if (filtered.length === todos.length) return false;
+  await writeJson("todos.json", filtered);
   return true;
 }
 

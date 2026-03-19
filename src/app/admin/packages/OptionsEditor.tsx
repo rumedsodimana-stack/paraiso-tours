@@ -28,11 +28,14 @@ export function OptionsEditor({
   onChange: (opts: PackageOption[]) => void;
   hotels?: HotelSupplier[];
   showSupplier?: boolean;
-  supplierType?: "hotel" | "transport";
+  supplierType?: "hotel" | "transport" | "meal";
   allowCustom?: boolean;
 }) {
+  const defaultPriceType: PriceType =
+    showSupplier && supplierType === "meal" ? "per_person" : showSupplier && supplierType === "transport" ? "per_day" : showSupplier ? "per_night" : "per_person";
+
   function add() {
-    onChange([...options, { id: genId(), label: "", price: 0, priceType: showSupplier ? "per_night" : "per_person" }]);
+    onChange([...options, { id: genId(), label: "", price: 0, priceType: defaultPriceType }]);
   }
 
   function remove(i: number) {
@@ -74,7 +77,14 @@ export function OptionsEditor({
                       update(i, { supplierId: undefined, label: "" });
                     } else {
                       const h = supplierList.find((x) => x.id === val);
-                      update(i, { supplierId: val, label: h?.name ?? "" });
+                      const priceTypeForSupplier: PriceType =
+                        supplierType === "transport" ? "per_day" : supplierType === "meal" ? "per_person" : "per_night";
+                      update(i, {
+                        supplierId: val,
+                        label: h?.name ?? "",
+                        price: h?.defaultPricePerNight ?? 0,
+                        priceType: priceTypeForSupplier,
+                      });
                     }
                   }}
                   className="w-36 rounded-lg border border-white/30 bg-white/60 px-2 py-1.5 text-sm"
@@ -83,6 +93,9 @@ export function OptionsEditor({
                   {supplierList.map((h) => (
                     <option key={h.id} value={h.id}>
                       {h.name}
+                      {supplierType === "hotel" && h.starRating != null
+                        ? ` (${h.starRating} ★)`
+                        : ""}
                     </option>
                   ))}
                 </select>

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "seed": "node scripts/seed-packages.js",
     "dev:network": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
@@ -12,11 +13,14 @@
   "dependencies": {
     "@prisma/client": "^7.5.0",
     "@supabase/supabase-js": "^2.99.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",
     "next": "16.1.6",
     "prisma": "^7.5.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "recharts": "^3.8.0",
+    "resend": "^6.9.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

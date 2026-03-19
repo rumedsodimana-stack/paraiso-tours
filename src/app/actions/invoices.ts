@@ -1,0 +1,176 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import {
+  getLead,
+  getPackage,
+  getHotels,
+  getInvoices,
+  getInvoice,
+  getInvoiceByLeadId,
+  createInvoice,
+  updateInvoice,
+  getPayment,
+  getPayments,
+  createLead,
+  updatePayment,
+} from "@/lib/db";
+import { getBookingBreakdownBySupplier } from "@/lib/booking-breakdown";
+import type { InvoiceStatus } from "@/lib/types";
+
+export async function createInvoiceFromLead(leadId: string) {
+  const lead = await getLead(leadId);
+  if (!lead) return { error: "Lead not found" };
+
+  const existing = await getInvoiceByLeadId(leadId);
+  if (existing) return { success: true, invoiceId: existing.id };
+
+  if (!lead.packageId) return { error: "Lead has no package selected" };
+
+  const [pkg, suppliers] = await Promise.all([
+    getPackage(lead.packageId),
+    getHotels(),
+  ]);
+  if (!pkg) return { error: "Package not found" };
+
+  const breakdown = getBookingBreakdownBySupplier(lead, pkg, suppliers);
+  if (!breakdown) return { error: "Could not build booking breakdown" };
+
+  const invoices = await getInvoices();
+  const year = new Date().getFullYear();
+  const yearPrefix = `INV-${year}-`;
+  const sameYear = invoices.filter((i) => i.invoiceNumber.startsWith(yearPrefix));
+  const nextSeq = sameYear.length + 1;
+  const invoiceNumber = `${yearPrefix}${String(nextSeq).padStart(3, "0")}`;
+
+  const lineItems = breakdown.supplierItems.map((item) => {
+    const typeLabel =
+      item.supplierType === "hotel"
+        ? "Accommodation"
+        : item.supplierType === "transport"
+          ? "Transport"
+          : "Meals";
+    return {
+      description: `${typeLabel}: ${item.optionLabel}`,
+      amount: item.amount,
+    };
+  });
+
+  const invoice = await createInvoice({
+    leadId: lead.id,
+    reference: lead.reference,
+    invoiceNumber,
+    status: "pending_payment",
+    clientName: lead.name,
+    clientEmail: lead.email,
+    clientPhone: lead.phone,
+    packageName: pkg.name,
+    travelDate: lead.travelDate,
+    pax: lead.pax,
+    baseAmount: breakdown.baseAmount,
+    lineItems,
+    totalAmount: breakdown.totalAmount,
+    currency: breakdown.currency,
+  });
+
+  revalidatePath("/admin/invoices");
+  revalidatePath(`/admin/invoices/${invoice.id}`);
+  revalidatePath(`/admin/bookings/${leadId}`);
+  return { success: true, invoiceId: invoice.id };
+}
+
+export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStatus): Promise<{ success?: boolean; error?: string }> {
+  const updates: { status: InvoiceStatus; paidAt?: string } = { status };
+  if (status === "paid") {
+    updates.paidAt = new Date().toISOString().slice(0, 10);
+  }
+  const updated = await updateInvoice(invoiceId, updates);
+  if (!updated) return { error: "Invoice not found" };
+
+  // Sync: when invoice is marked paid, update linked payments to completed
+  if (status === "paid") {
+    const payments = await getPayments();
+    for (const p of payments) {
+      if (p.invoiceId === invoiceId && p.status !== "completed") {
+        await updatePayment(p.id, { status: "completed" });
+      }
+    }
+  }
+
+  revalidatePath("/admin/invoices");
+  revalidatePath("/admin/invoices/[id]", "page");
+  revalidatePath(`/admin/invoices/${invoiceId}`);
+  revalidatePath("/admin/payments");
+  revalidatePath(`/admin/payments/[id]`, "page");
+  revalidatePath(`/admin/bookings/${updated.leadId}`);
+  return { success: true };
+}
+
+/**
+ * Create an invoice/voucher directly from a payment (incoming or outgoing).
+ * For incoming: client is the payer. For outgoing: clientName is the payee (supplier).
+ */
+export async function createInvoiceFromPayment(paymentId: string) {
+  const payment = await getPayment(paymentId);
+  if (!payment) return { error: "Payment not found" };
+
+  if (payment.invoiceId) {
+    const existing = await getInvoice(payment.invoiceId);
+    if (existing) return { success: true, invoiceId: existing.id };
+  }
+
+  const invoices = await getInvoices();
+  const year = new Date().getFullYear();
+  const prefix = payment.type === "outgoing" ? "PAY" : "INV";
+  const yearPrefix = `${prefix}-${year}-`;
+  const sameYear = invoices.filter((i) => i.invoiceNumber.startsWith(yearPrefix));
+  const nextSeq = sameYear.length + 1;
+  const invoiceNumber = `${yearPrefix}${String(nextSeq).padStart(3, "0")}`;
+
+  const clientName =
+    payment.type === "outgoing"
+      ? (payment.supplierName || payment.description || "Supplier").trim()
+      : (payment.clientName?.trim() || "Client");
+  const email =
+    payment.type === "outgoing"
+      ? `pay-${paymentId.slice(-8)}@payment.paraiso.lk`
+      : payment.reference
+        ? `${payment.reference.toLowerCase().replace(/\s/g, "_")}@payment.paraiso.lk`
+        : "client@payment.paraiso.lk";
+
+  const lead = await createLead({
+    name: clientName,
+    email,
+    phone: "",
+    source: payment.type === "outgoing" ? "Supplier payment" : "Payment record",
+    status: "won",
+  });
+
+  const description =
+    payment.type === "outgoing"
+      ? (payment.description || `Payment to ${clientName}`)
+      : (payment.description || "Payment received");
+
+  const invoice = await createInvoice({
+    leadId: lead.id,
+    reference: payment.reference,
+    invoiceNumber,
+    status: payment.status === "completed" ? "paid" : "pending_payment",
+    clientName,
+    clientEmail: lead.email,
+    clientPhone: lead.phone || undefined,
+    packageName: payment.type === "outgoing" ? "Supplier payment" : (payment.description || "Tour / Service"),
+    baseAmount: payment.amount,
+    lineItems: [{ description, amount: payment.amount }],
+    totalAmount: payment.amount,
+    currency: payment.currency,
+  });
+
+  await updatePayment(paymentId, { leadId: lead.id, invoiceId: invoice.id });
+
+  revalidatePath("/admin/invoices");
+  revalidatePath(`/admin/invoices/${invoice.id}`);
+  revalidatePath(`/admin/payments`);
+  revalidatePath(`/admin/payments/${paymentId}`);
+  return { success: true, invoiceId: invoice.id };
+}

@@ -9,7 +9,13 @@ export default async function NewHotelPage({
   searchParams?: Promise<{ type?: string }> | { type?: string };
 }) {
   const params = searchParams ? await Promise.resolve(searchParams) : {};
-  const defaultType = (params.type === "transport" ? "transport" : "hotel") as "hotel" | "transport";
+  const typeParam = params.type;
+  const defaultType = (
+    typeParam === "transport" ? "transport" : typeParam === "meal" ? "meal" : "hotel"
+  ) as "hotel" | "transport" | "meal";
+
+  const formTitle =
+    defaultType === "transport" ? "Add Vehicle" : defaultType === "meal" ? "Add Meal Provider" : "Add Hotel";
 
   return (
     <div className="space-y-6">
@@ -21,10 +27,8 @@ export default async function NewHotelPage({
         Back to Hotels & Suppliers
       </Link>
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
-        <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50">
-          {defaultType === "transport" ? "Add Vehicle" : "Add Hotel"}
-        </h1>
-        <HotelForm action={createHotelAction} defaultType={defaultType} />
+        <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50">{formTitle}</h1>
+        <HotelForm action={createHotelAction as Parameters<typeof HotelForm>[0]["action"]} defaultType={defaultType} />
       </div>
     </div>
   );

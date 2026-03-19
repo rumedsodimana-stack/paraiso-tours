@@ -13,6 +13,7 @@ export async function createLeadAction(formData: FormData) {
   const destination = (formData.get("destination") as string)?.trim();
   const travelDate = (formData.get("travelDate") as string)?.trim();
   const pax = formData.get("pax") ? parseInt(String(formData.get("pax")), 10) : undefined;
+  const accompaniedGuestName = (formData.get("accompaniedGuestName") as string)?.trim();
   const notes = (formData.get("notes") as string)?.trim();
   const packageId = (formData.get("packageId") as string)?.trim() || undefined;
 
@@ -29,6 +30,7 @@ export async function createLeadAction(formData: FormData) {
     destination: destination || undefined,
     travelDate: travelDate || undefined,
     pax,
+    accompaniedGuestName: accompaniedGuestName || undefined,
     notes: notes || undefined,
     packageId,
   });
@@ -47,6 +49,7 @@ export async function updateLeadAction(id: string, formData: FormData) {
   const destination = (formData.get("destination") as string)?.trim();
   const travelDate = (formData.get("travelDate") as string)?.trim();
   const pax = formData.get("pax") ? parseInt(String(formData.get("pax")), 10) : undefined;
+  const accompaniedGuestName = (formData.get("accompaniedGuestName") as string)?.trim();
   const notes = (formData.get("notes") as string)?.trim();
   const packageId = (formData.get("packageId") as string)?.trim() || undefined;
 
@@ -63,6 +66,7 @@ export async function updateLeadAction(id: string, formData: FormData) {
     destination: destination || undefined,
     travelDate: travelDate || undefined,
     pax,
+    accompaniedGuestName: accompaniedGuestName || undefined,
     notes: notes || undefined,
     packageId,
   });

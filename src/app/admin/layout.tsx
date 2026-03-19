@@ -8,9 +8,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen print:block">
       <Sidebar />
-      <div className="ml-64 flex flex-1 flex-col min-w-0">
+      <div className="ml-64 flex flex-1 flex-col min-w-0 print:ml-0">
         <Suspense fallback={<header className="h-16 border-b border-white/20 bg-white/50" />}>
           <Header />
         </Suspense>

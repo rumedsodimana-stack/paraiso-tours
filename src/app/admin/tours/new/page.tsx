@@ -25,9 +25,9 @@ export default async function NewTourPage() {
         Back
       </Link>
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
-        <h1 className="text-2xl font-semibold text-stone-900">Create Tour</h1>
+        <h1 className="text-2xl font-semibold text-stone-900">Schedule Tour</h1>
         <p className="mt-1 text-stone-600">
-          Book a tour for a lead with a package
+          Schedule a tour for a booking and add it to the calendar
         </p>
         <Suspense fallback={<div className="mt-6 h-64 animate-pulse rounded-xl bg-white/30" />}>
           <CreateTourForm leads={bookableLeads} packages={packages} />

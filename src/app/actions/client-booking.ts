@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createLead } from "@/lib/db";
 import { getPackage } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
+import {
+  isWhatsAppConfigured,
+  sendWhatsAppBookingConfirmation,
+} from "@/lib/whatsapp";
 
 export async function createClientBookingAction(
   packageId: string,
@@ -18,6 +22,17 @@ export async function createClientBookingAction(
     : undefined;
   const notes = (formData.get("notes") as string)?.trim();
   const selectedAccommodationOptionId = (formData.get("selectedAccommodationOptionId") as string)?.trim();
+  const selectedAccommodationByNightRaw = (formData.get("selectedAccommodationByNight") as string)?.trim();
+  let selectedAccommodationByNight: Record<string, string> | undefined;
+  if (selectedAccommodationByNightRaw) {
+    try {
+      const parsed = JSON.parse(selectedAccommodationByNightRaw);
+      if (parsed && typeof parsed === "object")
+        selectedAccommodationByNight = parsed as Record<string, string>;
+    } catch {
+      /* ignore */
+    }
+  }
   const selectedTransportOptionId = (formData.get("selectedTransportOptionId") as string)?.trim();
   const selectedMealOptionId = (formData.get("selectedMealOptionId") as string)?.trim();
   const totalPrice = formData.get("totalPrice")
@@ -54,5 +69,21 @@ export async function createClientBookingAction(
   revalidatePath("/admin/bookings");
   revalidatePath("/");
   revalidatePath("/my-bookings");
+
+  // Send WhatsApp confirmation if configured and client provided phone
+  if (isWhatsAppConfigured() && lead.phone?.trim()) {
+    sendWhatsAppBookingConfirmation({
+      clientName: lead.name,
+      phone: lead.phone,
+      reference: lead.reference ?? lead.id,
+      packageName: pkg.name,
+    }).catch((err) => {
+      debugLog("WhatsApp booking confirmation failed", {
+        error: err instanceof Error ? err.message : String(err),
+        leadId: lead.id,
+      });
+    });
+  }
+
   return { success: true, leadId: lead.id, reference: lead.reference ?? undefined };
 }

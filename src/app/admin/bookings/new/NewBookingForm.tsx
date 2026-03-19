@@ -13,7 +13,7 @@ export function NewBookingForm({ packages }: { packages: TourPackage[] }) {
     if (result.error) {
       return { error: result.error };
     }
-    router.push("/admin/bookings");
+    router.push("/admin/bookings?saved=1");
     router.refresh();
   }
 

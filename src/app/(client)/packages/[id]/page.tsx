@@ -17,8 +17,8 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="space-y-8">
-      <Link href="/packages" className="inline-flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700">← Back to packages</Link>
+    <div className="space-y-8 pb-24">
+      <Link href="/packages" className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-teal-600 transition hover:bg-teal-50 hover:text-teal-700">← Back to packages</Link>
 
       <div className="rounded-2xl border border-white/50 bg-white/80 overflow-hidden shadow-xl backdrop-blur-xl">
         <div className="flex flex-col sm:flex-row">
@@ -103,11 +103,26 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div className="rounded-2xl border-2 border-teal-200 bg-teal-50/50 p-8 text-center">
-        <p className="font-semibold text-stone-900">Ready to book?</p>
-        <p className="mt-1 text-stone-600">Submit your details and we&apos;ll get back within 24 hours</p>
-        <Link href={`/packages/${pkg.id}/book`} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-8 py-3 font-semibold text-white transition hover:bg-teal-700">Book this tour<ChevronRight className="h-5 w-5" /></Link>
+      {/* Sticky CTA bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-teal-200/50 bg-white/95 backdrop-blur-xl shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <div>
+            <p className="text-sm font-medium text-stone-600">From</p>
+            <p className="text-xl font-bold text-teal-600">
+              {getFromPrice(pkg).toLocaleString()} {pkg.currency}
+              <span className="text-sm font-medium text-stone-500"> / person</span>
+            </p>
+          </div>
+          <Link
+            href={`/packages/${pkg.id}/book`}
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 font-semibold text-white shadow-lg shadow-teal-600/25 transition hover:bg-teal-700 hover:shadow-xl"
+          >
+            Book this tour
+            <ChevronRight className="h-5 w-5" />
+          </Link>
+        </div>
       </div>
+
     </div>
   );
 }

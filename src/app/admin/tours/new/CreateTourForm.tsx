@@ -47,7 +47,7 @@ export function CreateTourForm({
       setError(result.error);
       return;
     }
-    router.push("/admin/calendar");
+    router.push("/admin/calendar?saved=1");
     router.refresh();
   }
 
@@ -142,7 +142,7 @@ export function CreateTourForm({
           type="submit"
           className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
         >
-          Create Tour
+          Schedule Tour
         </button>
       </div>
     </form>

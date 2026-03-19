@@ -32,12 +32,39 @@ function formatDateShort(date: Date, timeZone: string): string {
 }
 
 export function WorldClockWidget() {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    setNow(new Date());
     const tid = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(tid);
   }, []);
+
+  // Render placeholder until mounted to avoid hydration mismatch
+  if (!now) {
+    return (
+      <div className="rounded-2xl border border-white/20 bg-white/40 p-5 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+        <div className="flex items-center gap-2 pb-3 border-b border-white/30">
+          <Clock className="h-5 w-5 text-teal-600" />
+          <h3 className="font-semibold text-slate-900">World Clock</h3>
+        </div>
+        <div className="mt-4 space-y-3">
+          {CITIES.map(({ name, timeZone, flag }) => (
+            <div key={timeZone} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{flag}</span>
+                <div>
+                  <p className="font-medium text-slate-900">{name}</p>
+                  <p className="text-xs text-slate-500">—</p>
+                </div>
+              </div>
+              <span className="font-mono font-semibold text-slate-800 tabular-nums">--:--:--</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-white/20 bg-white/40 p-5 shadow-lg shadow-stone-200/50 backdrop-blur-xl">

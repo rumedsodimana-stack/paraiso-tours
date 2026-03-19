@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import {
   MapPin,
-  Package,
   Search,
   Headphones,
   Shield,
@@ -12,19 +11,9 @@ import {
   Star,
 } from "lucide-react";
 import { ClientLookupForm } from "./ClientLookupForm";
+import { ThingsToDoSlideshow } from "./ThingsToDoSlideshow";
 import { getPackagesForClient } from "@/lib/db";
 import { getFromPrice } from "@/lib/package-price";
-
-const DESTINATIONS = [
-  { name: "Kandy", slug: "Kandy", tours: "Cultural" },
-  { name: "Galle", slug: "Galle", tours: "Heritage" },
-  { name: "Ella", slug: "Ella", tours: "Scenic" },
-  { name: "Sigiriya", slug: "Sigiriya", tours: "Ancient" },
-  { name: "Yala", slug: "Yala", tours: "Wildlife" },
-  { name: "Nuwara Eliya", slug: "Nuwara Eliya", tours: "Tea Country" },
-  { name: "Southern Coast", slug: "Southern Coast", tours: "Beach" },
-  { name: "Colombo", slug: "Colombo", tours: "City" },
-];
 
 const TRUST_BADGES = [
   {
@@ -56,15 +45,16 @@ export default async function ClientPortalPage() {
   return (
     <div className="space-y-20">
       {/* Hero */}
-      <section className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-stone-900 sm:text-5xl lg:text-6xl">
+      <section className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/70 px-8 py-16 text-center shadow-xl backdrop-blur-xl sm:px-12 sm:py-20">
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-amber-50/30" aria-hidden="true" />
+        <h1 className="relative text-4xl font-bold tracking-tight text-stone-900 sm:text-5xl lg:text-6xl">
           Do more with Paraíso Ceylon
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg text-stone-600">
+        <p className="relative mx-auto mt-5 max-w-2xl text-lg text-stone-600">
           Plan better with curated Sri Lanka experiences. Explore ancient cities,
           tea country, wildlife safaris, and pristine beaches.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+        <div className="relative mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/packages"
             className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-teal-600/25 transition hover:bg-teal-700 hover:shadow-xl"
@@ -86,11 +76,14 @@ export default async function ClientPortalPage() {
         <h2 className="text-center text-2xl font-bold text-stone-900">
           Why book with us?
         </h2>
+        <p className="mx-auto mt-2 max-w-lg text-center text-stone-600">
+          Trust, flexibility, and local expertise in every trip
+        </p>
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {TRUST_BADGES.map(({ icon: Icon, title, text }) => (
             <div
               key={title}
-              className="flex flex-col items-center rounded-2xl border border-white/60 bg-white/80 p-6 text-center shadow-lg backdrop-blur-xl"
+              className="flex flex-col items-center rounded-2xl border border-white/50 bg-white/70 p-6 text-center shadow-xl backdrop-blur-xl transition hover:border-teal-200/60 hover:shadow-2xl"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-100 text-teal-600">
                 <Icon className="h-6 w-6" />
@@ -102,37 +95,8 @@ export default async function ClientPortalPage() {
         </div>
       </section>
 
-      {/* Top destinations */}
-      <section>
-        <h2 className="text-2xl font-bold text-stone-900">
-          Top destinations
-        </h2>
-        <p className="mt-1 text-stone-600">
-          Discover Sri Lanka by region
-        </p>
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {DESTINATIONS.map((dest) => {
-            const count = allPackages.filter(
-              (p) => (p.region ?? p.destination) === dest.slug
-            ).length;
-            return (
-              <Link
-                key={dest.slug}
-                href={`/packages?region=${encodeURIComponent(dest.slug)}`}
-                className="group flex flex-col rounded-xl border border-white/50 bg-white/70 p-4 shadow-md backdrop-blur-xl transition hover:border-teal-200 hover:shadow-lg"
-              >
-                <MapPin className="h-5 w-5 text-teal-500 group-hover:text-teal-600" />
-                <span className="mt-2 font-medium text-stone-900 group-hover:text-teal-700">
-                  {dest.name}
-                </span>
-                <span className="text-xs text-stone-500">
-                  {count > 0 ? `${count} tour${count !== 1 ? "s" : ""}` : dest.tours}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+      {/* Things to do in Sri Lanka - slideshow */}
+      <ThingsToDoSlideshow />
 
       {/* Keep things flexible */}
       <section className="rounded-2xl border-2 border-teal-200/60 bg-teal-50/50 px-6 py-8 text-center backdrop-blur-sm">
@@ -237,7 +201,7 @@ export default async function ClientPortalPage() {
       </section>
 
       {/* View your booking */}
-      <section className="rounded-2xl border border-white/50 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
+      <section className="rounded-2xl border border-white/50 bg-white/70 p-8 shadow-xl backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <Search className="h-6 w-6 text-teal-600" />
           <h2 className="text-xl font-semibold text-stone-900">

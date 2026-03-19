@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Car, UtensilsCrossed, DollarSign } from "lucide-react";
-import type { TourPackage, PackageOption } from "@/lib/types";
+import { Building2, Car, UtensilsCrossed } from "lucide-react";
+import type { TourPackage, PackageOption, HotelSupplier } from "@/lib/types";
 import { calcOptionPrice } from "@/lib/package-price";
 import { createClientBookingAction } from "@/app/actions/client-booking";
 import { debugClient } from "@/lib/debug";
@@ -13,54 +13,148 @@ function parseNights(duration: string): number {
   return m ? parseInt(m[1], 10) : 0;
 }
 
-export function ClientBookingForm({ pkg }: { pkg: TourPackage }) {
+function getAccommodationOptionsForNight(pkg: TourPackage, nightIndex: number): PackageOption[] {
+  const day = pkg.itinerary?.[nightIndex];
+  if (day?.accommodationOptions?.length) return day.accommodationOptions;
+  return pkg.accommodationOptions ?? [];
+}
+
+/**
+ * Get accommodation options for each night. Uses night-specific options,
+ * then falls back to first night's options, then package-level (legacy).
+ * Always returns one entry per night so Nights 1–4 all show selectors.
+ */
+function getAllAccommodationNightOptions(pkg: TourPackage): { nightIndex: number; options: PackageOption[] }[] {
+  const nights = parseNights(pkg.duration) || 1;
+  const result: { nightIndex: number; options: PackageOption[] }[] = [];
+  const packageLevel = pkg.accommodationOptions ?? [];
+
+  // Precompute fallback: night 0 options, or package-level, or first itinerary day with options
+  let fallbackOptions: PackageOption[] =
+    getAccommodationOptionsForNight(pkg, 0).length > 0
+      ? getAccommodationOptionsForNight(pkg, 0)
+      : packageLevel;
+  if (fallbackOptions.length === 0) {
+    const firstWithOptions = pkg.itinerary?.find((d) => d.accommodationOptions?.length);
+    if (firstWithOptions?.accommodationOptions?.length)
+      fallbackOptions = firstWithOptions.accommodationOptions;
+  }
+  if (fallbackOptions.length === 0 && packageLevel.length > 0) fallbackOptions = packageLevel;
+
+  for (let i = 0; i < nights; i++) {
+    let opts = getAccommodationOptionsForNight(pkg, i);
+    if (opts.length === 0) opts = fallbackOptions;
+    if (opts.length === 0 && i > 0) opts = getAccommodationOptionsForNight(pkg, 0) || packageLevel;
+    if (fallbackOptions.length === 0 && opts.length > 0) fallbackOptions = opts;
+    // Always add every night when we have any options (ensures all 4 nights show for 4-night packages)
+    if (opts.length > 0) result.push({ nightIndex: i, options: opts });
+  }
+  return result;
+}
+
+/** Legacy: single accommodation for whole stay. Only for 1-night packages. */
+function hasLegacyAccommodation(pkg: TourPackage): boolean {
+  const nights = parseNights(pkg.duration) || 1;
+  if (nights > 1) return false; // Multi-night: always show per-night selectors
+  return (pkg.accommodationOptions?.length ?? 0) > 0 && !pkg.itinerary?.some((d) => d.accommodationOptions?.length);
+}
+
+function StarRating({ stars }: { stars: number }) {
+  const filled = "★".repeat(Math.min(5, Math.max(0, stars)));
+  const empty = "☆".repeat(5 - filled.length);
+  return (
+    <span className="block text-xs font-medium text-amber-600" title={`${stars} star${stars !== 1 ? "s" : ""}`}>
+      {filled}{empty}
+    </span>
+  );
+}
+
+export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hotels?: HotelSupplier[] }) {
+  const getStarRating = (supplierId?: string) =>
+    supplierId ? hotels.find((h) => h.id === supplierId)?.starRating : undefined;
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const accommodationOptions = pkg.accommodationOptions ?? [];
   const transportOptions = pkg.transportOptions ?? [];
   const mealOptions = pkg.mealOptions ?? [];
+  const nights = parseNights(pkg.duration) || 7;
+
+  const legacyAccommodation = hasLegacyAccommodation(pkg);
+  const legacyAccommodationOptions = pkg.accommodationOptions ?? [];
+  const perNightAccommodation = getAllAccommodationNightOptions(pkg);
+
   const getDefault = (opts: PackageOption[]) =>
     opts.find((o) => o.isDefault)?.id ?? opts[0]?.id ?? "";
-  const [accommodationId, setAccommodationId] = useState("");
+
   const [transportId, setTransportId] = useState("");
   const [mealId, setMealId] = useState("");
   const [pax, setPax] = useState(2);
-  const nights = parseNights(pkg.duration) || 7;
+  // Legacy: single accommodation id. Per-night: { nightIndex: optionId }
+  const [accommodationId, setAccommodationId] = useState("");
+  const [accommodationByNight, setAccommodationByNight] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    if (accommodationOptions.length) setAccommodationId(getDefault(accommodationOptions));
     if (transportOptions.length) setTransportId(getDefault(transportOptions));
     if (mealOptions.length) setMealId(getDefault(mealOptions));
+    if (legacyAccommodation && legacyAccommodationOptions.length) {
+      setAccommodationId(getDefault(legacyAccommodationOptions));
+    }
+    if (perNightAccommodation.length) {
+      const initial: Record<number, string> = {};
+      perNightAccommodation.forEach(({ nightIndex, options }) => {
+        initial[nightIndex] = getDefault(options);
+      });
+      setAccommodationByNight(initial);
+    }
   }, [pkg.id]);
 
   const totalPrice = useMemo(() => {
     let total = pkg.price * pax;
     const opt = (opts: PackageOption[], id: string) => opts.find((o) => o.id === id);
-    const acc = opt(accommodationOptions, accommodationId);
+
     const tr = opt(transportOptions, transportId);
-    const me = opt(mealOptions, mealId);
-    if (acc) total += calcOptionPrice(acc, pax, nights);
     if (tr) total += calcOptionPrice(tr, pax, nights);
+
+    if (legacyAccommodation) {
+      const acc = opt(legacyAccommodationOptions, accommodationId);
+      if (acc) total += calcOptionPrice(acc, pax, nights);
+    } else {
+      perNightAccommodation.forEach(({ nightIndex, options }) => {
+        const id = accommodationByNight[nightIndex];
+        const acc = opt(options, id);
+        if (acc) total += calcOptionPrice(acc, pax, 1);
+      });
+    }
+
+    const me = opt(mealOptions, mealId);
     if (me) total += calcOptionPrice(me, pax, nights);
+
     return total;
   }, [
     pkg.price,
     pax,
     nights,
-    accommodationId,
     transportId,
     mealId,
-    accommodationOptions,
+    accommodationId,
+    accommodationByNight,
+    legacyAccommodation,
+    legacyAccommodationOptions,
+    perNightAccommodation,
     transportOptions,
     mealOptions,
   ]);
 
+  const hasAccommodation =
+    legacyAccommodation
+      ? accommodationId && legacyAccommodationOptions.length
+      : perNightAccommodation.length > 0 &&
+        perNightAccommodation.every(({ nightIndex }) => accommodationByNight[nightIndex]);
+
   const canSubmit =
-    accommodationOptions.length > 0 &&
     transportOptions.length > 0 &&
     mealOptions.length > 0 &&
-    accommodationId &&
+    hasAccommodation &&
     transportId &&
     mealId;
 
@@ -73,10 +167,14 @@ export function ClientBookingForm({ pkg }: { pkg: TourPackage }) {
     const formData = new FormData(form);
     formData.set("packageId", pkg.id);
     formData.set("pax", String(pax));
-    formData.set("selectedAccommodationOptionId", accommodationId);
     formData.set("selectedTransportOptionId", transportId);
     formData.set("selectedMealOptionId", mealId);
     formData.set("totalPrice", String(totalPrice));
+    if (legacyAccommodation) {
+      formData.set("selectedAccommodationOptionId", accommodationId);
+    } else {
+      formData.set("selectedAccommodationByNight", JSON.stringify(accommodationByNight));
+    }
 
     debugClient("ClientBooking: submit", { packageId: pkg.id, pax, totalPrice });
     const result = await createClientBookingAction(pkg.id, formData);
@@ -93,8 +191,10 @@ export function ClientBookingForm({ pkg }: { pkg: TourPackage }) {
     router.refresh();
   }
 
+  const hasAnyAccommodation = legacyAccommodation ? legacyAccommodationOptions.length > 0 : perNightAccommodation.length > 0;
+
   if (
-    accommodationOptions.length === 0 ||
+    !hasAnyAccommodation ||
     transportOptions.length === 0 ||
     mealOptions.length === 0
   ) {
@@ -126,40 +226,8 @@ export function ClientBookingForm({ pkg }: { pkg: TourPackage }) {
       <div className="space-y-6">
         <section>
           <h3 className="mb-3 flex items-center gap-2 font-medium text-stone-800">
-            <Building2 className="h-5 w-5 text-teal-600" />
-            1. Select accommodation
-          </h3>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {accommodationOptions.map((opt) => (
-              <label
-                key={opt.id}
-                className={`flex cursor-pointer items-center justify-between rounded-xl border-2 p-4 transition ${
-                  accommodationId === opt.id
-                    ? "border-teal-500 bg-teal-50"
-                    : "border-stone-200 bg-white hover:border-teal-300"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="accommodation"
-                  value={opt.id}
-                  checked={accommodationId === opt.id}
-                  onChange={() => setAccommodationId(opt.id)}
-                  className="sr-only"
-                />
-                <span className="font-medium">{opt.label}</span>
-                <span className="text-sm text-teal-600">
-                  +{calcOptionPrice(opt, pax, nights).toLocaleString()} {pkg.currency}
-                </span>
-              </label>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <h3 className="mb-3 flex items-center gap-2 font-medium text-stone-800">
             <Car className="h-5 w-5 text-teal-600" />
-            2. Select transportation
+            1. Select transportation
           </h3>
           <div className="grid gap-2 sm:grid-cols-2">
             {transportOptions.map((opt) => (
@@ -186,6 +254,88 @@ export function ClientBookingForm({ pkg }: { pkg: TourPackage }) {
               </label>
             ))}
           </div>
+        </section>
+
+        <section>
+          <h3 className="mb-3 flex items-center gap-2 font-medium text-stone-800">
+            <Building2 className="h-5 w-5 text-teal-600" />
+            2. Select accommodation per night
+          </h3>
+          {legacyAccommodation ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {legacyAccommodationOptions.map((opt) => (
+                <label
+                  key={opt.id}
+                  className={`flex cursor-pointer items-center justify-between rounded-xl border-2 p-4 transition ${
+                    accommodationId === opt.id
+                      ? "border-teal-500 bg-teal-50"
+                      : "border-stone-200 bg-white hover:border-teal-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="accommodation"
+                    value={opt.id}
+                    checked={accommodationId === opt.id}
+                    onChange={() => setAccommodationId(opt.id)}
+                    className="sr-only"
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-medium">{opt.label}</span>
+                    {getStarRating(opt.supplierId) != null && (
+                      <StarRating stars={getStarRating(opt.supplierId)!} />
+                    )}
+                  </div>
+                  <span className="text-sm text-teal-600">
+                    +{calcOptionPrice(opt, pax, nights).toLocaleString()} {pkg.currency}
+                  </span>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {perNightAccommodation.map(({ nightIndex, options }) => (
+                <div key={nightIndex} className="rounded-xl border border-stone-200 bg-white p-4">
+                  <p className="mb-2 text-sm font-medium text-stone-600">Night {nightIndex + 1}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {options.map((opt) => (
+                      <label
+                        key={opt.id}
+                        className={`flex cursor-pointer items-center justify-between rounded-lg border-2 p-3 transition ${
+                          accommodationByNight[nightIndex] === opt.id
+                            ? "border-teal-500 bg-teal-50"
+                            : "border-stone-200 hover:border-teal-300"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`accommodation_night_${nightIndex}`}
+                          value={opt.id}
+                          checked={accommodationByNight[nightIndex] === opt.id}
+                          onChange={() =>
+                            setAccommodationByNight((prev) => ({
+                              ...prev,
+                              [nightIndex]: opt.id,
+                            }))
+                          }
+                          className="sr-only"
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-medium">{opt.label}</span>
+                          {getStarRating(opt.supplierId) != null && (
+                            <StarRating stars={getStarRating(opt.supplierId)!} />
+                          )}
+                        </div>
+                        <span className="text-sm text-teal-600">
+                          +{calcOptionPrice(opt, pax, 1).toLocaleString()} {pkg.currency}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { HotelSupplier } from "@/lib/types";
+import { SaveSuccessBanner } from "../SaveSuccessBanner";
 
 export function HotelForm({
   hotel,
@@ -11,13 +12,15 @@ export function HotelForm({
 }: {
   hotel?: HotelSupplier;
   action: (formData: FormData) => Promise<{ error?: string; success?: boolean; id?: string }>;
-  defaultType?: "hotel" | "transport";
+  defaultType?: "hotel" | "transport" | "meal";
 }) {
   const [error, setError] = useState<string>("");
+  const [saved, setSaved] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
+    setSaved(false);
     const formData = new FormData(e.currentTarget);
     const result = await action(formData);
     if (result?.error) {
@@ -25,13 +28,17 @@ export function HotelForm({
       return;
     }
     if (result?.success && result?.id && !hotel) {
-      window.location.href = `/admin/hotels/${result.id}`;
+      window.location.href = `/admin/hotels/${result.id}?saved=1`;
       return;
+    }
+    if (hotel && result && !result.error) {
+      setSaved(true);
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+      {saved && <SaveSuccessBanner message="Saved successfully" />}
       {error && (
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
@@ -62,6 +69,7 @@ export function HotelForm({
           >
             <option value="hotel">Hotel</option>
             <option value="transport">Transport</option>
+            <option value="meal">Meal Provider</option>
             <option value="supplier">Supplier</option>
           </select>
         </div>
@@ -81,8 +89,21 @@ export function HotelForm({
           />
         </div>
         <div>
+          <label htmlFor="email" className="block text-sm font-medium text-stone-700">
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            defaultValue={hotel?.email}
+            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            placeholder="reservations@hotel.com"
+          />
+        </div>
+        <div>
           <label htmlFor="contact" className="block text-sm font-medium text-stone-700">
-            Contact
+            Phone / Contact
           </label>
           <input
             id="contact"
@@ -90,14 +111,14 @@ export function HotelForm({
             type="text"
             defaultValue={hotel?.contact}
             className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
-            placeholder="Email or phone"
+            placeholder="+94 11 234 5678"
           />
         </div>
       </div>
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <label htmlFor="defaultPricePerNight" className="block text-sm font-medium text-stone-700">
-            Default price per night
+            {(hotel?.type ?? defaultType) === "meal" ? "Default price per person" : "Default price per night"}
           </label>
           <input
             id="defaultPricePerNight"
@@ -110,6 +131,26 @@ export function HotelForm({
             placeholder="120"
           />
         </div>
+        {(hotel?.type ?? defaultType) === "hotel" && (
+          <div>
+            <label htmlFor="starRating" className="block text-sm font-medium text-stone-700">
+              Star rating (1–5)
+            </label>
+            <select
+              id="starRating"
+              name="starRating"
+              defaultValue={hotel?.starRating ?? ""}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            >
+              <option value="">— Select —</option>
+              <option value="5">5 Star</option>
+              <option value="4">4 Star</option>
+              <option value="3">3 Star</option>
+              <option value="2">2 Star</option>
+              <option value="1">1 Star</option>
+            </select>
+          </div>
+        )}
         <div>
           <label htmlFor="currency" className="block text-sm font-medium text-stone-700">
             Currency
@@ -140,6 +181,109 @@ export function HotelForm({
           placeholder="Contract details, special rates..."
         />
       </div>
+
+      <div className="rounded-xl border border-stone-200/60 bg-white/40 p-4">
+        <h3 className="mb-3 text-sm font-medium text-stone-700">Banking Details</h3>
+        <p className="mb-4 text-xs text-stone-500">For bank transfers and payables reporting</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="bankName" className="block text-sm font-medium text-stone-700">
+              Bank name
+            </label>
+            <input
+              id="bankName"
+              name="bankName"
+              type="text"
+              defaultValue={hotel?.bankName}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              placeholder="Commercial Bank of Ceylon"
+            />
+          </div>
+          <div>
+            <label htmlFor="bankBranch" className="block text-sm font-medium text-stone-700">
+              Branch
+            </label>
+            <input
+              id="bankBranch"
+              name="bankBranch"
+              type="text"
+              defaultValue={hotel?.bankBranch}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              placeholder="Colombo Main"
+            />
+          </div>
+          <div>
+            <label htmlFor="accountName" className="block text-sm font-medium text-stone-700">
+              Account name
+            </label>
+            <input
+              id="accountName"
+              name="accountName"
+              type="text"
+              defaultValue={hotel?.accountName}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              placeholder="Jetwing Hotels (Pvt) Ltd"
+            />
+          </div>
+          <div>
+            <label htmlFor="accountNumber" className="block text-sm font-medium text-stone-700">
+              Account number
+            </label>
+            <input
+              id="accountNumber"
+              name="accountNumber"
+              type="text"
+              defaultValue={hotel?.accountNumber}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              placeholder="1234567890"
+            />
+          </div>
+          <div>
+            <label htmlFor="swiftCode" className="block text-sm font-medium text-stone-700">
+              SWIFT / BIC
+            </label>
+            <input
+              id="swiftCode"
+              name="swiftCode"
+              type="text"
+              defaultValue={hotel?.swiftCode}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              placeholder="CCEYLKLX"
+            />
+          </div>
+          <div>
+            <label htmlFor="bankCurrency" className="block text-sm font-medium text-stone-700">
+              Bank currency
+            </label>
+            <select
+              id="bankCurrency"
+              name="bankCurrency"
+              defaultValue={hotel?.bankCurrency ?? ""}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            >
+              <option value="">— Select —</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="LKR">LKR</option>
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="paymentReference" className="block text-sm font-medium text-stone-700">
+              Payment reference (for transfers)
+            </label>
+            <input
+              id="paymentReference"
+              name="paymentReference"
+              type="text"
+              defaultValue={hotel?.paymentReference}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              placeholder="Invoice #123, Booking ref"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="flex gap-3">
         <button
           type="submit"

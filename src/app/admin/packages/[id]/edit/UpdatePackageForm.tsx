@@ -11,7 +11,7 @@ export function UpdatePackageForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
   async function handleSubmit(formData: FormData) {
     const result = await updatePackageAction(pkg.id, formData);
     if (result?.error) return { error: result.error };
-    router.push(`/admin/packages/${pkg.id}`);
+    router.push(`/admin/packages/${pkg.id}?saved=1`);
     router.refresh();
   }
 

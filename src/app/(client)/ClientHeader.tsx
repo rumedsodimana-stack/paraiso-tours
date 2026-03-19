@@ -40,6 +40,12 @@ export function ClientHeader() {
               {label}
             </Link>
           ))}
+          <Link
+            href="/packages"
+            className="hidden rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-600/25 transition hover:bg-teal-700 hover:shadow-xl md:inline-flex"
+          >
+            Book a Tour
+          </Link>
         </nav>
 
         {/* Mobile menu button */}
@@ -56,18 +62,25 @@ export function ClientHeader() {
 
       {/* Mobile nav dropdown */}
       {open && (
-        <nav className="border-t border-teal-200/50 bg-white/95 px-4 py-3 backdrop-blur-md md:hidden">
+        <nav className="border-t border-teal-200/50 bg-white/95 px-4 py-4 backdrop-blur-md md:hidden">
           <div className="flex flex-col gap-1">
             {navLinks.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-teal-50 hover:text-teal-700"
+                className="rounded-xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-teal-50 hover:text-teal-700"
               >
                 {label}
               </Link>
             ))}
+            <Link
+              href="/packages"
+              onClick={() => setOpen(false)}
+              className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-teal-700"
+            >
+              Explore tours
+            </Link>
           </div>
         </nav>
       )}

@@ -24,6 +24,13 @@ export function calcOptionPrice(
   }
 }
 
+/** Get accommodation options for a given night (0-based). Prefer per-night from itinerary, fallback to package-level. */
+function getAccommodationOptionsForNight(pkg: TourPackage, nightIndex: number): PackageOption[] {
+  const day = pkg.itinerary?.[nightIndex];
+  if (day?.accommodationOptions?.length) return day.accommodationOptions;
+  return pkg.accommodationOptions ?? [];
+}
+
 export function getFromPrice(pkg: TourPackage, pax = 1): number {
   const nights = parseNights(pkg.duration);
   let total = pkg.price * pax;
@@ -35,7 +42,17 @@ export function getFromPrice(pkg: TourPackage, pax = 1): number {
     );
   };
 
-  total += min(pkg.accommodationOptions);
+  // Accommodation: per-night or legacy package-level
+  const hasPerNight = pkg.itinerary?.some((d) => d.accommodationOptions?.length);
+  if (hasPerNight) {
+    for (let i = 0; i < nights; i++) {
+      const opts = getAccommodationOptionsForNight(pkg, i);
+      if (opts.length) total += Math.min(...opts.map((o) => calcOptionPrice(o, pax, 1)));
+    }
+  } else {
+    total += min(pkg.accommodationOptions);
+  }
+
   total += min(pkg.transportOptions);
   total += min(pkg.mealOptions);
 

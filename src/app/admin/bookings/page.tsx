@@ -1,23 +1,32 @@
-import { getLeads, getPackages } from "@/lib/db";
+import { getLeads, getPackages, getTours } from "@/lib/db";
 import { LeadsTable } from "./LeadsTable";
+import { SaveSuccessBanner } from "../SaveSuccessBanner";
+
+export const dynamic = "force-dynamic";
 
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string }> | { q?: string };
+  searchParams?: Promise<{ q?: string; saved?: string }> | { q?: string; saved?: string };
 }) {
-  const [leads, packages] = await Promise.all([getLeads(), getPackages()]);
+  const [leads, packages, tours] = await Promise.all([getLeads(), getPackages(), getTours()]);
+  const scheduledLeadIds = new Set(tours.map((t) => t.leadId));
+  const unscheduledLeads = leads.filter((l) => !scheduledLeadIds.has(l.id));
   const packageNames: Record<string, string> = Object.fromEntries(
     packages.map((p) => [p.id, p.name])
   );
   const rawParams = searchParams ? await Promise.resolve(searchParams) : {};
-  const params = rawParams as { q?: string };
+  const params = rawParams as { q?: string; saved?: string; scheduled?: string };
   const initialSearch = typeof params?.q === "string" ? params.q : undefined;
+  const saved = params?.saved === "1";
+  const scheduled = params?.scheduled === "1";
   return (
     <div className="space-y-6">
+      {saved && <SaveSuccessBanner message="Booking saved successfully" />}
+      {scheduled && <SaveSuccessBanner message="Tour scheduled successfully. The booking has been moved to the calendar." />}
       <LeadsTable
         key={initialSearch ?? "__empty__"}
-        initialLeads={leads}
+        initialLeads={unscheduledLeads}
         packageNames={packageNames}
         initialSearch={initialSearch}
       />

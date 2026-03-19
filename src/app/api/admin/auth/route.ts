@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
-
-export const runtime = "edge";
+import { verifyAdminPassword } from "@/lib/settings";
+import { authLogger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -15,18 +13,22 @@ export async function POST(request: Request) {
       );
     }
 
-    if (password !== ADMIN_PASSWORD) {
+    const valid = await verifyAdminPassword(password);
+    if (!valid) {
+      authLogger.warn("Login failed: invalid password");
       return NextResponse.json(
         { ok: false, error: "Invalid password" },
         { status: 401 }
       );
     }
 
+    authLogger.info("Admin login successful");
     return NextResponse.json({
       ok: true,
-      token: ADMIN_PASSWORD,
+      token: "admin-session",
     });
-  } catch {
+  } catch (err) {
+    authLogger.error("Auth API error", {}, err);
     return NextResponse.json(
       { ok: false, error: "Invalid request" },
       { status: 400 }

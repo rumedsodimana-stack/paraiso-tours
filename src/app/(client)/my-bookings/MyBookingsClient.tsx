@@ -78,9 +78,9 @@ export function MyBookingsClient() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-xl bg-teal-600 px-6 py-2.5 font-medium text-white transition hover:bg-teal-700 disabled:opacity-70"
+          className="rounded-xl bg-teal-600 px-6 py-3 font-semibold text-white shadow-lg shadow-teal-600/25 transition hover:bg-teal-700 hover:shadow-xl disabled:opacity-70"
         >
-          {loading ? "Loading…" : "View my bookings"}
+          {loading ? "Checking…" : "View my bookings"}
         </button>
       </form>
 
@@ -89,12 +89,14 @@ export function MyBookingsClient() {
       )}
 
       {data && !hasResults && (
-        <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-6 text-center text-stone-600">
-          No bookings found for this email.{" "}
-          <Link href="/packages" className="text-teal-600 hover:underline">
+        <div className="rounded-2xl border border-dashed border-stone-300 bg-white/60 p-8 text-center backdrop-blur-sm">
+          <p className="text-stone-600">No bookings found for this email.</p>
+          <Link
+            href="/packages"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+          >
             Browse packages
-          </Link>{" "}
-          to make a request.
+          </Link>
         </div>
       )}
 
@@ -102,11 +104,13 @@ export function MyBookingsClient() {
         <div className="space-y-8">
           {(data.requests?.length ?? 0) > 0 && (
             <div>
-              <h3 className="flex items-center gap-2 text-base font-semibold text-stone-900">
-                <Clock className="h-4 w-4 text-amber-500" />
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-stone-900">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                </span>
                 Pending requests
               </h3>
-              <p className="mt-1 text-sm text-stone-600">
+              <p className="mt-2 text-sm text-stone-600">
                 Waiting for service provider approval
               </p>
               <div className="mt-4 space-y-3">
@@ -114,7 +118,7 @@ export function MyBookingsClient() {
                   <Link
                     key={lead.id}
                     href={`/booking/${encodeURIComponent(lead.reference ?? lead.id)}?email=${encodeURIComponent(email.trim())}`}
-                    className="block rounded-xl border border-white/50 bg-white/70 p-4 shadow-lg backdrop-blur-xl transition hover:border-teal-200 hover:shadow-xl"
+                    className="block rounded-2xl border border-white/50 bg-white/80 p-5 shadow-xl backdrop-blur-xl transition hover:border-teal-200/60 hover:shadow-2xl"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -146,11 +150,13 @@ export function MyBookingsClient() {
 
           {data.tours.length > 0 && (
             <div>
-              <h3 className="flex items-center gap-2 text-base font-semibold text-stone-900">
-                <MapPin className="h-4 w-4 text-emerald-500" />
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-stone-900">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
+                  <MapPin className="h-4 w-4 text-emerald-600" />
+                </span>
                 Confirmed tours
               </h3>
-              <p className="mt-1 text-sm text-stone-600">
+              <p className="mt-2 text-sm text-stone-600">
                 Approved by our team – full itinerary available
               </p>
               <div className="mt-4 space-y-3">
@@ -158,7 +164,7 @@ export function MyBookingsClient() {
                   <Link
                     key={tour.id}
                     href={`/booking/${encodeURIComponent(tour.id)}?email=${encodeURIComponent(email.trim())}`}
-                    className="block rounded-xl border border-white/50 bg-white/70 p-4 shadow-lg backdrop-blur-xl transition hover:border-teal-200 hover:shadow-xl"
+                    className="block rounded-2xl border border-white/50 bg-white/80 p-5 shadow-xl backdrop-blur-xl transition hover:border-teal-200/60 hover:shadow-2xl"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -175,8 +181,8 @@ export function MyBookingsClient() {
                         {tour.status}
                       </span>
                     </div>
-                    <p className="mt-3 flex items-center gap-1 text-xs text-teal-600">
-                      View itinerary <ChevronRight className="h-3.5 w-3.5" />
+                    <p className="mt-3 flex items-center gap-1 text-sm text-teal-600 group-hover:text-teal-700 transition">
+                      View itinerary <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition" />
                     </p>
                   </Link>
                 ))}

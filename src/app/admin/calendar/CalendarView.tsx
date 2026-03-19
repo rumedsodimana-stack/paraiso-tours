@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, MapPin, Users } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Users } from "lucide-react";
 import type { Tour } from "@/lib/types";
 
 const statusColors: Record<Tour["status"], string> = {
@@ -19,6 +20,7 @@ const MONTHS = [
 ];
 
 export function CalendarView({ tours }: { tours: Tour[] }) {
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const year = currentDate.getFullYear();
@@ -51,30 +53,42 @@ export function CalendarView({ tours }: { tours: Tour[] }) {
   return (
     <>
       <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/40 shadow-xl shadow-stone-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/40">
-        <div className="flex items-center justify-between border-b border-white/20 px-6 py-4 dark:border-white/10">
+        <button
+          type="button"
+          onClick={() => setCalendarOpen(!calendarOpen)}
+          className="flex w-full items-center justify-between border-b border-white/20 px-6 py-4 text-left dark:border-white/10 hover:bg-white/30 dark:hover:bg-stone-800/30 transition-colors"
+        >
           <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
-            {MONTHS[month]} {year}
+            Calendar — {MONTHS[month]} {year}
           </h2>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={prevMonth}
-              className="rounded-lg p-2 text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-700 dark:hover:text-stone-300"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={nextMonth}
-              className="rounded-lg p-2 text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-700 dark:hover:text-stone-300"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+          {calendarOpen ? (
+            <ChevronDown className="h-5 w-5 shrink-0 text-stone-500" />
+          ) : (
+            <ChevronRight className="h-5 w-5 shrink-0 text-stone-500" />
+          )}
+        </button>
 
-        <div className="p-4">
-          <div className="grid grid-cols-7 gap-px rounded-lg bg-white/30 dark:bg-stone-800/50">
+        {calendarOpen && (
+          <>
+            <div className="flex items-center justify-end gap-2 border-b border-white/20 px-6 py-2 dark:border-white/10">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); prevMonth(); }}
+                className="rounded-lg p-2 text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-700 dark:hover:text-stone-300"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); nextMonth(); }}
+                className="rounded-lg p-2 text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-700 dark:hover:text-stone-300"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="grid grid-cols-7 gap-px rounded-lg bg-white/30 dark:bg-stone-800/50">
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
@@ -95,9 +109,10 @@ export function CalendarView({ tours }: { tours: Tour[] }) {
                     </span>
                     <div className="mt-1 space-y-1">
                       {getToursForDate(day).map((tour) => (
-                        <div
+                        <Link
                           key={tour.id}
-                          className="rounded border-l-4 border-teal-500 bg-teal-400/20 px-2 py-1 text-xs backdrop-blur-sm dark:bg-teal-500/20"
+                          href={`/admin/tours/${tour.id}`}
+                          className="block rounded border-l-4 border-teal-500 bg-teal-400/20 px-2 py-1 text-xs backdrop-blur-sm dark:bg-teal-500/20 transition hover:bg-teal-400/30 dark:hover:bg-teal-500/30"
                         >
                           <div className="font-medium text-stone-900 dark:text-stone-100">
                             {tour.clientName}
@@ -105,7 +120,7 @@ export function CalendarView({ tours }: { tours: Tour[] }) {
                           <div className="text-stone-600 dark:text-stone-400">
                             {tour.packageName}
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </>
@@ -114,6 +129,8 @@ export function CalendarView({ tours }: { tours: Tour[] }) {
             ))}
           </div>
         </div>
+          </>
+        )}
       </div>
 
       <div>
@@ -136,7 +153,10 @@ export function CalendarView({ tours }: { tours: Tour[] }) {
 
 function TourCard({ tour }: { tour: Tour }) {
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-white/20 bg-white/40 p-4 shadow-lg shadow-stone-900/5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-stone-900/40">
+    <Link
+      href={`/admin/tours/${tour.id}`}
+      className="flex flex-col gap-4 rounded-2xl border border-white/20 bg-white/40 p-4 shadow-lg shadow-stone-900/5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-stone-900/40 transition hover:bg-white/50 dark:hover:bg-stone-800/50"
+    >
       <div>
         <h4 className="font-semibold text-stone-900 dark:text-stone-50">
           {tour.packageName}
@@ -165,6 +185,6 @@ function TourCard({ tour }: { tour: Tour }) {
           {tour.totalValue.toLocaleString()} {tour.currency}
         </span>
       </div>
-    </div>
+    </Link>
   );
 }

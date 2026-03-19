@@ -182,12 +182,15 @@ export function LeadsTable({
                 filteredLeads.map((lead) => (
                   <tr
                     key={lead.id}
-                    className="relative transition hover:bg-white/30"
+                    className="relative transition hover:bg-white/30 group"
                   >
                     <td className="px-6 py-4">
-                      <div className="font-medium text-stone-900 dark:text-stone-50">
+                      <Link
+                        href={`/admin/bookings/${lead.id}`}
+                        className="block font-medium text-stone-900 dark:text-stone-50 hover:text-teal-600 transition"
+                      >
                         {lead.name}
-                      </div>
+                      </Link>
                       <div className="text-xs text-stone-500 dark:text-stone-400">
                         via {lead.source}
                         {lead.packageId && packageNames[lead.packageId] && (
@@ -199,9 +202,13 @@ export function LeadsTable({
                     </td>
                     <td className="min-w-[140px] px-6 py-4">
                       {lead.reference ? (
-                        <span className="font-mono text-sm font-semibold text-teal-700" title="Booking reference - clients use this to look up their booking">
+                        <Link
+                          href={`/admin/bookings/${lead.id}`}
+                          className="font-mono text-sm font-semibold text-teal-700 hover:text-teal-800 transition"
+                          title="View itinerary"
+                        >
                           {lead.reference}
-                        </span>
+                        </Link>
                       ) : (
                         <span className="text-stone-400">—</span>
                       )}
@@ -267,19 +274,17 @@ export function LeadsTable({
                               onClick={() => setOpenMenu(null)}
                             />
                             <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-xl border border-white/30 bg-white/95 py-1 shadow-xl backdrop-blur-xl">
+                              <Link
+                                href={`/admin/bookings/${lead.id}`}
+                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
+                                onClick={() => setOpenMenu(null)}
+                              >
+                                View itinerary
+                              </Link>
                               <button type="button" onClick={() => copyClientLink(lead)} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-white/60">
                                 {copied === lead.id ? <Copy className="h-4 w-4 text-emerald-500" /> : <Link2 className="h-4 w-4" />}
                                 {copied === lead.id ? "Copied!" : "Copy client link"}
                               </button>
-                              {lead.packageId && (
-                                <Link
-                                  href={`/admin/tours/new?leadId=${encodeURIComponent(lead.id)}`}
-                                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
-                                  onClick={() => setOpenMenu(null)}
-                                >
-                                  Approve & create tour
-                                </Link>
-                              )}
                               <Link
                                 href={`/admin/bookings/${lead.id}/edit`}
                                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-white/60"

@@ -11,9 +11,14 @@ export interface Lead {
   destination?: string;
   travelDate?: string;
   pax?: number;
+  /** When 2+ guests, name of accompanied traveler(s) */
+  accompaniedGuestName?: string;
   notes?: string;
   packageId?: string; // Selected package when client requests from portal
+  /** Legacy: single accommodation for all nights */
   selectedAccommodationOptionId?: string;
+  /** Per-night accommodation: { "1": optionId, "2": optionId, ... } */
+  selectedAccommodationByNight?: Record<string, string>;
   selectedTransportOptionId?: string;
   selectedMealOptionId?: string;
   totalPrice?: number;
@@ -51,6 +56,8 @@ export interface ItineraryDay {
   title: string;
   description: string;
   accommodation?: string;
+  /** Accommodation options for this night (hotels guest can choose) */
+  accommodationOptions?: PackageOption[];
 }
 
 export type PriceType = "per_person" | "total" | "per_night" | "per_day";
@@ -68,12 +75,24 @@ export interface PackageOption {
 export interface HotelSupplier {
   id: string;
   name: string;
-  type: "hotel" | "transport" | "supplier";
+  type: "hotel" | "transport" | "meal" | "supplier";
   location?: string;
+  /** Email for reservations & communications (used when emailing suppliers) */
+  email?: string;
   contact?: string;
   defaultPricePerNight?: number;
   currency: string;
+  /** Star rating (1-5) for hotels, set when adding supplier */
+  starRating?: number;
   notes?: string;
+  /** Banking details for supplier payments */
+  bankName?: string;
+  bankBranch?: string;
+  accountName?: string;
+  accountNumber?: string;
+  swiftCode?: string;
+  bankCurrency?: string;
+  paymentReference?: string;
   createdAt: string;
 }
 
@@ -118,6 +137,125 @@ export interface Payment {
   description: string;
   clientName?: string;
   reference?: string;
+  /** Link to lead (for client payments) */
+  leadId?: string;
+  /** Link to tour (for client or supplier payments) */
+  tourId?: string;
+  /** Link to invoice (for client payments) */
+  invoiceId?: string;
+  /** Supplier ID for outgoing payments */
+  supplierId?: string;
+  /** Link to payroll run (for payroll payments) */
+  payrollRunId?: string;
+  /** For outgoing supplier payments from Payables: week range for exclusion */
+  payableWeekStart?: string;
+  payableWeekEnd?: string;
+  /** For outgoing: supplier name (for display) */
+  supplierName?: string;
   status: "pending" | "completed" | "cancelled";
   date: string;
+  createdAt?: string;
+}
+
+export type InvoiceStatus = "pending_payment" | "paid" | "overdue" | "cancelled";
+
+export interface InvoiceLineItem {
+  description: string;
+  amount: number;
+}
+
+export interface Invoice {
+  id: string;
+  leadId: string;
+  reference?: string;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  clientName: string;
+  clientEmail: string;
+  clientPhone?: string;
+  packageName: string;
+  travelDate?: string;
+  pax?: number;
+  baseAmount: number;
+  lineItems: InvoiceLineItem[];
+  totalAmount: number;
+  currency: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  paidAt?: string;
+}
+
+export interface Company {
+  companyName: string;
+  tagline?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+}
+
+export type EmployeePayType = "salary" | "commission" | "hourly";
+
+export interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  department?: string;
+  payType: EmployeePayType;
+  /** Monthly salary (when payType is salary) */
+  salary?: number;
+  /** Commission % of tour value (when payType is commission) */
+  commissionPct?: number;
+  /** Hourly rate (when payType is hourly) */
+  hourlyRate?: number;
+  /** Deductions: tax % and fixed benefits amount per pay period */
+  taxPct?: number;
+  benefitsAmount?: number;
+  currency: string;
+  bankName?: string;
+  accountNumber?: string;
+  status: "active" | "inactive";
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PayrollItem {
+  employeeId: string;
+  employeeName: string;
+  grossAmount: number;
+  taxAmount: number;
+  benefitsAmount: number;
+  netAmount: number;
+  notes?: string;
+  /** For commission: tour IDs or count */
+  tourIds?: string[];
+}
+
+export type PayrollRunStatus = "draft" | "approved" | "paid";
+
+export interface PayrollRun {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  payDate: string;
+  status: PayrollRunStatus;
+  items: PayrollItem[];
+  totalGross: number;
+  totalDeductions: number;
+  totalNet: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+  paidAt?: string;
+}
+
+export interface Todo {
+  id: string;
+  title: string;
+  completed: boolean;
+  createdAt: string;
 }

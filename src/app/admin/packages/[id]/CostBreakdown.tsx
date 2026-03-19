@@ -47,6 +47,7 @@ export function CostBreakdown({ pkg }: { pkg: TourPackage }) {
 
   const mealDefault = pkg.mealOptions?.find((o) => o.isDefault) ?? pkg.mealOptions?.[0];
   const transportDefault = pkg.transportOptions?.find((o) => o.isDefault) ?? pkg.transportOptions?.[0];
+  const hasPerNightAccom = pkg.itinerary?.some((d) => d.accommodationOptions?.length);
   const accomDefault = pkg.accommodationOptions?.find((o) => o.isDefault) ?? pkg.accommodationOptions?.[0];
 
   const rows: { label: string; sell: number; cost?: number }[] = [
@@ -75,7 +76,23 @@ export function CostBreakdown({ pkg }: { pkg: TourPackage }) {
       cost: transportDefault.costPrice != null ? cost : undefined,
     });
   }
-  if (accomDefault) {
+  if (hasPerNightAccom) {
+    for (let i = 0; i < nights; i++) {
+      const opts = pkg.itinerary?.[i]?.accommodationOptions ?? pkg.accommodationOptions ?? [];
+      const def = opts.find((o) => o.isDefault) ?? opts[0];
+      if (def) {
+        const sell = calcOptionPrice(def, pax, 1);
+        const cost = calcOptionCost(def, pax, 1);
+        totalSell += sell;
+        if (def.costPrice != null) totalCost += cost;
+        rows.push({
+          label: `Night ${i + 1}: ${def.label}`,
+          sell,
+          cost: def.costPrice != null ? cost : undefined,
+        });
+      }
+    }
+  } else if (accomDefault) {
     const sell = calcOptionPrice(accomDefault, pax, nights);
     const cost = calcOptionCost(accomDefault, pax, nights);
     totalSell += sell;
@@ -107,6 +124,7 @@ export function CostBreakdown({ pkg }: { pkg: TourPackage }) {
     (pkg.mealOptions?.length ?? 0) > 0 ||
     (pkg.transportOptions?.length ?? 0) > 0 ||
     (pkg.accommodationOptions?.length ?? 0) > 0 ||
+    hasPerNightAccom ||
     (pkg.customOptions?.length ?? 0) > 0;
 
   if (!hasAnyOptions) return null;

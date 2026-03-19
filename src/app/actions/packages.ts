@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createPackage, updatePackage, deletePackage } from "@/lib/db";
+import { createPackage, updatePackage, deletePackage, getPackage } from "@/lib/db";
 import type { ItineraryDay, PackageOption } from "@/lib/types";
 
 function parseItinerary(formData: FormData): ItineraryDay[] {
@@ -11,16 +11,29 @@ function parseItinerary(formData: FormData): ItineraryDay[] {
     const title = formData.get(`itinerary_${i}_title`) as string;
     const description = formData.get(`itinerary_${i}_description`) as string;
     const accommodation = formData.get(`itinerary_${i}_accommodation`) as string;
-    if (!title && !description) break;
+    const accommodationOptionsRaw = formData.get(`itinerary_${i}_accommodationOptions`) as string;
+    if (!title && !description && !accommodationOptionsRaw) break;
+    const accommodationOptions = parseOptionsFromJson(accommodationOptionsRaw);
     days.push({
       day: i + 1,
       title: title?.trim() || "",
       description: description?.trim() || "",
       accommodation: accommodation?.trim() || undefined,
+      accommodationOptions: accommodationOptions.length ? accommodationOptions : undefined,
     });
     i++;
   }
   return days;
+}
+
+function parseOptionsFromJson(raw: string): PackageOption[] {
+  if (!raw?.trim()) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((o: unknown) => o && typeof o === "object" && ((o as { label?: string }).label || (o as { supplierId?: string }).supplierId)) : [];
+  } catch {
+    return [];
+  }
 }
 
 function parseList(formData: FormData, key: string): string[] {
@@ -129,7 +142,11 @@ export async function updatePackageAction(id: string, formData: FormData) {
   const accommodationOptions = parseOptions(formData, "accommodationOptions");
   const customOptions = parseOptions(formData, "customOptions");
 
-  const updated = await updatePackage(id, {
+  // PackageForm only sends per-day itinerary accommodation options, not package-level.
+  // Preserve existing package-level accommodationOptions when form doesn't send them
+  // so 5-day/4-night packages still show options for all 4 nights on the booking form.
+  const existing = await getPackage(id);
+  const updateData: Parameters<typeof updatePackage>[1] = {
     name,
     duration: duration || `${itinerary.length} Days / ${Math.max(0, itinerary.length - 1)} Nights`,
     destination,
@@ -148,9 +165,15 @@ export async function updatePackageAction(id: string, formData: FormData) {
     imageUrl,
     mealOptions: mealOptions.length ? mealOptions : undefined,
     transportOptions: transportOptions.length ? transportOptions : undefined,
-    accommodationOptions: accommodationOptions.length ? accommodationOptions : undefined,
     customOptions: customOptions.length ? customOptions : undefined,
-  });
+  };
+  if (accommodationOptions.length > 0) {
+    updateData.accommodationOptions = accommodationOptions;
+  } else if (existing?.accommodationOptions?.length) {
+    updateData.accommodationOptions = existing.accommodationOptions;
+  }
+
+  const updated = await updatePackage(id, updateData);
 
   if (!updated) return { error: "Package not found" };
 

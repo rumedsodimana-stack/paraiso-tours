@@ -105,7 +105,7 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().slice(0, 10);
   const upcomingTours = tours
-    .filter((t) => t.status !== "cancelled" && t.startDate >= today)
+    .filter((t) => t.status !== "cancelled" && t.status !== "completed" && t.startDate >= today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate))
     .slice(0, 5);
 
@@ -196,7 +196,7 @@ export default async function DashboardPage() {
               href="/admin/calendar"
               className="text-sm text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1"
             >
-              View calendar
+              View scheduled tours
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

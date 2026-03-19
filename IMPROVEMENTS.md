@@ -4,6 +4,27 @@ This document lists suggested improvements, known gaps, and priorities for the P
 
 ---
 
+## Launch Readiness (from full app audit)
+
+**Status: Soft launch ready** – Core flows work; production will need persistence + auth.
+
+| Area | Ready | Needs Work |
+|------|-------|------------|
+| Client Portal | ✓ Home, Packages, Book, My Bookings, View Booking | Email confirmation, validation |
+| Admin Bookings | ✓ CRUD, supplier breakdown, options | Search/filters |
+| Admin Packages | ✓ Full CRUD, options, cost breakdown | — |
+| Admin Hotels & Suppliers | ✓ Hotels, transport, meal providers | — |
+| Admin Tours | ✓ Create from leads | Edit/delete tours |
+| Admin Calendar | ✓ Shows tours by date | — |
+| Quotations | ✗ Mock data only | Full CRUD, link to leads |
+| Payments | ✗ Mock data only | Full CRUD, link to leads |
+| Auth | ✗ Disabled | Re-enable for production |
+| Data | Local JSON / Vercel in-memory | Real DB for production |
+
+**Before full launch:** Enable auth, persist quotations/payments, connect real DB, add email confirmations.
+
+---
+
 ## 1. Authentication & Security
 
 | Improvement | Priority | Notes |
@@ -91,11 +112,12 @@ This document lists suggested improvements, known gaps, and priorities for the P
 | Entity | Count |
 |--------|-------|
 | Leads | 5 |
-| Packages | 5 |
+| Packages | 15 |
 | Tours | 5 |
 | Quotations | 5 |
 | Payments | 5 |
 | Hotels | 8 |
 | Transport | 5 |
+| Meal Providers | 5 |
 
 Demo lookup: `PCT-20260312-A3B7` or `john.mitchell@email.com`, `marie.d@outlook.fr`, `zhang.wei@company.cn`.

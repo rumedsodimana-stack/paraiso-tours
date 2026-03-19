@@ -1,15 +1,20 @@
 import Link from "next/link";
-import { ArrowLeft, MapPin, Clock, DollarSign, Check, X, Calculator } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, DollarSign, Check, X } from "lucide-react";
 import { getPackage } from "@/lib/db";
 import { PackageActions } from "./PackageActions";
 import { CostBreakdown } from "./CostBreakdown";
+import { SaveSuccessBanner } from "../../SaveSuccessBanner";
 
 export default async function PackageDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ saved?: string }>;
 }) {
   const { id } = await params;
+  const resolved = searchParams ? await searchParams : {};
+  const saved = resolved?.saved;
   const pkg = await getPackage(id);
 
   if (!pkg) {
@@ -28,6 +33,7 @@ export default async function PackageDetailPage({
 
   return (
     <div className="space-y-6">
+      {saved === "1" && <SaveSuccessBanner message="Package updated successfully" />}
       <div className="flex items-center justify-between gap-4">
         <Link
           href="/admin/packages"
@@ -84,18 +90,22 @@ export default async function PackageDetailPage({
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-bold text-teal-700 dark:bg-teal-900/50 dark:text-teal-300">
                       {day.day}
                     </span>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <h3 className="font-medium text-stone-900 dark:text-stone-50">
                         {day.title}
                       </h3>
                       <p className="text-sm text-stone-600 dark:text-stone-400">
                         {day.description}
                       </p>
-                      {day.accommodation && (
+                      {(day.accommodationOptions?.length ?? 0) > 0 ? (
+                        <p className="mt-1.5 text-xs font-medium text-stone-600 dark:text-stone-400">
+                          Hotel choices: {day.accommodationOptions!.map((o) => o.label).join(", ")}
+                        </p>
+                      ) : day.accommodation ? (
                         <p className="mt-1 text-xs text-stone-500">
                           Hotel: {day.accommodation}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))}

@@ -10,7 +10,7 @@ export function NewPackageForm({ hotels }: { hotels: HotelSupplier[] }) {
   async function handleSubmit(formData: FormData) {
     const result = await createPackageAction(formData);
     if (result.error) return { error: result.error };
-    window.location.href = "/admin/packages";
+    window.location.href = "/admin/packages?saved=1";
   }
 
   return (
