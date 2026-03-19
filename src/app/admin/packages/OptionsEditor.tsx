@@ -14,6 +14,34 @@ function genId() {
   return `opt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function getPriceTypeForSupplierType(
+  supplierType: "hotel" | "transport" | "meal"
+): PriceType {
+  return supplierType === "transport"
+    ? "per_day"
+    : supplierType === "meal"
+      ? "per_person"
+      : "per_night";
+}
+
+function buildOptionFromSupplier(
+  supplier: HotelSupplier,
+  supplierType: "hotel" | "transport" | "meal",
+  existing?: PackageOption
+): PackageOption {
+  const supplierRate = supplier.defaultPricePerNight ?? 0;
+
+  return {
+    id: existing?.id ?? genId(),
+    label: supplier.name,
+    supplierId: supplier.id,
+    price: supplierRate,
+    costPrice: supplierRate,
+    priceType: getPriceTypeForSupplierType(supplierType),
+    isDefault: existing?.isDefault ?? false,
+  };
+}
+
 export function OptionsEditor({
   title,
   options,
@@ -32,10 +60,22 @@ export function OptionsEditor({
   allowCustom?: boolean;
 }) {
   const defaultPriceType: PriceType =
-    showSupplier && supplierType === "meal" ? "per_person" : showSupplier && supplierType === "transport" ? "per_day" : showSupplier ? "per_night" : "per_person";
+    showSupplier
+      ? getPriceTypeForSupplierType(supplierType)
+      : "per_person";
+
+  const supplierList = hotels?.filter((h) => h.type === supplierType) ?? [];
 
   function add() {
-    onChange([...options, { id: genId(), label: "", price: 0, priceType: defaultPriceType }]);
+    if (showSupplier && supplierList.length > 0 && !allowCustom) {
+      onChange([...options, buildOptionFromSupplier(supplierList[0], supplierType)]);
+      return;
+    }
+
+    onChange([
+      ...options,
+      { id: genId(), label: "", price: 0, priceType: defaultPriceType },
+    ]);
   }
 
   function remove(i: number) {
@@ -45,8 +85,6 @@ export function OptionsEditor({
   function update(i: number, patch: Partial<PackageOption>) {
     onChange(options.map((o, j) => (j === i ? { ...o, ...patch } : o)));
   }
-
-  const supplierList = hotels?.filter((h) => h.type === supplierType) ?? [];
 
   return (
     <div className="rounded-xl border border-white/30 bg-white/40 p-4 backdrop-blur-sm">
@@ -61,6 +99,12 @@ export function OptionsEditor({
           Add
         </button>
       </div>
+      {showSupplier ? (
+        <p className="mb-3 text-xs text-stone-500">
+          Selecting a supplier copies its saved default rate into the option.
+          You can then adjust the package price if needed.
+        </p>
+      ) : null}
       <div className="space-y-2">
         {options.map((opt, i) => (
           <div
@@ -70,26 +114,31 @@ export function OptionsEditor({
             {showSupplier && supplierList.length > 0 ? (
               <>
                 <select
-                  value={opt.supplierId ?? (allowCustom ? "__custom__" : supplierList[0]?.id ?? "")}
+                  value={opt.supplierId ?? (allowCustom ? "__custom__" : "")}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (allowCustom && val === "__custom__") {
-                      update(i, { supplierId: undefined, label: "" });
+                      update(i, {
+                        supplierId: undefined,
+                        label: "",
+                        price: 0,
+                        costPrice: undefined,
+                        priceType: defaultPriceType,
+                      });
                     } else {
                       const h = supplierList.find((x) => x.id === val);
-                      const priceTypeForSupplier: PriceType =
-                        supplierType === "transport" ? "per_day" : supplierType === "meal" ? "per_person" : "per_night";
-                      update(i, {
-                        supplierId: val,
-                        label: h?.name ?? "",
-                        price: h?.defaultPricePerNight ?? 0,
-                        priceType: priceTypeForSupplier,
-                      });
+                      if (!h) return;
+                      update(i, buildOptionFromSupplier(h, supplierType, opt));
                     }
                   }}
                   className="w-36 rounded-lg border border-white/30 bg-white/60 px-2 py-1.5 text-sm"
                 >
                   {allowCustom && <option value="__custom__">Custom</option>}
+                  {!allowCustom && (
+                    <option value="" disabled>
+                      Select supplier
+                    </option>
+                  )}
                   {supplierList.map((h) => (
                     <option key={h.id} value={h.id}>
                       {h.name}

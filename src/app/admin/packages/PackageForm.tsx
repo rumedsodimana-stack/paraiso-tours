@@ -307,13 +307,7 @@ export function PackageForm({
                 <input
                   type="text"
                   value={day.title}
-                  onChange={(e) =>
-                    setItinerary((prev) =>
-                      prev.map((d, j) =>
-                        j === i ? { ...d, title: e.target.value } : d
-                      )
-                    )
-                  }
+                  onChange={(e) => updateDay(i, { title: e.target.value })}
                   placeholder="Title"
                   className="w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm"
                 />
@@ -321,11 +315,7 @@ export function PackageForm({
                   type="text"
                   value={day.description}
                   onChange={(e) =>
-                    setItinerary((prev) =>
-                      prev.map((d, j) =>
-                        j === i ? { ...d, description: e.target.value } : d
-                      )
-                    )
+                    updateDay(i, { description: e.target.value })
                   }
                   placeholder="Description"
                   className="w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm"
