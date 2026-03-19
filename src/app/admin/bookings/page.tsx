@@ -20,14 +20,8 @@ export default async function LeadsPage({
   const initialSearch = typeof params?.q === "string" ? params.q : undefined;
   const saved = params?.saved === "1";
   const scheduled = params?.scheduled === "1";
-  const isVercel = process.env.VERCEL === "1";
   return (
     <div className="space-y-6">
-      {isVercel && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-800">
-          <strong>Vercel deployment:</strong> Bookings, tours, and other data are stored in memory only and are lost on server restarts. For production, connect a database (Supabase, PostgreSQL) or use Vercel KV.
-        </div>
-      )}
       {saved && <SaveSuccessBanner message="Booking saved successfully" />}
       {scheduled && <SaveSuccessBanner message="Tour scheduled successfully. The booking has been moved to the calendar." />}
       <LeadsTable

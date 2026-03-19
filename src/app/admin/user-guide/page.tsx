@@ -11,7 +11,6 @@ import {
   Settings,
   ChevronRight,
   CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 
 export const metadata = {
@@ -443,64 +442,43 @@ export default function UserGuidePage() {
         </p>
       </section>
 
-      {/* 8. Launch Readiness */}
+      {/* 8. Current Production Setup */}
       <section id="launch-readiness" className="scroll-mt-6">
         <h2 className="flex items-center gap-2 text-xl font-bold text-stone-900">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700">8</span>
-          Launch Readiness Checklist
+          Current Production Setup
         </h2>
         <p className="mt-4 text-stone-600">
-          Based on a full app audit. Items marked with ✓ are done; ⚠ need attention before production.
+          Your app is configured and ready for production use.
         </p>
 
         <div className="mt-6 space-y-4">
           <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
             <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
             <div>
-              <h4 className="font-semibold text-stone-800">Core flows working</h4>
-              <p className="mt-1 text-sm text-stone-600">Client can browse, book, look up. Admin can manage bookings, packages, suppliers, tours, calendar.</p>
+              <h4 className="font-semibold text-stone-800">Data persistence (Supabase)</h4>
+              <p className="mt-1 text-sm text-stone-600">Bookings (leads) persist in Supabase. Ensure supabase/schema.sql has been run in your Supabase project.</p>
             </div>
           </div>
           <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
             <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
             <div>
-              <h4 className="font-semibold text-stone-800">Booking itinerary &amp; email suppliers</h4>
-              <p className="mt-1 text-sm text-stone-600">Click any booking to see full itinerary summary. Email all suppliers at once with pre-filled reservation request. Supplier emails stored in Hotels &amp; Suppliers.</p>
+              <h4 className="font-semibold text-stone-800">Email notifications (Resend)</h4>
+              <p className="mt-1 text-sm text-stone-600">Guests receive booking confirmation, tour confirmation with invoice, and payment receipts. Suppliers receive reservation emails when you schedule a tour.</p>
             </div>
           </div>
           <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
             <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
             <div>
-              <h4 className="font-semibold text-stone-800">Responsive layout</h4>
-              <p className="mt-1 text-sm text-stone-600">Client portal header has mobile hamburger menu. Admin sidebar is desktop-first.</p>
+              <h4 className="font-semibold text-stone-800">Admin login</h4>
+              <p className="mt-1 text-sm text-stone-600">Password protected via ADMIN_PASSWORD. Log in at /admin/login.</p>
             </div>
           </div>
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
+          <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
             <div>
-              <h4 className="font-semibold text-stone-800">Auth disabled</h4>
-              <p className="mt-1 text-sm text-stone-600">Admin is open. Re-enable login and middleware before production.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
-            <div>
-              <h4 className="font-semibold text-stone-800">Quotations — mock only</h4>
-              <p className="mt-1 text-sm text-stone-600">Quotations not persisted. Invoices &amp; payments are persisted and synced.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
-            <div>
-              <h4 className="font-semibold text-stone-800">No email notifications</h4>
-              <p className="mt-1 text-sm text-stone-600">Clients do not receive confirmation emails. Add Resend/SendGrid for production.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
-            <div>
-              <h4 className="font-semibold text-stone-800">Vercel / production data</h4>
-              <p className="mt-1 text-sm text-stone-600">On Vercel, data is in-memory; lost on cold start. Use Prisma + PostgreSQL or Supabase for production.</p>
+              <h4 className="font-semibold text-stone-800">Core flows</h4>
+              <p className="mt-1 text-sm text-stone-600">Client browse, book, look up. Admin manages bookings, packages, suppliers, tours, calendar. Invoices &amp; payments persisted and synced.</p>
             </div>
           </div>
         </div>

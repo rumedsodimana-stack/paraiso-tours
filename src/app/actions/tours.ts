@@ -163,10 +163,14 @@ export async function scheduleTourFromLeadAction(
       sendSupplierReservationEmail({
         supplierEmail: s.email,
         supplierName: s.supplierName,
+        supplierType: s.supplierType as "Accommodation" | "Transport" | "Meals",
         clientName,
+        accompaniedGuestName: lead.accompaniedGuestName,
         reference,
         packageName: pkg.name,
-        travelDate: date,
+        optionLabel: s.optionLabel || "As per package",
+        checkInDate: date,
+        checkOutDate: endDate,
         pax,
         duration: pkg.duration,
       }).catch((err) => {

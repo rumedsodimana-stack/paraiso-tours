@@ -182,7 +182,12 @@ export function getBookingSupplierEmails(
 }
 
 export interface SupplierForSchedule {
-  withEmail: { email: string; supplierName: string; supplierType: string }[];
+  withEmail: {
+    email: string;
+    supplierName: string;
+    supplierType: string;
+    optionLabel: string;
+  }[];
   missing: { supplierName: string; supplierType: string }[];
 }
 
@@ -200,7 +205,12 @@ export function getSuppliersForSchedule(
   const supplierMap = new Map(suppliers.map((s) => [s.id, s]));
   const typeLabel = (t: string) =>
     t === "hotel" ? "Accommodation" : t === "transport" ? "Transport" : "Meals";
-  const withEmail: { email: string; supplierName: string; supplierType: string }[] = [];
+  const withEmail: {
+    email: string;
+    supplierName: string;
+    supplierType: string;
+    optionLabel: string;
+  }[] = [];
   const missing: { supplierName: string; supplierType: string }[] = [];
   const seenEmails = new Set<string>();
   for (const item of breakdown.supplierItems) {
@@ -214,6 +224,7 @@ export function getSuppliersForSchedule(
         email,
         supplierName: item.supplierName,
         supplierType: label,
+        optionLabel: item.optionLabel,
       });
     } else if (!email) {
       missing.push({ supplierName: item.supplierName, supplierType: label });

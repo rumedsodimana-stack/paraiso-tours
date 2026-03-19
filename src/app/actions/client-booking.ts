@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createLead } from "@/lib/db";
 import { getPackage } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
+import { sendBookingRequestConfirmation } from "@/lib/email";
 import {
   isWhatsAppConfigured,
   sendWhatsAppBookingConfirmation,
@@ -69,6 +70,21 @@ export async function createClientBookingAction(
   revalidatePath("/admin/bookings");
   revalidatePath("/");
   revalidatePath("/my-bookings");
+
+  // Send email confirmation to guest
+  sendBookingRequestConfirmation({
+    clientName: lead.name,
+    clientEmail: lead.email,
+    packageName: pkg.name,
+    reference: lead.reference ?? lead.id,
+    travelDate: lead.travelDate,
+    pax: lead.pax ?? 1,
+  }).catch((err) => {
+    debugLog("Booking request email failed", {
+      error: err instanceof Error ? err.message : String(err),
+      leadId: lead.id,
+    });
+  });
 
   // Send WhatsApp confirmation if configured and client provided phone
   if (isWhatsAppConfigured() && lead.phone?.trim()) {

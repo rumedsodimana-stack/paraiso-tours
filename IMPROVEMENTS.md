@@ -6,22 +6,22 @@ This document lists suggested improvements, known gaps, and priorities for the P
 
 ## Launch Readiness (from full app audit)
 
-**Status: Soft launch ready** – Core flows work; production will need persistence + auth.
+**Status: Soft launch ready** – Core flows work; Supabase + Resend configured.
 
 | Area | Ready | Needs Work |
 |------|-------|------------|
-| Client Portal | ✓ Home, Packages, Book, My Bookings, View Booking | Email confirmation, validation |
+| Client Portal | ✓ Home, Packages, Book, My Bookings, View Booking, Email confirmation | Validation |
 | Admin Bookings | ✓ CRUD, supplier breakdown, options | Search/filters |
 | Admin Packages | ✓ Full CRUD, options, cost breakdown | — |
 | Admin Hotels & Suppliers | ✓ Hotels, transport, meal providers | — |
 | Admin Tours | ✓ Create from leads | Edit/delete tours |
 | Admin Calendar | ✓ Shows tours by date | — |
 | Quotations | ✗ Mock data only | Full CRUD, link to leads |
-| Payments | ✗ Mock data only | Full CRUD, link to leads |
-| Auth | ✗ Disabled | Re-enable for production |
-| Data | Local JSON / Vercel in-memory | Real DB for production |
+| Payments | ✓ Persisted, linked to tours | — |
+| Auth | ⚠️ Login exists, middleware optional | Re-enable middleware for /admin/* |
+| Data | ✓ Leads in Supabase; packages/tours in file or memory | Extend Supabase for other entities |
 
-**Before full launch:** Enable auth, persist quotations/payments, connect real DB, add email confirmations.
+**Current:** Supabase for leads, Resend for emails (booking, tour, payment, supplier). Auth middleware disabled — /admin is open.
 
 ---
 
@@ -44,7 +44,7 @@ This document lists suggested improvements, known gaps, and priorities for the P
 | Quotations storage | High | `mockQuotations` is used directly; quotations should be stored in the DB and linked to leads. |
 | Payments storage | High | `mockPayments` is used directly; payments should be persisted and linked to leads/tours. |
 | Real database | High | Replace JSON files with Prisma + PostgreSQL (or Supabase) for production. Prisma schema exists but is not wired to app logic. |
-| Vercel in-memory | Medium | On Vercel, data is in-memory and lost on cold starts; ensure production uses a real DB. |
+| Vercel in-memory | Low | Leads use Supabase when configured. Other entities (packages, tours, etc.) still file/in-memory. |
 
 ---
 
@@ -52,7 +52,7 @@ This document lists suggested improvements, known gaps, and priorities for the P
 
 | Improvement | Priority | Notes |
 |-------------|----------|-------|
-| Email confirmation | High | Send confirmation email with booking reference when a client submits a booking. |
+| Email confirmation | ✅ Done | Resend configured: booking request, tour confirmation, payment receipt, supplier reservation. |
 | Booking lookup by email | High | "My Bookings" currently returns all leads for an email; ensure correct scoping and sorting. |
 | Loading states | Medium | Add loading skeletons/spinners for package detail, booking confirmation, and admin tables. |
 | Form validation | Medium | Add client-side validation (e.g. Zod, react-hook-form) for booking and lookup forms. |

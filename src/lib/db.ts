@@ -138,8 +138,15 @@ async function maybeBackfillReferences(leads: Lead[]): Promise<Lead[]> {
 // --- LEADS ---
 export async function getLeads(): Promise<Lead[]> {
   if (USE_SUPABASE_FOR_LEADS) {
-    const mod = await import("./db-supabase");
-    return mod.getLeads();
+    try {
+      const mod = await import("./db-supabase");
+      return await mod.getLeads();
+    } catch (err) {
+      // Supabase not ready (missing tables, etc.) — fall back to file/memory
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Supabase leads failed, using fallback:", err);
+      }
+    }
   }
   if (!IS_VERCEL && localCache?.leads) return localCache.leads;
   let leads = await readJson<Lead[]>("leads.json", []);
@@ -157,8 +164,12 @@ export async function getLeads(): Promise<Lead[]> {
 
 export async function getLead(id: string): Promise<Lead | null> {
   if (USE_SUPABASE_FOR_LEADS) {
-    const mod = await import("./db-supabase");
-    return mod.getLead(id);
+    try {
+      const mod = await import("./db-supabase");
+      return await mod.getLead(id);
+    } catch {
+      // fall through to file/memory
+    }
   }
   const leads = await getLeads();
   return leads.find((l) => l.id === id) ?? null;
@@ -166,8 +177,12 @@ export async function getLead(id: string): Promise<Lead | null> {
 
 export async function getLeadByReference(ref: string): Promise<Lead | null> {
   if (USE_SUPABASE_FOR_LEADS) {
-    const mod = await import("./db-supabase");
-    return mod.getLeadByReference(ref);
+    try {
+      const mod = await import("./db-supabase");
+      return await mod.getLeadByReference(ref);
+    } catch {
+      // fall through to file/memory
+    }
   }
   const leads = await getLeads();
   return leads.find((l) => l.reference?.toUpperCase() === ref.trim().toUpperCase()) ?? null;
@@ -181,8 +196,12 @@ function generateReference(): string {
 
 export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead> {
   if (USE_SUPABASE_FOR_LEADS) {
-    const mod = await import("./db-supabase");
-    return mod.createLead(data);
+    try {
+      const mod = await import("./db-supabase");
+      return await mod.createLead(data);
+    } catch {
+      // fall through to file/memory
+    }
   }
   invalidateLocalCache();
   const leads = await getLeads();
@@ -197,8 +216,12 @@ export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedA
 
 export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "createdAt">>): Promise<Lead | null> {
   if (USE_SUPABASE_FOR_LEADS) {
-    const mod = await import("./db-supabase");
-    return mod.updateLead(id, data);
+    try {
+      const mod = await import("./db-supabase");
+      return await mod.updateLead(id, data);
+    } catch {
+      // fall through to file/memory
+    }
   }
   invalidateLocalCache();
   const leads = await getLeads();
@@ -211,8 +234,12 @@ export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "cr
 
 export async function deleteLead(id: string): Promise<boolean> {
   if (USE_SUPABASE_FOR_LEADS) {
-    const mod = await import("./db-supabase");
-    return mod.deleteLead(id);
+    try {
+      const mod = await import("./db-supabase");
+      return await mod.deleteLead(id);
+    } catch {
+      // fall through to file/memory
+    }
   }
   invalidateLocalCache();
   const leads = await getLeads();

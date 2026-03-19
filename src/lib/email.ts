@@ -118,6 +118,103 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+export interface BookingRequestConfirmationParams {
+  clientName: string;
+  clientEmail: string;
+  packageName: string;
+  reference: string;
+  travelDate?: string;
+  pax: number;
+}
+
+/**
+ * Send booking request confirmation to the guest when they submit a booking from the client portal.
+ */
+export async function sendBookingRequestConfirmation(
+  params: BookingRequestConfirmationParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) {
+    return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  }
+
+  const { clientName, clientEmail, packageName, reference, travelDate, pax } = params;
+  const email = clientEmail?.trim();
+  if (!email) return { ok: false, error: "No client email" };
+
+  const travelDateFmt = travelDate
+    ? new Date(travelDate + "T12:00:00").toLocaleDateString("en-GB", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+  const bookingLink = `${getBaseUrl()}/my-bookings?email=${encodeURIComponent(email)}`;
+  const viewByRefLink = `${getBaseUrl()}/booking/${encodeURIComponent(reference)}?email=${encodeURIComponent(email)}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
+  <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
+    <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Booking received</p>
+    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">Paraíso Ceylon Tours</p>
+  </div>
+
+  <p style="margin: 0 0 20px 0;">Hello ${escapeHtml(clientName)},</p>
+
+  <p style="margin: 0 0 20px 0;">
+    Thank you for your booking request. We have received it and will get back to you shortly.
+  </p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Your booking request</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b; width: 42%;">Booking reference</td><td style="padding: 12px 18px; font-family: monospace; font-weight: 600;">${escapeHtml(reference)}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Package</td><td style="padding: 12px 18px;">${escapeHtml(packageName)}</td></tr>
+    ${travelDateFmt ? `<tr><td style="padding: 12px 18px; color: #64748b;">Travel date</td><td style="padding: 12px 18px;">${travelDateFmt}</td></tr>` : ""}
+    <tr><td style="padding: 12px 18px; color: #64748b;">Travelers</td><td style="padding: 12px 18px;">${pax} ${pax === 1 ? "person" : "people"}</td></tr>
+  </table>
+
+  <p style="margin: 0 0 20px 0;">
+    <strong>What happens next?</strong><br>
+    Our team will review your request and confirm availability. You will receive a confirmation email with your full itinerary and invoice once everything is set.
+  </p>
+
+  <p style="margin: 0 0 24px 0;">
+    <a href="${bookingLink}" style="color: #0d9488; font-weight: 600;">View your bookings</a> &middot; <a href="${viewByRefLink}" style="color: #0d9488; font-weight: 600;">View by reference</a>
+  </p>
+
+  <p style="margin: 0 0 8px 0;">Questions? Reply to this email or contact us at hello@paraisoceylontours.com</p>
+
+  <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 28px;">
+    <tr><td style="font-size: 15px; font-weight: 700; color: #0d9488;">Paraíso Ceylon Tours</td></tr>
+    <tr><td style="font-size: 13px; color: #64748b;">Crafted journeys across Sri Lanka</td></tr>
+    <tr><td style="font-size: 12px; color: #94a3b8;">hello@paraisoceylontours.com</td></tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [email],
+      subject: `Booking received: ${packageName} – ${reference}`,
+      html,
+    });
+
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg };
+  }
+}
+
 /**
  * Send tour confirmation to client with invoice PDF attached.
  */
@@ -205,16 +302,212 @@ export async function sendTourConfirmationWithInvoice(
 export interface SupplierReservationParams {
   supplierEmail: string;
   supplierName: string;
+  supplierType: "Accommodation" | "Transport" | "Meals";
   clientName: string;
+  /** Additional guest names (e.g. accompanied travelers) */
+  accompaniedGuestName?: string;
   reference: string;
   packageName: string;
-  travelDate?: string;
+  optionLabel: string;
+  /** Check-in or service start date (YYYY-MM-DD) */
+  checkInDate: string;
+  /** Check-out or service end date (YYYY-MM-DD) */
+  checkOutDate: string;
   pax: number;
   duration?: string;
 }
 
+function formatDateLong(d: string): string {
+  return new Date(d + "T12:00:00").toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/**
+ * Build professional reservation email body by supplier type.
+ */
+function buildSupplierReservationHtml(params: SupplierReservationParams): string {
+  const {
+    supplierName,
+    supplierType,
+    clientName,
+    accompaniedGuestName,
+    reference,
+    packageName,
+    optionLabel,
+    checkInDate,
+    checkOutDate,
+    pax,
+  } = params;
+
+  const guestNames =
+    accompaniedGuestName?.trim()
+      ? `${escapeHtml(clientName)} and ${escapeHtml(accompaniedGuestName.trim())}`
+      : escapeHtml(clientName);
+  const checkInFmt = formatDateLong(checkInDate);
+  const checkOutFmt = formatDateLong(checkOutDate);
+
+  const signature = `
+<table cellpadding="0" cellspacing="0" border="0" style="margin-top: 28px;">
+  <tr>
+    <td style="font-size: 15px; font-weight: 700; color: #0d9488;">Paraíso Ceylon Tours</td>
+  </tr>
+  <tr><td style="height: 4px;"></td></tr>
+  <tr>
+    <td style="font-size: 13px; color: #64748b;">Crafted journeys across Sri Lanka</td>
+  </tr>
+  <tr><td style="height: 8px;"></td></tr>
+  <tr>
+    <td style="font-size: 12px; color: #94a3b8;">hello@paraisoceylontours.com</td>
+  </tr>
+</table>
+  `.trim();
+
+  if (supplierType === "Accommodation") {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
+  <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
+    <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Reservation Request</p>
+    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">Paraíso Ceylon Tours</p>
+  </div>
+
+  <p style="margin: 0 0 20px 0;">Dear ${escapeHtml(supplierName)},</p>
+
+  <p style="margin: 0 0 20px 0;">
+    We would like to request a room reservation for our guest. Please find the details below:
+  </p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Guest &amp; booking</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b; width: 42%;">Guest name(s)</td><td style="padding: 12px 18px; font-weight: 500;">${guestNames}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Number of guests</td><td style="padding: 12px 18px;">${pax} ${pax === 1 ? "person" : "people"}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Booking reference</td><td style="padding: 12px 18px; font-family: monospace; font-weight: 600;">${escapeHtml(reference)}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Package</td><td style="padding: 12px 18px;">${escapeHtml(packageName)}</td></tr>
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Stay dates</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Check-in</td><td style="padding: 12px 18px; font-weight: 500;">${checkInFmt}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Check-out</td><td style="padding: 12px 18px; font-weight: 500;">${checkOutFmt}</td></tr>
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Accommodation</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Room / type</td><td style="padding: 12px 18px;">${escapeHtml(optionLabel)}</td></tr>
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Billing</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Bill to</td><td style="padding: 12px 18px; font-weight: 600; color: #0d9488;">Paraíso Ceylon Tours</td></tr>
+  </table>
+
+  <p style="margin: 0 0 24px 0;">
+    Please confirm availability and send us your best rate. We look forward to your reply.
+  </p>
+
+  <p style="margin: 0 0 8px 0;">Kind regards,</p>
+  ${signature}
+</body>
+</html>
+    `.trim();
+  }
+
+  if (supplierType === "Transport") {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
+  <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
+    <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Transport Reservation</p>
+    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">Paraíso Ceylon Tours</p>
+  </div>
+
+  <p style="margin: 0 0 20px 0;">Dear ${escapeHtml(supplierName)},</p>
+
+  <p style="margin: 0 0 20px 0;">
+    We would like to book transport services for our guest. Please find the details below:
+  </p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Guest &amp; booking</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b; width: 42%;">Guest name(s)</td><td style="padding: 12px 18px; font-weight: 500;">${guestNames}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Number of passengers</td><td style="padding: 12px 18px;">${pax} ${pax === 1 ? "person" : "people"}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Booking reference</td><td style="padding: 12px 18px; font-family: monospace; font-weight: 600;">${escapeHtml(reference)}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Package</td><td style="padding: 12px 18px;">${escapeHtml(packageName)}</td></tr>
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Service dates</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">From</td><td style="padding: 12px 18px; font-weight: 500;">${checkInFmt}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">To</td><td style="padding: 12px 18px; font-weight: 500;">${checkOutFmt}</td></tr>
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Vehicle / service</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Type</td><td style="padding: 12px 18px;">${escapeHtml(optionLabel)}</td></tr>
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Billing</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Bill to</td><td style="padding: 12px 18px; font-weight: 600; color: #0d9488;">Paraíso Ceylon Tours</td></tr>
+  </table>
+
+  <p style="margin: 0 0 24px 0;">
+    Please confirm availability and send us your quotation. We look forward to your reply.
+  </p>
+
+  <p style="margin: 0 0 8px 0;">Kind regards,</p>
+  ${signature}
+</body>
+</html>
+    `.trim();
+  }
+
+  // Meals
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
+  <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
+    <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Meal / Catering Reservation</p>
+    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">Paraíso Ceylon Tours</p>
+  </div>
+
+  <p style="margin: 0 0 20px 0;">Dear ${escapeHtml(supplierName)},</p>
+
+  <p style="margin: 0 0 20px 0;">
+    We would like to arrange meal services for our guest. Please find the details below:
+  </p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Guest &amp; booking</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b; width: 42%;">Guest name(s)</td><td style="padding: 12px 18px; font-weight: 500;">${guestNames}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Number of guests</td><td style="padding: 12px 18px;">${pax} ${pax === 1 ? "person" : "people"}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Booking reference</td><td style="padding: 12px 18px; font-family: monospace; font-weight: 600;">${escapeHtml(reference)}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Package</td><td style="padding: 12px 18px;">${escapeHtml(packageName)}</td></tr>
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Service dates</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">From</td><td style="padding: 12px 18px; font-weight: 500;">${checkInFmt}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">To</td><td style="padding: 12px 18px; font-weight: 500;">${checkOutFmt}</td></tr>
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Meal plan</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Type</td><td style="padding: 12px 18px;">${escapeHtml(optionLabel)}</td></tr>
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Billing</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Bill to</td><td style="padding: 12px 18px; font-weight: 600; color: #0d9488;">Paraíso Ceylon Tours</td></tr>
+  </table>
+
+  <p style="margin: 0 0 24px 0;">
+    Please confirm availability and send us your best rate. We look forward to your reply.
+  </p>
+
+  <p style="margin: 0 0 8px 0;">Kind regards,</p>
+  ${signature}
+</body>
+</html>
+  `.trim();
+}
+
 /**
  * Send reservation request email to a supplier.
+ * Uses type-specific templates (Accommodation, Transport, Meals) with guest details,
+ * check-in/check-out dates, and "Bill to: Paraíso Ceylon Tours".
  */
 export async function sendSupplierReservationEmail(
   params: SupplierReservationParams
@@ -223,41 +516,24 @@ export async function sendSupplierReservationEmail(
     return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
   }
 
-  const { supplierEmail, supplierName, clientName, reference, packageName, travelDate, pax, duration } = params;
+  const { supplierEmail, supplierName, supplierType, clientName, reference } = params;
   const email = supplierEmail?.trim();
   if (!email) return { ok: false, error: "No supplier email" };
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0d9488;">Reservation Request</h2>
-  <p>Dear ${escapeHtml(supplierName)},</p>
-  <p>We would like to request a reservation for the following booking:</p>
-  <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Booking reference</td><td style="padding: 12px 16px; font-mono;">${escapeHtml(reference)}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Client</td><td style="padding: 12px 16px;">${escapeHtml(clientName)}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Package</td><td style="padding: 12px 16px;">${escapeHtml(packageName)}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Travel dates</td><td style="padding: 12px 16px;">${travelDate ?? "TBD"}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Pax</td><td style="padding: 12px 16px;">${pax}</td></tr>
-    ${duration ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Duration</td><td style="padding: 12px 16px;">${escapeHtml(duration)}</td></tr>` : ""}
-  </table>
-  <p>Please confirm availability and send us your best rate.</p>
-  <p>Thank you,</p>
-  <p><strong>Paraíso Ceylon Tours</strong><br>Crafted journeys across Sri Lanka</p>
-</body>
-</html>
-  `.trim();
+  const html = buildSupplierReservationHtml(params);
+
+  const subject =
+    supplierType === "Accommodation"
+      ? `Room reservation request – ${reference} – ${escapeHtml(clientName)}`
+      : supplierType === "Transport"
+      ? `Transport reservation – ${reference} – ${escapeHtml(clientName)}`
+      : `Meal reservation – ${reference} – ${escapeHtml(clientName)}`;
 
   try {
     const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: [email],
-      subject: `Reservation request – ${reference} – ${clientName}`,
+      subject,
       html,
     });
 

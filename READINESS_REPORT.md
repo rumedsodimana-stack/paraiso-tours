@@ -10,8 +10,8 @@
 | Status | Summary |
 |--------|---------|
 | **Local dev** | ✅ Ready – manual bookings, packages, tours, invoices, payments persist in `data/*.json` |
-| **Vercel (no DB)** | ⚠️ Demo only – data is in-memory and **lost on cold start** or across serverless instances |
-| **Production** | ❌ Not ready – requires Supabase/PostgreSQL + auth + email |
+| **Vercel (Supabase)** | ✅ Production-ready – bookings (leads) persist in Supabase when configured |
+| **Production** | ⚠️ Ready for soft launch – Supabase + Resend configured; auth middleware optional |
 
 ---
 
@@ -28,10 +28,10 @@ When you create a manual booking (Admin → Bookings → Add Booking):
 
 Use a persistent database. The app includes:
 
-- `src/lib/db-supabase.ts` – Supabase-backed storage (not wired in)
+- `src/lib/db-supabase.ts` – Supabase-backed storage (wired for leads when env vars set)
 - `src/lib/supabase.ts` – Supabase client
 
-**Action:** Configure Supabase and switch `db` to use `db-supabase` when `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set.
+**Done:** When Supabase env vars are set, `db.ts` uses `db-supabase` for leads automatically. Run `supabase/schema.sql` in Supabase SQL Editor.
 
 ### If testing locally
 
@@ -54,7 +54,7 @@ If it still doesn’t show:
 
 | Area | Local | Vercel (no DB) | Production |
 |------|-------|----------------|------------|
-| Leads / bookings | ✅ `data/leads.json` | ❌ In-memory only | ⚠️ Need DB |
+| Leads / bookings | ✅ `data/leads.json` | ✅ Supabase (when configured) | ✅ Supabase |
 | Packages | ✅ `data/packages.json` | ✅ In-memory (seeded) | ⚠️ Need DB |
 | Tours | ✅ `data/tours.json` | ❌ In-memory only | ⚠️ Need DB |
 | Invoices | ✅ `data/invoices.json` | ❌ In-memory only | ⚠️ Need DB |
@@ -96,7 +96,7 @@ If it still doesn’t show:
 | Item | Notes |
 |------|-------|
 | Quotations | Mock data only; not linked to leads |
-| Email confirmations | No email sent on client booking |
+| Email confirmations | ✅ Resend – booking, tour, payment receipts; supplier reservation emails |
 | WhatsApp | Optional; needs env vars |
 | Auth login page | Exists but redirects straight to admin |
 
@@ -122,10 +122,7 @@ If it still doesn’t show:
    - Restore login page and session handling.
    - Consider NextAuth or Supabase Auth.
 
-3. **Email**
-   - Use Resend or SendGrid.
-   - Send booking confirmations on client portal bookings.
-   - Send invoices and receipts via email.
+3. **Email** ✅ Done – Resend configured. Booking confirmation, tour confirmation with invoice, payment receipts, supplier reservation emails.
 
 4. **Environment variables**
    - `DATABASE_URL` or Supabase URL + key

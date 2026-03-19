@@ -13,6 +13,8 @@ import { WorldClockWidget } from "@/components/WorldClockWidget";
 import { ExchangeRatesWidget } from "@/components/ExchangeRatesWidget";
 import type { Lead } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 function formatDate(s: string) {
   const d = new Date(s);
   return d.toLocaleDateString("en-US", {

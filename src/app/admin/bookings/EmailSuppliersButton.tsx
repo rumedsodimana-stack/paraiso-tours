@@ -21,27 +21,46 @@ export function EmailSuppliersButton({
   const hasEmails = emails.length > 0;
 
   function buildMailto() {
+    const ref = lead.reference ?? "—";
+    const guestNames = lead.accompaniedGuestName?.trim()
+      ? `${lead.name} and ${lead.accompaniedGuestName.trim()}`
+      : lead.name;
+    const startDate = lead.travelDate ?? "TBD";
+    const days = pkg.duration?.match(/(\d+)/)?.[1] ? parseInt(pkg.duration.match(/(\d+)/)![1], 10) : 7;
+    const endDate = startDate !== "TBD"
+      ? new Date(new Date(startDate).getTime() + (days - 1) * 86400000).toISOString().slice(0, 10)
+      : "TBD";
+    const checkInFmt = startDate !== "TBD" ? new Date(startDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "TBD";
+    const checkOutFmt = endDate !== "TBD" ? new Date(endDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "TBD";
+
     const subject = encodeURIComponent(
-      `Reservation Request - ${lead.reference ?? lead.name} - ${pkg.name}`
+      `Reservation Request – ${ref} – ${lead.name}`
     );
-    const nights = pkg.duration?.match(/(\d+)/)?.[1] ?? "—";
     const bodyLines = [
-      `Dear Supplier,`,
+      `Dear Sir/Madam,`,
       ``,
-      `We would like to request a reservation for the following booking:`,
+      `We would like to request a reservation for our guest. Please find the details below:`,
       ``,
-      `Booking Reference: ${lead.reference ?? "—"}`,
-      `Client: ${lead.name}`,
+      `GUEST & BOOKING`,
+      `Guest name(s): ${guestNames}`,
+      `Number of guests: ${lead.pax ?? 1}`,
+      `Booking reference: ${ref}`,
       `Package: ${pkg.name}`,
-      `Travel Dates: ${lead.travelDate ?? "TBD"}`,
-      `Pax: ${lead.pax ?? 1}`,
-      `Duration: ${pkg.duration}`,
-      `Nights: ${nights}`,
       ``,
-      `Please confirm availability and send us your best rate.`,
+      `DATES`,
+      `Check-in: ${checkInFmt}`,
+      `Check-out: ${checkOutFmt}`,
       ``,
-      `Thank you,`,
-      `Paraíso Ceylon`,
+      `BILLING`,
+      `Bill to: Paraíso Ceylon Tours`,
+      ``,
+      `Please confirm availability and send us your best rate. We look forward to your reply.`,
+      ``,
+      `Kind regards,`,
+      ``,
+      `Paraíso Ceylon Tours`,
+      `Crafted journeys across Sri Lanka`,
+      `hello@paraisoceylontours.com`,
     ];
     const body = encodeURIComponent(bodyLines.join("\n"));
     const to = emails.join(",");
