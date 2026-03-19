@@ -1,12 +1,33 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createHotel, updateHotel, deleteHotel } from "@/lib/db";
+import {
+  createHotel,
+  updateHotel,
+  deleteHotel,
+  getPackages,
+  getPayments,
+} from "@/lib/db";
+import type { TourPackage } from "@/lib/types";
 
 function parseOptionalNum(val: string | null): number | undefined {
   if (!val?.trim()) return undefined;
   const n = parseFloat(val);
   return isNaN(n) ? undefined : n;
+}
+
+function packageUsesSupplier(pkg: TourPackage, supplierId: string): boolean {
+  const optionGroups = [
+    pkg.accommodationOptions ?? [],
+    pkg.transportOptions ?? [],
+    pkg.mealOptions ?? [],
+    pkg.customOptions ?? [],
+    ...(pkg.itinerary ?? []).map((day) => day.accommodationOptions ?? []),
+  ];
+
+  return optionGroups.some((options) =>
+    options.some((option) => option.supplierId === supplierId)
+  );
 }
 
 export async function createHotelAction(formData: FormData) {
@@ -99,8 +120,47 @@ export async function updateHotelAction(id: string, formData: FormData) {
 }
 
 export async function deleteHotelAction(id: string) {
+  const [packages, payments] = await Promise.all([getPackages(), getPayments()]);
+  const blockingPackages = packages.filter((pkg) => packageUsesSupplier(pkg, id));
+  const blockingPayments = payments.filter((payment) => payment.supplierId === id);
+
+  if (blockingPackages.length > 0 || blockingPayments.length > 0) {
+    const reasons: string[] = [];
+
+    if (blockingPackages.length > 0) {
+      const packageNames = blockingPackages
+        .slice(0, 3)
+        .map((pkg) => pkg.name)
+        .join(", ");
+      const morePackages =
+        blockingPackages.length > 3
+          ? ` and ${blockingPackages.length - 3} more`
+          : "";
+      reasons.push(
+        `it is still used in ${blockingPackages.length} package${blockingPackages.length === 1 ? "" : "s"} (${packageNames}${morePackages}). Remove or replace it in those package options first.`
+      );
+    }
+
+    if (blockingPayments.length > 0) {
+      reasons.push(
+        `it is linked to ${blockingPayments.length} payment${blockingPayments.length === 1 ? "" : "s"} in your finance history.`
+      );
+    }
+
+    return { error: `Cannot delete this supplier because ${reasons.join(" ")}` };
+  }
+
   const ok = await deleteHotel(id);
-  if (!ok) return { error: "Hotel not found" };
+  if (!ok) {
+    return {
+      error:
+        "Supplier could not be deleted. It may still be referenced elsewhere.",
+    };
+  }
+
   revalidatePath("/admin/hotels");
+  revalidatePath("/admin/packages");
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin/payables");
   return { success: true };
 }

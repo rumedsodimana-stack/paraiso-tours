@@ -5,6 +5,7 @@ import { getHotel } from "@/lib/db";
 import { HotelForm } from "../../HotelForm";
 import { updateHotelAction } from "@/app/actions/hotels";
 import { SaveSuccessBanner } from "../../../SaveSuccessBanner";
+import { DeleteHotelButton } from "../../DeleteHotelButton";
 
 export default async function EditHotelPage({
   params,
@@ -34,7 +35,10 @@ export default async function EditHotelPage({
         Back to {hotel.name}
       </Link>
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
-        <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50">Edit {hotel.name}</h1>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50">Edit {hotel.name}</h1>
+          <DeleteHotelButton id={hotel.id} name={hotel.name} />
+        </div>
         <HotelForm hotel={hotel} action={action} />
       </div>
     </div>

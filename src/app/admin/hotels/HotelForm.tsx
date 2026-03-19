@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import type { HotelSupplier } from "@/lib/types";
 import { SaveSuccessBanner } from "../SaveSuccessBanner";
 
@@ -12,7 +11,7 @@ export function HotelForm({
 }: {
   hotel?: HotelSupplier;
   action: (formData: FormData) => Promise<{ error?: string; success?: boolean; id?: string }>;
-  defaultType?: "hotel" | "transport" | "meal";
+  defaultType?: "hotel" | "transport" | "meal" | "supplier";
 }) {
   const [error, setError] = useState<string>("");
   const [saved, setSaved] = useState(false);

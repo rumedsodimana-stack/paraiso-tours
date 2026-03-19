@@ -11,11 +11,23 @@ export default async function NewHotelPage({
   const params = searchParams ? await Promise.resolve(searchParams) : {};
   const typeParam = params.type;
   const defaultType = (
-    typeParam === "transport" ? "transport" : typeParam === "meal" ? "meal" : "hotel"
-  ) as "hotel" | "transport" | "meal";
+    typeParam === "transport"
+      ? "transport"
+      : typeParam === "meal"
+        ? "meal"
+        : typeParam === "supplier"
+          ? "supplier"
+          : "hotel"
+  ) as "hotel" | "transport" | "meal" | "supplier";
 
   const formTitle =
-    defaultType === "transport" ? "Add Vehicle" : defaultType === "meal" ? "Add Meal Provider" : "Add Hotel";
+    defaultType === "transport"
+      ? "Add Vehicle"
+      : defaultType === "meal"
+        ? "Add Meal Provider"
+        : defaultType === "supplier"
+          ? "Add Supplier"
+          : "Add Hotel";
 
   return (
     <div className="space-y-6">

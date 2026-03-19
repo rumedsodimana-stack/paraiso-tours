@@ -3,6 +3,7 @@ import { ArrowLeft, Pencil, Landmark, MapPin, Building2, Car, UtensilsCrossed } 
 import { notFound } from "next/navigation";
 import { getHotel } from "@/lib/db";
 import { SaveSuccessBanner } from "../../SaveSuccessBanner";
+import { DeleteHotelButton } from "../DeleteHotelButton";
 
 const typeIcons = { hotel: Building2, transport: Car, meal: UtensilsCrossed, supplier: MapPin };
 const typeLabels = { hotel: "Hotel", transport: "Transport", meal: "Meal Provider", supplier: "Supplier" };
@@ -35,7 +36,7 @@ export default async function HotelProfilePage({
 
   return (
     <div className="space-y-6">
-      {saved === "1" && <SaveSuccessBanner message="Supplier created successfully" />}
+      {saved === "1" && <SaveSuccessBanner message={`${typeLabels[hotel.type]} saved successfully`} />}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Link
           href="/admin/hotels"
@@ -44,13 +45,16 @@ export default async function HotelProfilePage({
           <ArrowLeft className="h-5 w-5" />
           Back to Hotels & Suppliers
         </Link>
-        <Link
-          href={`/admin/hotels/${id}/edit`}
-          className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-white px-4 py-2.5 text-sm font-medium text-teal-600 transition hover:bg-teal-50 dark:bg-stone-900 dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-950"
-        >
-          <Pencil className="h-4 w-4" />
-          Edit
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/admin/hotels/${id}/edit`}
+            className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-white px-4 py-2.5 text-sm font-medium text-teal-600 transition hover:bg-teal-50 dark:bg-stone-900 dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-950"
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Link>
+          <DeleteHotelButton id={hotel.id} name={hotel.name} />
+        </div>
       </div>
 
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">

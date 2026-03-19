@@ -1,15 +1,22 @@
 import Link from "next/link";
-import { MapPin, Car, Building2, Pencil, UtensilsCrossed, ChevronRight } from "lucide-react";
+import { MapPin, Car, Building2, UtensilsCrossed, ChevronRight } from "lucide-react";
 import { getHotels } from "@/lib/db";
+import { SaveSuccessBanner } from "../SaveSuccessBanner";
 
 const typeIcons = { hotel: Building2, transport: Car, meal: UtensilsCrossed, supplier: MapPin };
 const typeLabels = { hotel: "Hotel", transport: "Transport", meal: "Meal Provider", supplier: "Supplier" };
 
-export default async function HotelsPage() {
+export default async function HotelsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ deleted?: string }>;
+}) {
+  const { deleted } = searchParams ? await searchParams : {};
   const hotels = await getHotels();
 
   return (
     <div className="space-y-6">
+      {deleted === "1" ? <SaveSuccessBanner message="Deleted successfully" /> : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
@@ -41,6 +48,13 @@ export default async function HotelsPage() {
             <UtensilsCrossed className="h-4 w-4" />
             Add Meal Provider
           </Link>
+          <Link
+            href="/admin/hotels/new?type=supplier"
+            className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-white px-4 py-2.5 text-sm font-medium text-teal-600 transition hover:bg-teal-50 dark:bg-stone-900 dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-950"
+          >
+            <MapPin className="h-4 w-4" />
+            Add Supplier
+          </Link>
         </div>
       </div>
 
@@ -59,12 +73,18 @@ export default async function HotelsPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {(["hotel", "transport", "meal"] as const).map((type) => {
+          {(["hotel", "transport", "meal", "supplier"] as const).map((type) => {
             const items = hotels.filter((h) => h.type === type);
             if (items.length === 0) return null;
             const Icon = typeIcons[type];
             const sectionTitle =
-              type === "hotel" ? "Hotels" : type === "transport" ? "Transportation" : "Meal Providers";
+              type === "hotel"
+                ? "Hotels"
+                : type === "transport"
+                  ? "Transportation"
+                  : type === "meal"
+                    ? "Meal Providers"
+                    : "Suppliers";
             return (
               <section key={type}>
                 <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-stone-800 dark:text-stone-100">
@@ -97,7 +117,11 @@ export default async function HotelsPage() {
                             {h.defaultPricePerNight != null && (
                               <p className="mt-1 text-sm font-medium text-teal-600">
                                 {h.defaultPricePerNight.toLocaleString()} {h.currency}
-                                {type === "hotel" ? "/night" : type === "meal" ? "/person" : " (default)"}
+                                {type === "hotel"
+                                  ? "/night"
+                                  : type === "meal"
+                                    ? "/person"
+                                    : " (default)"}
                               </p>
                             )}
                           </div>
