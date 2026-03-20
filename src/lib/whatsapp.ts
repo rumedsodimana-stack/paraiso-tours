@@ -8,6 +8,8 @@
  * - Register webhook URL in Meta Developer Console
  */
 
+import { getAppSettings, getDisplayCompanyName } from "./app-config";
+
 const WHATSAPP_API = "https://graph.facebook.com/v21.0";
 
 export interface WhatsAppConfig {
@@ -164,19 +166,22 @@ export async function sendWhatsAppBookingConfirmation(params: {
 
   const normalized = normalizePhone(trimmed);
   if (normalized.length < 10) return { ok: false, error: "Invalid phone number" };
+  const settings = await getAppSettings();
+  const brandName = getDisplayCompanyName(settings);
+  const contactEmail = settings.company.email || "info@paraisoceylon.com";
 
   const text = [
     `Hello ${clientName}! 👋`,
     ``,
-    `Thank you for your booking with Paraíso Ceylon Tours.`,
+    `Thank you for your booking with ${brandName}.`,
     ``,
     `📋 *Booking Reference:* ${reference}`,
     `📦 *Package:* ${packageName}`,
     ``,
     `We'll contact you soon to confirm your tour.`,
-    `Questions? Reply to this message or email info@paraisoceylon.com`,
+    `Questions? Reply to this message or email ${contactEmail}`,
     ``,
-    `— Paraíso Ceylon Tours`,
+    `— ${brandName}`,
   ].join("\n");
 
   return sendWhatsAppMessage(normalized, text);

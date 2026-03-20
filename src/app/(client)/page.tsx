@@ -18,6 +18,7 @@ import {
   getClientPackageVisual,
   homeHeroScene,
 } from "./client-visuals";
+import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { getPackagesForClient } from "@/lib/db";
 import { getFromPrice } from "@/lib/package-price";
 
@@ -40,9 +41,11 @@ const SERVICE_PILLARS = [
 ];
 
 export default async function ClientPortalPage() {
+  const settings = await getAppSettings();
   const allPackages = await getPackagesForClient();
   const featuredPackages = allPackages.filter((pkg) => pkg.featured).slice(0, 6);
   const featuredStories = destinationHighlights.slice(0, 3);
+  const brandName = getDisplayCompanyName(settings);
 
   return (
     <div className="space-y-16 pb-16">
@@ -74,21 +77,21 @@ export default async function ClientPortalPage() {
                 href="/journey-builder"
                 className="inline-flex items-center gap-2 rounded-full bg-[#f2dfbf] px-6 py-3 text-sm font-semibold text-[#17343b] shadow-[0_16px_38px_-22px_rgba(239,214,174,0.95)] transition hover:bg-[#f7e8cf]"
               >
-                Build your journey
+                {settings.portal.journeyBuilderLabel}
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/packages"
                 className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/15"
               >
-                Explore packages
+                {settings.portal.packagesLabel}
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/my-bookings"
                 className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/15"
               >
-                View my bookings
+                {settings.portal.myBookingsLabel}
               </Link>
             </div>
 
@@ -289,14 +292,17 @@ export default async function ClientPortalPage() {
 
       <ThingsToDoSlideshow />
 
-      <section className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+      <section
+        id="track-booking"
+        className="grid gap-6 scroll-mt-28 lg:grid-cols-[0.92fr_1.08fr]"
+      >
         <div className="overflow-hidden rounded-[2rem] border border-[#ddc8b0] bg-[#f2e2c6] shadow-[0_20px_48px_-34px_rgba(43,32,15,0.55)]">
           <div className="p-6 sm:p-8">
             <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
               Booking Visibility
             </p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900">
-              Keep your trip visible after you request it
+              Track your booking with {brandName}
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-stone-700">
               Use your reference or email to reopen your request, check dates,

@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { Compass, Mail, Phone, Waves, Mountain, Landmark } from "lucide-react";
 import { ClientHeader } from "./ClientHeader";
+import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 
-export default function ClientLayout({
+export default async function ClientLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const settings = await getAppSettings();
+  const brandName = getDisplayCompanyName(settings);
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f6efe4] text-stone-800">
       <div
@@ -17,7 +21,18 @@ export default function ClientLayout({
             "radial-gradient(circle at 12% 12%, rgba(210, 164, 87, 0.22), transparent 26%), radial-gradient(circle at 82% 8%, rgba(18, 52, 59, 0.16), transparent 24%), radial-gradient(circle at 86% 62%, rgba(38, 111, 118, 0.14), transparent 26%), linear-gradient(180deg, rgba(252,246,238,0.96), rgba(246,239,228,1))",
         }}
       />
-      <ClientHeader />
+      <ClientHeader
+        brandName={brandName}
+        logoUrl={settings.company.logoUrl}
+        topBannerText={settings.portal.topBannerText}
+        topBannerSubtext={settings.portal.topBannerSubtext}
+        locationBadgeText={settings.portal.locationBadgeText}
+        mobileMenuDescription={settings.portal.mobileMenuDescription}
+        packagesLabel={settings.portal.packagesLabel}
+        journeyBuilderLabel={settings.portal.journeyBuilderLabel}
+        myBookingsLabel={settings.portal.myBookingsLabel}
+        trackBookingLabel={settings.portal.trackBookingLabel}
+      />
       <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
         {children}
       </main>
@@ -26,14 +41,13 @@ export default function ClientLayout({
           <div className="mb-8 grid gap-4 rounded-[2rem] border border-[#d9c6ad] bg-[#12343b] p-6 text-[#f6ead6] shadow-[0_24px_60px_-28px_rgba(18,52,59,0.95)] lg:grid-cols-[1.2fr_0.8fr] lg:p-8">
             <div>
               <p className="text-xs uppercase tracking-[0.32em] text-[#dcb87b]">
-                Plan With Context
+                {settings.portal.footerCtaEyebrow}
               </p>
               <h3 className="mt-3 text-2xl font-semibold tracking-tight">
-                Build a Sri Lanka trip that flows from arrival to final beach day
+                {settings.portal.footerCtaTitle}
               </h3>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#dfd7c6]">
-                Use the portal to compare routes, lock in accommodation style,
-                and keep your booking visible after checkout.
+                {settings.portal.footerCtaDescription}
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
@@ -55,27 +69,37 @@ export default function ClientLayout({
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6]">
-                  <Compass className="h-4 w-4" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6]">
+                  {settings.company.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={settings.company.logoUrl}
+                      alt={brandName}
+                      className="h-full w-full rounded-2xl object-cover"
+                    />
+                  ) : (
+                    <Compass className="h-4 w-4" />
+                  )}
                 </div>
                 <span className="font-semibold text-stone-900">
-                  Paraíso Ceylon Tours
+                  {brandName}
                 </span>
               </div>
               <p className="mt-3 text-sm leading-6 text-stone-600">
-                A client portal for tracking Sri Lanka routes, comparing package
-                styles, and keeping booking details close at hand.
+                {settings.portal.clientPortalDescription}
               </p>
             </div>
             <div>
-              <h4 className="font-semibold text-stone-900">Explore</h4>
+              <h4 className="font-semibold text-stone-900">
+                {settings.portal.footerExploreTitle}
+              </h4>
               <ul className="mt-3 space-y-2">
                 <li>
                   <Link
                     href="/packages"
                     className="text-sm text-stone-600 transition hover:text-[#12343b]"
                   >
-                    Tour packages
+                    {settings.portal.packagesLabel}
                   </Link>
                 </li>
                 <li>
@@ -83,7 +107,7 @@ export default function ClientLayout({
                     href="/journey-builder"
                     className="text-sm text-stone-600 transition hover:text-[#12343b]"
                   >
-                    Build your journey
+                    {settings.portal.journeyBuilderLabel}
                   </Link>
                 </li>
                 <li>
@@ -91,36 +115,51 @@ export default function ClientLayout({
                     href="/my-bookings"
                     className="text-sm text-stone-600 transition hover:text-[#12343b]"
                   >
-                    My bookings
+                    {settings.portal.myBookingsLabel}
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-stone-900">Contact</h4>
+              <h4 className="font-semibold text-stone-900">
+                {settings.portal.footerContactTitle}
+              </h4>
               <ul className="mt-3 space-y-2 text-sm text-stone-600">
-                <li className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-[#b67833]" />
-                  hello@paraisoceylontours.com
-                </li>
-                <li className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-[#b67833]" />
-                  +94 11 234 5678
-                </li>
+                {settings.company.email ? (
+                  <li className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-[#b67833]" />
+                    {settings.company.email}
+                  </li>
+                ) : null}
+                {settings.company.phone ? (
+                  <li className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-[#b67833]" />
+                    {settings.company.phone}
+                  </li>
+                ) : null}
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-stone-900">Base</h4>
+              <h4 className="font-semibold text-stone-900">
+                {settings.portal.footerBaseTitle}
+              </h4>
               <p className="mt-3 text-sm leading-6 text-stone-600">
-                Colombo, Sri Lanka
-                <br />
-                Routing support from arrival to departure
+                {settings.company.address}
+                {settings.portal.footerBaseDescription ? (
+                  <>
+                    <br />
+                    {settings.portal.footerBaseDescription}
+                  </>
+                ) : null}
               </p>
             </div>
           </div>
 
           <div className="mt-10 border-t border-[#d9c6ad] pt-8 text-center text-sm text-stone-500">
-            © {new Date().getFullYear()} Paraíso Ceylon Tours · Sri Lanka
+            © {new Date().getFullYear()} {brandName}
+            {settings.portal.copyrightSuffix
+              ? ` · ${settings.portal.copyrightSuffix}`
+              : ""}
           </div>
         </div>
       </footer>

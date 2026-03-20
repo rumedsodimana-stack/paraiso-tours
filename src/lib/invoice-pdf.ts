@@ -2,31 +2,38 @@
  * Generate a simple PDF invoice for email attachment.
  */
 
+import { getAppSettings, getDisplayCompanyName } from "./app-config";
 import type { Invoice } from "./types";
 
-const LETTERHEAD = {
-  companyName: "Paraíso Ceylon Tours",
-  tagline: "Crafted journeys across Sri Lanka",
-  address: "Colombo, Sri Lanka",
-  phone: "+94 11 234 5678",
-  email: "hello@paraisoceylontours.com",
-};
-
 export async function generateInvoicePdf(invoice: Invoice): Promise<Buffer> {
+  const settings = await getAppSettings();
+  const letterhead = {
+    companyName: getDisplayCompanyName(settings),
+    tagline: settings.company.tagline || "",
+    address: settings.company.address || "",
+    phone: settings.company.phone || "",
+    email: settings.company.email || "",
+  };
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ format: "a4", unit: "mm" });
   let y = 20;
 
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
-  doc.text(LETTERHEAD.companyName, 20, y);
+  doc.text(letterhead.companyName, 20, y);
   y += 6;
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(LETTERHEAD.tagline, 20, y);
+  doc.text(letterhead.tagline, 20, y);
   y += 6;
-  doc.text(`${LETTERHEAD.address} | ${LETTERHEAD.phone} | ${LETTERHEAD.email}`, 20, y);
+  doc.text(
+    [letterhead.address, letterhead.phone, letterhead.email]
+      .filter(Boolean)
+      .join(" | "),
+    20,
+    y
+  );
   y += 15;
 
   doc.setFontSize(14);

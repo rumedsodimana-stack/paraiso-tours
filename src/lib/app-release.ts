@@ -1,14 +1,14 @@
 export const APP_RELEASE = {
-  id: "2026-03-20-v0-2-0",
-  version: "0.2.0",
+  id: "2026-03-20-v0-3-0",
+  version: "0.3.0",
   releasedAt: "2026-03-20",
-  title: "System updated to v0.2.0",
+  title: "System updated to v0.3.0",
   summary:
-    "The live app now includes the refreshed client portal, the journey builder, frozen booking snapshots, and secured admin login.",
+    "The live app now includes white-label branding settings, logo management, and safer storage for branding assets.",
   highlights: [
-    "Client portal and journey builder are live with the newer travel-planning experience.",
-    "Bookings now keep a frozen package snapshot so later package edits do not change sold trips.",
-    "Admin access is protected with a real session-based login flow.",
+    "Agency name, contact details, footer copy, navigation labels, and document branding can be managed from Admin Settings.",
+    "Logos can be uploaded into Supabase Storage or linked by public URL, avoiding Vercel memory and filesystem limits.",
+    "Client portal, admin shell, invoices, payables, supplier emails, and metadata now follow the configured brand.",
   ],
   dataNotice:
     "All live user and operations data stays preserved in Supabase across deployments.",

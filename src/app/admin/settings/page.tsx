@@ -1,38 +1,14 @@
-"use client";
-
-import dynamic from "next/dynamic";
+import { Bell, Globe, Settings as SettingsIcon, User, WandSparkles } from "lucide-react";
+import { getAppSettings } from "@/lib/app-config";
+import { BrandSettingsSection } from "./BrandSettingsSection";
 import {
-  Bell,
-  Globe,
-  Settings as SettingsIcon,
-  User,
-  WandSparkles,
-} from "lucide-react";
+  ChangePasswordSection,
+} from "./ChangePasswordSection";
+import { WhatsAppSection } from "./whatsapp-section";
+import { ThemeSelector } from "@/components/theme/ThemeSelector";
 
-const WhatsAppSection = dynamic(
-  () =>
-    import("./whatsapp-section").then((mod) => mod.WhatsAppSection),
-  { ssr: false }
-);
-
-const ChangePasswordSection = dynamic(
-  () =>
-    import("./ChangePasswordSection").then((mod) => mod.ChangePasswordSection),
-  { ssr: false }
-);
-
-const ThemeSelector = dynamic(
-  () =>
-    import("@/components/theme/ThemeSelector").then((mod) => mod.ThemeSelector),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-[35rem] rounded-[2rem] border border-white/20 bg-white/40 shadow-lg shadow-stone-200/50 backdrop-blur-xl" />
-    ),
-  }
-);
-
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const settings = await getAppSettings();
   const settingCards = [
     {
       icon: User,
@@ -64,8 +40,8 @@ export default function SettingsPage() {
               Personalize the operations hub
             </h1>
             <p className="mt-3 text-stone-600 dark:text-stone-400">
-              Keep the current Paraiso look or switch between ten additional
-              visual themes without changing the system structure.
+              Update branding, portal copy, and theme choices without changing
+              the core booking and operations structure.
             </p>
           </div>
 
@@ -83,6 +59,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <BrandSettingsSection settings={settings} />
 
       <ThemeSelector />
 

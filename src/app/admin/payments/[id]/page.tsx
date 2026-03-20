@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileText } from "lucide-react";
 import { getPayment, getInvoice, getInvoiceByLeadId, getInvoices } from "@/lib/db";
+import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { getAuditLogsForEntities } from "@/lib/audit";
 import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { InvoiceDocument } from "../../invoices/InvoiceDocument";
@@ -10,14 +11,6 @@ import { PaymentVoucherDocument } from "../PaymentVoucherDocument";
 import { CreateInvoiceForPaymentButton } from "../CreateInvoiceForPaymentButton";
 import { CreateInvoiceFromPaymentButton } from "../CreateInvoiceFromPaymentButton";
 import { MarkPaymentReceivedButton } from "../MarkPaymentReceivedButton";
-
-const letterhead = {
-  companyName: "Paraíso Ceylon Tours",
-  tagline: "Crafted journeys across Sri Lanka",
-  address: "Colombo, Sri Lanka",
-  phone: "+94 11 234 5678",
-  email: "hello@paraisoceylontours.com",
-};
 
 async function getInvoiceForPayment(payment: { invoiceId?: string; leadId?: string; type: string; clientName?: string }) {
   if (payment.invoiceId) return getInvoice(payment.invoiceId);
@@ -37,6 +30,15 @@ export default async function PaymentDetailPage({
   const { id } = await params;
   const payment = await getPayment(id);
   if (!payment) notFound();
+  const settings = await getAppSettings();
+  const letterhead = {
+    companyName: getDisplayCompanyName(settings),
+    tagline: settings.company.tagline,
+    address: settings.company.address,
+    phone: settings.company.phone,
+    email: settings.company.email,
+    logoUrl: settings.company.logoUrl,
+  };
 
   const invoice = await getInvoiceForPayment(payment);
   const auditLogs = await getAuditLogsForEntities(

@@ -1,19 +1,23 @@
 "use client";
 
 import { Mail, AlertCircle } from "lucide-react";
-import type { Lead, TourPackage, HotelSupplier } from "@/lib/types";
+import type { Lead, TourPackage } from "@/lib/types";
 import type { SupplierEmailResult } from "@/lib/booking-breakdown";
 
 export function EmailSuppliersButton({
   lead,
   pkg,
-  suppliers,
   result,
+  companyName,
+  companyTagline,
+  companyEmail,
 }: {
   lead: Lead;
   pkg: TourPackage;
-  suppliers: HotelSupplier[];
   result: SupplierEmailResult | null;
+  companyName: string;
+  companyTagline?: string;
+  companyEmail?: string;
 }) {
   if (!result) return null;
 
@@ -52,15 +56,15 @@ export function EmailSuppliersButton({
       `Check-out: ${checkOutFmt}`,
       ``,
       `BILLING`,
-      `Bill to: Paraíso Ceylon Tours`,
+      `Bill to: ${companyName}`,
       ``,
       `Please confirm availability and send us your best rate. We look forward to your reply.`,
       ``,
       `Kind regards,`,
       ``,
-      `Paraíso Ceylon Tours`,
-      `Crafted journeys across Sri Lanka`,
-      `hello@paraisoceylontours.com`,
+      companyName,
+      ...(companyTagline ? [companyTagline] : []),
+      ...(companyEmail ? [companyEmail] : []),
     ];
     const body = encodeURIComponent(bodyLines.join("\n"));
     const to = emails.join(",");

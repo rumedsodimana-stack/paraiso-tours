@@ -31,6 +31,7 @@ interface InvoiceDocumentProps {
     address?: string;
     phone?: string;
     email?: string;
+    logoUrl?: string;
   };
 }
 

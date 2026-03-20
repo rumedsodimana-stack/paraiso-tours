@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { getLead, getPackage, getHotels, getInvoiceByLeadId } from "@/lib/db";
+import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { getAuditLogsForEntities } from "@/lib/audit";
 import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { getBookingSupplierEmails } from "@/lib/booking-breakdown";
@@ -28,10 +29,11 @@ export default async function BookingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [lead, suppliers, existingInvoice] = await Promise.all([
+  const [lead, suppliers, existingInvoice, settings] = await Promise.all([
     getLead(id),
     getHotels(),
     getInvoiceByLeadId(id),
+    getAppSettings(),
   ]);
   const livePackage = lead?.packageId ? await getPackage(lead.packageId) : null;
   const pkg = lead ? resolveLeadPackage(lead, livePackage) : null;
@@ -93,8 +95,10 @@ export default async function BookingDetailPage({
             <EmailSuppliersButton
               lead={lead}
               pkg={pkg}
-              suppliers={suppliers}
               result={getBookingSupplierEmails(lead, pkg, suppliers)}
+              companyName={getDisplayCompanyName(settings)}
+              companyTagline={settings.company.tagline}
+              companyEmail={settings.company.email}
             />
           )}
         </div>

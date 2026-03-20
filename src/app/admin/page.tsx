@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { getLeads, getTours } from "@/lib/db";
+import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { WorldClockWidget } from "@/components/WorldClockWidget";
 import { ExchangeRatesWidget } from "@/components/ExchangeRatesWidget";
 import type { Lead } from "@/lib/types";
@@ -87,7 +88,12 @@ function RecentLeadsCard({ recentLeads }: { recentLeads: Lead[] }) {
 }
 
 export default async function DashboardPage() {
-  const [leads, tours] = await Promise.all([getLeads(), getTours()]);
+  const [leads, tours, settings] = await Promise.all([
+    getLeads(),
+    getTours(),
+    getAppSettings(),
+  ]);
+  const brandName = getDisplayCompanyName(settings);
 
   const activeLeads = leads.filter(
     (l) => l.status !== "won" && l.status !== "lost"
@@ -138,7 +144,7 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">
-          Welcome back to Paraíso Ceylon
+          Welcome back to {brandName}
         </h1>
         <p className="mt-1 text-slate-600">
           Here&apos;s what&apos;s happening with your tours today.

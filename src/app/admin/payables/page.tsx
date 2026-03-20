@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Landmark } from "lucide-react";
+import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { getTours, getLead, getPackage, getHotels, getPayments } from "@/lib/db";
 import { getPayablesForDateRange, getWeekBounds } from "@/lib/payables";
 import { PrintButton } from "./PrintButton";
@@ -30,11 +31,13 @@ export default async function PayablesPage({
   const refDate = weekParam ? new Date(weekParam) : new Date();
   const { startDate, endDate } = getWeekBounds(refDate);
 
-  const [tours, suppliers, payments] = await Promise.all([
+  const [tours, suppliers, payments, settings] = await Promise.all([
     getTours(),
     getHotels(),
     getPayments(),
+    getAppSettings(),
   ]);
+  const brandName = getDisplayCompanyName(settings);
 
   const activeTours = tours.filter((t) => t.status !== "cancelled");
   const paidPayments = payments
@@ -229,7 +232,7 @@ export default async function PayablesPage({
           </div>
 
           <p className="mt-4 text-xs text-stone-500 print:block">
-            Paraíso Ceylon Tours – Payables – {formatWeekLabel(startDate, endDate)}. Use
+            {brandName} – Payables – {formatWeekLabel(startDate, endDate)}. Use
             Print → Save as PDF for bank transfer instructions.
           </p>
         </>

@@ -1,33 +1,19 @@
-"use client";
+import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
+import { AdminShell } from "@/components/AdminShell";
 
-import { Suspense } from "react";
-import { usePathname } from "next/navigation";
-import { Sidebar } from "@/components/Sidebar";
-import { Header } from "@/components/Header";
-import { AdminReleaseNotice } from "@/components/AdminReleaseNotice";
-
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const isAuthSurface = pathname === "/admin/login";
-
-  if (isAuthSurface) {
-    return <>{children}</>;
-  }
+  const settings = await getAppSettings();
 
   return (
-    <div className="flex min-h-screen print:block">
-      <Sidebar />
-      <div className="ml-64 flex flex-1 flex-col min-w-0 print:ml-0">
-        <Suspense fallback={<header className="h-16 border-b border-white/20 bg-white/50" />}>
-          <Header />
-        </Suspense>
-        <AdminReleaseNotice />
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
-      </div>
-    </div>
+    <AdminShell
+      brandName={getDisplayCompanyName(settings)}
+      logoUrl={settings.company.logoUrl}
+    >
+      {children}
+    </AdminShell>
   );
 }

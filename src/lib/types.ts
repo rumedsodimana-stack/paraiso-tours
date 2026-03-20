@@ -238,11 +238,39 @@ export interface Invoice {
 }
 
 export interface Company {
+  displayName?: string;
   companyName: string;
   tagline?: string;
   address?: string;
   phone?: string;
   email?: string;
+  logoUrl?: string;
+}
+
+export interface PortalSettings {
+  topBannerText: string;
+  topBannerSubtext?: string;
+  locationBadgeText?: string;
+  mobileMenuDescription?: string;
+  clientPortalDescription: string;
+  footerExploreTitle: string;
+  footerContactTitle: string;
+  footerBaseTitle: string;
+  footerBaseDescription?: string;
+  footerCtaEyebrow?: string;
+  footerCtaTitle: string;
+  footerCtaDescription?: string;
+  packagesLabel: string;
+  journeyBuilderLabel: string;
+  myBookingsLabel: string;
+  trackBookingLabel: string;
+  copyrightSuffix?: string;
+}
+
+export interface AppSettings {
+  company: Company;
+  portal: PortalSettings;
+  updatedAt: string;
 }
 
 export type EmployeePayType = "salary" | "commission" | "hourly";

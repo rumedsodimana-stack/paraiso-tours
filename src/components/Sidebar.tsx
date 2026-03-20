@@ -46,7 +46,13 @@ const navAfterFinance = [
 
 const financePaths = ["/admin/finance", "/admin/payroll", "/admin/employees"];
 
-export function Sidebar() {
+export function Sidebar({
+  brandName,
+  logoUrl,
+}: {
+  brandName: string;
+  logoUrl?: string;
+}) {
   const pathname = usePathname();
   const isFinanceActive = financePaths.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const [financeOpen, setFinanceOpen] = useState(false);
@@ -66,11 +72,20 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-white/20 bg-white/40 shadow-xl backdrop-blur-xl print:hidden">
       <div className="flex h-16 shrink-0 items-center gap-2 border-b border-white/30 px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-white shadow-lg shadow-teal-500/25">
-          <MapPin className="h-5 w-5" />
+        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-white shadow-lg shadow-teal-500/25">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={brandName}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <MapPin className="h-5 w-5" />
+          )}
         </div>
         <span className="text-lg font-semibold tracking-tight text-stone-800">
-          Paraíso Tours
+          {brandName}
         </span>
       </div>
       <nav className="mt-4 flex flex-1 flex-col gap-1 overflow-auto px-3 pb-4">

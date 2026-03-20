@@ -18,6 +18,7 @@ interface PaymentVoucherDocumentProps {
     address?: string;
     phone?: string;
     email?: string;
+    logoUrl?: string;
   };
 }
 

@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ThemeScript } from "@/components/theme/ThemeScript";
 import { defaultThemeId } from "@/components/theme/theme-config";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -11,10 +12,23 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Paraíso Ceylon Tours | Travel Operations",
-  description: "Booking management, tour packages, and operations for Paraíso Ceylon Tours",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getAppSettings();
+  const brandName = getDisplayCompanyName(settings);
+
+  return {
+    title: `${brandName} | Travel Operations`,
+    description:
+      settings.company.tagline ||
+      `Booking management, tour packages, and operations for ${brandName}`,
+    icons: settings.company.logoUrl
+      ? {
+          icon: [{ url: settings.company.logoUrl }],
+          apple: [{ url: settings.company.logoUrl }],
+        }
+      : undefined,
+  };
+}
 
 export default function RootLayout({
   children,

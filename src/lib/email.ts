@@ -5,27 +5,50 @@
  */
 
 import { Resend } from "resend";
+import { getAppSettings, getDisplayCompanyName } from "./app-config";
 import type { Invoice } from "./types";
 
 const resend = process.env.RESEND_API_KEY?.trim()
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM_EMAIL =
-  process.env.RESEND_FROM_EMAIL?.trim() ||
-  "Paraíso Ceylon Tours <onboarding@resend.dev>";
-
 export function isEmailConfigured(): boolean {
   return resend !== null;
 }
 
-function getBaseUrl(): string {
+async function getEmailBranding() {
+  const settings = await getAppSettings();
+  return {
+    companyName: getDisplayCompanyName(settings),
+    tagline: settings.company.tagline || "",
+    email: settings.company.email || "hello@paraisoceylontours.com",
+  };
+}
+
+function getFromEmail(companyName: string) {
   return (
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000"
+    process.env.RESEND_FROM_EMAIL?.trim() ||
+    `${companyName} <onboarding@resend.dev>`
   );
+}
+
+function getQuestionsLine(branding: Awaited<ReturnType<typeof getEmailBranding>>) {
+  return `Questions? Reply to this email or contact us at ${branding.email}`;
+}
+
+function getSignatureHtml(
+  branding: Awaited<ReturnType<typeof getEmailBranding>>
+) {
+  return `<p style="margin-top: 32px; color: #64748b; font-size: 14px;">— ${escapeHtml(
+    branding.companyName
+  )}<br>${escapeHtml(branding.tagline || branding.companyName)}</p>`;
+}
+
+function getBaseUrl(): string {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configuredUrl) return configuredUrl;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
 }
 
 export interface TourConfirmationParams {
@@ -51,6 +74,7 @@ export async function sendTourConfirmationEmail(
   const { clientName, clientEmail, packageName, startDate, endDate, pax, reference } = params;
   const email = clientEmail?.trim();
   if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
 
   const startFmt = new Date(startDate).toLocaleDateString("en-GB", {
     weekday: "long",
@@ -79,7 +103,7 @@ export async function sendTourConfirmationEmail(
 <body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
   <h2 style="color: #0d9488;">Your tour has been scheduled</h2>
   <p>Hello ${escapeHtml(clientName)},</p>
-  <p>We're excited to confirm your tour with Paraíso Ceylon Tours.</p>
+  <p>We're excited to confirm your tour with ${escapeHtml(branding.companyName)}.</p>
   <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
     <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Package</td><td style="padding: 12px 16px;">${escapeHtml(packageName)}</td></tr>
     <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Start date</td><td style="padding: 12px 16px;">${startFmt}</td></tr>
@@ -88,17 +112,17 @@ export async function sendTourConfirmationEmail(
     ${reference ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Reference</td><td style="padding: 12px 16px; font-mono: monospace;">${escapeHtml(reference)}</td></tr>` : ""}
   </table>
   ${bookingLink ? `<p><a href="${bookingLink}" style="color: #0d9488; font-weight: 600;">View your booking online</a></p>` : ""}
-  <p>Questions? Reply to this email or contact us at hello@paraisoceylontours.com</p>
-  <p style="margin-top: 32px; color: #64748b; font-size: 14px;">— Paraíso Ceylon Tours<br>Crafted journeys across Sri Lanka</p>
+  <p>${escapeHtml(getQuestionsLine(branding))}</p>
+  ${getSignatureHtml(branding)}
 </body>
 </html>
   `.trim();
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
+    const { error } = await resend.emails.send({
+      from: getFromEmail(branding.companyName),
       to: [email],
-      subject: `Tour confirmed: ${packageName} – Paraíso Ceylon Tours`,
+      subject: `Tour confirmed: ${packageName} – ${branding.companyName}`,
       html,
     });
 
@@ -140,6 +164,7 @@ export async function sendBookingRequestConfirmation(
   const { clientName, clientEmail, packageName, reference, travelDate, pax } = params;
   const email = clientEmail?.trim();
   if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
 
   const travelDateFmt = travelDate
     ? new Date(travelDate + "T12:00:00").toLocaleDateString("en-GB", {
@@ -162,7 +187,7 @@ export async function sendBookingRequestConfirmation(
 <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
   <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
     <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Booking received</p>
-    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">Paraíso Ceylon Tours</p>
+    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">${escapeHtml(branding.companyName)}</p>
   </div>
 
   <p style="margin: 0 0 20px 0;">Hello ${escapeHtml(clientName)},</p>
@@ -188,12 +213,12 @@ export async function sendBookingRequestConfirmation(
     <a href="${bookingLink}" style="color: #0d9488; font-weight: 600;">View your bookings</a> &middot; <a href="${viewByRefLink}" style="color: #0d9488; font-weight: 600;">View by reference</a>
   </p>
 
-  <p style="margin: 0 0 8px 0;">Questions? Reply to this email or contact us at hello@paraisoceylontours.com</p>
+  <p style="margin: 0 0 8px 0;">${escapeHtml(getQuestionsLine(branding))}</p>
 
   <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 28px;">
-    <tr><td style="font-size: 15px; font-weight: 700; color: #0d9488;">Paraíso Ceylon Tours</td></tr>
-    <tr><td style="font-size: 13px; color: #64748b;">Crafted journeys across Sri Lanka</td></tr>
-    <tr><td style="font-size: 12px; color: #94a3b8;">hello@paraisoceylontours.com</td></tr>
+    <tr><td style="font-size: 15px; font-weight: 700; color: #0d9488;">${escapeHtml(branding.companyName)}</td></tr>
+    <tr><td style="font-size: 13px; color: #64748b;">${escapeHtml(branding.tagline || branding.companyName)}</td></tr>
+    <tr><td style="font-size: 12px; color: #94a3b8;">${escapeHtml(branding.email)}</td></tr>
   </table>
 </body>
 </html>
@@ -201,7 +226,7 @@ export async function sendBookingRequestConfirmation(
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: getFromEmail(branding.companyName),
       to: [email],
       subject: `Booking received: ${packageName} – ${reference}`,
       html,
@@ -228,6 +253,7 @@ export async function sendTourConfirmationWithInvoice(
   const { clientName, clientEmail, packageName, startDate, endDate, pax, reference, invoice } = params;
   const email = clientEmail?.trim();
   if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
 
   const startFmt = new Date(startDate).toLocaleDateString("en-GB", {
     weekday: "long",
@@ -256,7 +282,7 @@ export async function sendTourConfirmationWithInvoice(
 <body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
   <h2 style="color: #0d9488;">Your tour has been scheduled</h2>
   <p>Hello ${escapeHtml(clientName)},</p>
-  <p>We're excited to confirm your tour with Paraíso Ceylon Tours.</p>
+  <p>We're excited to confirm your tour with ${escapeHtml(branding.companyName)}.</p>
   <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
     <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Package</td><td style="padding: 12px 16px;">${escapeHtml(packageName)}</td></tr>
     <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Start date</td><td style="padding: 12px 16px;">${startFmt}</td></tr>
@@ -266,8 +292,8 @@ export async function sendTourConfirmationWithInvoice(
   </table>
   ${invoice ? `<p>Please find your invoice attached.</p>` : ""}
   ${bookingLink ? `<p><a href="${bookingLink}" style="color: #0d9488; font-weight: 600;">View your booking online</a></p>` : ""}
-  <p>Questions? Reply to this email or contact us at hello@paraisoceylontours.com</p>
-  <p style="margin-top: 32px; color: #64748b; font-size: 14px;">— Paraíso Ceylon Tours<br>Crafted journeys across Sri Lanka</p>
+  <p>${escapeHtml(getQuestionsLine(branding))}</p>
+  ${getSignatureHtml(branding)}
 </body>
 </html>
   `.trim();
@@ -284,9 +310,9 @@ export async function sendTourConfirmationWithInvoice(
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: getFromEmail(branding.companyName),
       to: [email],
-      subject: `Tour confirmed: ${packageName} – Paraíso Ceylon Tours`,
+      subject: `Tour confirmed: ${packageName} – ${branding.companyName}`,
       html,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
@@ -329,7 +355,10 @@ function formatDateLong(d: string): string {
 /**
  * Build professional reservation email body by supplier type.
  */
-function buildSupplierReservationHtml(params: SupplierReservationParams): string {
+function buildSupplierReservationHtml(
+  params: SupplierReservationParams,
+  branding: Awaited<ReturnType<typeof getEmailBranding>>
+): string {
   const {
     supplierName,
     supplierType,
@@ -353,15 +382,15 @@ function buildSupplierReservationHtml(params: SupplierReservationParams): string
   const signature = `
 <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 28px;">
   <tr>
-    <td style="font-size: 15px; font-weight: 700; color: #0d9488;">Paraíso Ceylon Tours</td>
+    <td style="font-size: 15px; font-weight: 700; color: #0d9488;">${escapeHtml(branding.companyName)}</td>
   </tr>
   <tr><td style="height: 4px;"></td></tr>
   <tr>
-    <td style="font-size: 13px; color: #64748b;">Crafted journeys across Sri Lanka</td>
+    <td style="font-size: 13px; color: #64748b;">${escapeHtml(branding.tagline || branding.companyName)}</td>
   </tr>
   <tr><td style="height: 8px;"></td></tr>
   <tr>
-    <td style="font-size: 12px; color: #94a3b8;">hello@paraisoceylontours.com</td>
+    <td style="font-size: 12px; color: #94a3b8;">${escapeHtml(branding.email)}</td>
   </tr>
 </table>
   `.trim();
@@ -377,7 +406,7 @@ function buildSupplierReservationHtml(params: SupplierReservationParams): string
 <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
   <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
     <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Reservation Request</p>
-    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">Paraíso Ceylon Tours</p>
+    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">${escapeHtml(branding.companyName)}</p>
   </div>
 
   <p style="margin: 0 0 20px 0;">Dear ${escapeHtml(supplierName)},</p>
@@ -398,7 +427,7 @@ function buildSupplierReservationHtml(params: SupplierReservationParams): string
     <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Accommodation</td></tr>
     <tr><td style="padding: 12px 18px; color: #64748b;">Room / type</td><td style="padding: 12px 18px;">${escapeHtml(optionLabel)}</td></tr>
     <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Billing</td></tr>
-    <tr><td style="padding: 12px 18px; color: #64748b;">Bill to</td><td style="padding: 12px 18px; font-weight: 600; color: #0d9488;">Paraíso Ceylon Tours</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Bill to</td><td style="padding: 12px 18px; font-weight: 600; color: #0d9488;">${escapeHtml(branding.companyName)}</td></tr>
   </table>
 
   <p style="margin: 0 0 24px 0;">
@@ -423,7 +452,7 @@ function buildSupplierReservationHtml(params: SupplierReservationParams): string
 <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
   <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
     <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Transport Reservation</p>
-    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">Paraíso Ceylon Tours</p>
+    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">${escapeHtml(branding.companyName)}</p>
   </div>
 
   <p style="margin: 0 0 20px 0;">Dear ${escapeHtml(supplierName)},</p>
@@ -444,7 +473,7 @@ function buildSupplierReservationHtml(params: SupplierReservationParams): string
     <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Vehicle / service</td></tr>
     <tr><td style="padding: 12px 18px; color: #64748b;">Type</td><td style="padding: 12px 18px;">${escapeHtml(optionLabel)}</td></tr>
     <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Billing</td></tr>
-    <tr><td style="padding: 12px 18px; color: #64748b;">Bill to</td><td style="padding: 12px 18px; font-weight: 600; color: #0d9488;">Paraíso Ceylon Tours</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Bill to</td><td style="padding: 12px 18px; font-weight: 600; color: #0d9488;">${escapeHtml(branding.companyName)}</td></tr>
   </table>
 
   <p style="margin: 0 0 24px 0;">
@@ -469,7 +498,7 @@ function buildSupplierReservationHtml(params: SupplierReservationParams): string
 <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
   <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
     <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Meal / Catering Reservation</p>
-    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">Paraíso Ceylon Tours</p>
+    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">${escapeHtml(branding.companyName)}</p>
   </div>
 
   <p style="margin: 0 0 20px 0;">Dear ${escapeHtml(supplierName)},</p>
@@ -490,7 +519,7 @@ function buildSupplierReservationHtml(params: SupplierReservationParams): string
     <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Meal plan</td></tr>
     <tr><td style="padding: 12px 18px; color: #64748b;">Type</td><td style="padding: 12px 18px;">${escapeHtml(optionLabel)}</td></tr>
     <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Billing</td></tr>
-    <tr><td style="padding: 12px 18px; color: #64748b;">Bill to</td><td style="padding: 12px 18px; font-weight: 600; color: #0d9488;">Paraíso Ceylon Tours</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Bill to</td><td style="padding: 12px 18px; font-weight: 600; color: #0d9488;">${escapeHtml(branding.companyName)}</td></tr>
   </table>
 
   <p style="margin: 0 0 24px 0;">
@@ -516,11 +545,12 @@ export async function sendSupplierReservationEmail(
     return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
   }
 
-  const { supplierEmail, supplierName, supplierType, clientName, reference } = params;
+  const { supplierEmail, supplierType, clientName, reference } = params;
   const email = supplierEmail?.trim();
   if (!email) return { ok: false, error: "No supplier email" };
+  const branding = await getEmailBranding();
 
-  const html = buildSupplierReservationHtml(params);
+  const html = buildSupplierReservationHtml(params, branding);
 
   const subject =
     supplierType === "Accommodation"
@@ -531,7 +561,7 @@ export async function sendSupplierReservationEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: getFromEmail(branding.companyName),
       to: [email],
       subject,
       html,
@@ -568,6 +598,7 @@ export async function sendPaymentReceiptEmail(
   const { clientEmail, clientName, amount, currency, description, reference, date } = params;
   const email = clientEmail?.trim();
   if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
 
   const dateFmt = date ? new Date(date).toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
@@ -589,17 +620,17 @@ export async function sendPaymentReceiptEmail(
     ${reference ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Reference</td><td style="padding: 12px 16px; font-mono: monospace;">${escapeHtml(reference)}</td></tr>` : ""}
   </table>
   <p>Your journey is now marked as completed and paid. We look forward to welcoming you.</p>
-  <p>Questions? Reply to this email or contact us at hello@paraisoceylontours.com</p>
-  <p style="margin-top: 32px; color: #64748b; font-size: 14px;">— Paraíso Ceylon Tours<br>Crafted journeys across Sri Lanka</p>
+  <p>${escapeHtml(getQuestionsLine(branding))}</p>
+  ${getSignatureHtml(branding)}
 </body>
 </html>
   `.trim();
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: getFromEmail(branding.companyName),
       to: [email],
-      subject: `Payment received – ${description} – Paraíso Ceylon Tours`,
+      subject: `Payment received – ${description} – ${branding.companyName}`,
       html,
     });
 
@@ -610,4 +641,3 @@ export async function sendPaymentReceiptEmail(
     return { ok: false, error: msg };
   }
 }
-

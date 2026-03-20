@@ -199,6 +199,13 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+  id TEXT PRIMARY KEY,
+  company JSONB NOT NULL DEFAULT '{}'::jsonb,
+  portal JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 ALTER TABLE leads
   ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 

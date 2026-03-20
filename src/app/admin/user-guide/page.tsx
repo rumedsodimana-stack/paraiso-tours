@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   BookOpen,
@@ -12,13 +13,22 @@ import {
   ChevronRight,
   CheckCircle2,
 } from "lucide-react";
+import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 
-export const metadata = {
-  title: "User Guide | Paraíso Ceylon Tours",
-  description: "Complete guide to using the Paraíso Ceylon Tours booking and operations app",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getAppSettings();
+  const brandName = getDisplayCompanyName(settings);
 
-export default function UserGuidePage() {
+  return {
+    title: `User Guide | ${brandName}`,
+    description: `Complete guide to using the ${brandName} booking and operations app`,
+  };
+}
+
+export default async function UserGuidePage() {
+  const settings = await getAppSettings();
+  const brandName = getDisplayCompanyName(settings);
+
   return (
     <div className="mx-auto max-w-4xl space-y-12">
       <div className="rounded-2xl border border-teal-200/60 bg-teal-50/30 p-8">
@@ -28,7 +38,7 @@ export default function UserGuidePage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-stone-900">
-              Paraíso Ceylon Tours — User Guide
+              {brandName} — User Guide
             </h1>
             <p className="mt-2 text-stone-600">
               Everything you need to know to use this app from A to Z. Use this guide to onboard
@@ -85,7 +95,7 @@ export default function UserGuidePage() {
           Overview
         </h2>
         <p className="mt-4 text-stone-600">
-          Paraíso Ceylon Tours is a tour booking and operations app for Sri Lanka. It has two main
+          {brandName} is a tour booking and operations app for Sri Lanka. It has two main
           parts: the <strong>Client Portal</strong> (where guests browse packages, book, and view their
           bookings) and the <strong>Admin Portal</strong> (where staff manage bookings, packages,
           suppliers, tours, quotations, and payments).
