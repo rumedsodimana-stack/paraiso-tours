@@ -22,7 +22,10 @@ export function isEmailConfigured(): boolean {
  * Rate-limit (429) and client errors (4xx) are not retried.
  */
 async function withEmailRetry<T>(
-  fn: () => Promise<{ data: T | null; error: { statusCode?: number; message: string } | null }>,
+  fn: () => Promise<{
+    data: T | null;
+    error: { statusCode?: number | null; message: string } | null;
+  }>,
   maxAttempts = 3
 ): Promise<{ data: T | null; error: string | null }> {
   let lastError = "Unknown error";

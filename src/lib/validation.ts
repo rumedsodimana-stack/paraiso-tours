@@ -9,7 +9,7 @@ export const clientBookingSchema = z.object({
   pax: z.number().int().min(1, "At least 1 guest required").max(100).optional(),
   notes: z.string().max(2000).optional(),
   selectedAccommodationOptionId: z.string().max(200).optional(),
-  selectedAccommodationByNight: z.record(z.string()).optional(),
+  selectedAccommodationByNight: z.record(z.string(), z.string()).optional(),
   selectedTransportOptionId: z.string().max(200).optional(),
   selectedMealOptionId: z.string().max(200).optional(),
   totalPrice: z.number().finite().optional(),
@@ -59,5 +59,5 @@ export function formDataToObject(
 
 // Helper: return first Zod error message as a string
 export function zodErrorMessage(error: z.ZodError): string {
-  return error.errors[0]?.message ?? "Validation failed";
+  return error.issues[0]?.message ?? "Validation failed";
 }
