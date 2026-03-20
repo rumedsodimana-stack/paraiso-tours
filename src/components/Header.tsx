@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell } from "lucide-react";
+import { APP_RELEASE } from "@/lib/app-release";
 import { GlobalSearch } from "./GlobalSearch";
 import { AdminLogoutButton } from "./AdminLogoutButton";
 
@@ -11,6 +12,9 @@ export function Header({ title }: { title?: string }) {
         {title || "Dashboard"}
       </h1>
       <div className="flex items-center gap-4">
+        <span className="rounded-full border border-white/40 bg-white/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+          v{APP_RELEASE.version}
+        </span>
         <GlobalSearch />
         <button className="relative rounded-xl p-2 text-stone-500 hover:bg-white/50 hover:text-stone-700 backdrop-blur-sm transition">
           <Bell className="h-5 w-5" />

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
 import { getSafeAdminNextPath } from "@/lib/admin-session";
+import { APP_RELEASE } from "@/lib/app-release";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -55,6 +56,9 @@ export default function AdminLoginPage() {
               </h2>
               <p className="mt-3 text-sm leading-6 text-stone-600">
                 Use the configured admin password to continue.
+              </p>
+              <p className="mt-2 text-xs font-medium uppercase tracking-[0.2em] text-stone-400">
+                Live version v{APP_RELEASE.version}
               </p>
 
               <form
@@ -118,6 +122,12 @@ export default function AdminLoginPage() {
                   {isPending ? "Signing in…" : "Enter admin"}
                   <ArrowRight className="h-4 w-4" />
                 </button>
+
+                <div className="rounded-[1rem] border border-[#e6dac6] bg-[#fbf7f1] px-4 py-3 text-sm text-stone-600">
+                  After login, users are notified about the current deployed
+                  version once for this release, and all live booking data stays
+                  preserved.
+                </div>
               </form>
             </div>
           </div>

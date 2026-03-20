@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
+import { AdminReleaseNotice } from "@/components/AdminReleaseNotice";
 
 export default function DashboardLayout({
   children,
@@ -24,6 +25,7 @@ export default function DashboardLayout({
         <Suspense fallback={<header className="h-16 border-b border-white/20 bg-white/50" />}>
           <Header />
         </Suspense>
+        <AdminReleaseNotice />
         <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
