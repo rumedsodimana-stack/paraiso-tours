@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS leads (
   selected_transport_option_id TEXT,
   selected_meal_option_id TEXT,
   total_price NUMERIC,
+  package_snapshot JSONB,
   archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS tours (
   status TEXT NOT NULL,
   total_value NUMERIC NOT NULL,
   currency TEXT NOT NULL,
+  package_snapshot JSONB,
   client_confirmation_sent_at TEXT,
   supplier_notifications_sent_at TEXT,
   payment_receipt_sent_at TEXT,
@@ -185,8 +187,23 @@ CREATE TABLE IF NOT EXISTS todos (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id TEXT PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  details JSONB NOT NULL DEFAULT '[]',
+  metadata JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 ALTER TABLE leads
   ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
+ALTER TABLE leads
+  ADD COLUMN IF NOT EXISTS package_snapshot JSONB;
 
 ALTER TABLE packages
   ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
@@ -196,6 +213,9 @@ ALTER TABLE tours
 
 ALTER TABLE tours
   ADD COLUMN IF NOT EXISTS availability_warnings JSONB NOT NULL DEFAULT '[]';
+
+ALTER TABLE tours
+  ADD COLUMN IF NOT EXISTS package_snapshot JSONB;
 
 ALTER TABLE hotels
   ADD COLUMN IF NOT EXISTS max_concurrent_bookings INTEGER;
@@ -240,3 +260,5 @@ CREATE INDEX IF NOT EXISTS idx_employees_archived_at
   ON employees(archived_at);
 CREATE INDEX IF NOT EXISTS idx_leads_archived_at
   ON leads(archived_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity
+  ON audit_logs(entity_type, entity_id, created_at DESC);

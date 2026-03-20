@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MapPin, Mail, Phone } from "lucide-react";
+import { Compass, Mail, Phone, Waves, Mountain, Landmark } from "lucide-react";
 import { ClientHeader } from "./ClientHeader";
 
 export default function ClientLayout({
@@ -8,43 +8,118 @@ export default function ClientLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-amber-50/30 to-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#f6efe4] text-stone-800">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at 12% 12%, rgba(210, 164, 87, 0.22), transparent 26%), radial-gradient(circle at 82% 8%, rgba(18, 52, 59, 0.16), transparent 24%), radial-gradient(circle at 86% 62%, rgba(38, 111, 118, 0.14), transparent 26%), linear-gradient(180deg, rgba(252,246,238,0.96), rgba(246,239,228,1))",
+        }}
+      />
       <ClientHeader />
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">{children}</main>
-      <footer className="mt-auto border-t border-teal-200/50 bg-white/50 backdrop-blur-xl shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.04)]">
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+      <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+        {children}
+      </main>
+      <footer className="relative mt-auto border-t border-[#d9c6ad] bg-[#f8f1e7]/92 shadow-[0_-10px_40px_-30px_rgba(43,32,15,0.55)] backdrop-blur-xl">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <div className="mb-8 grid gap-4 rounded-[2rem] border border-[#d9c6ad] bg-[#12343b] p-6 text-[#f6ead6] shadow-[0_24px_60px_-28px_rgba(18,52,59,0.95)] lg:grid-cols-[1.2fr_0.8fr] lg:p-8">
+            <div>
+              <p className="text-xs uppercase tracking-[0.32em] text-[#dcb87b]">
+                Plan With Context
+              </p>
+              <h3 className="mt-3 text-2xl font-semibold tracking-tight">
+                Build a Sri Lanka trip that flows from arrival to final beach day
+              </h3>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#dfd7c6]">
+                Use the portal to compare routes, lock in accommodation style,
+                and keep your booking visible after checkout.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <div className="rounded-3xl border border-white/10 bg-white/8 px-4 py-4">
+                <Mountain className="h-5 w-5 text-[#dcb87b]" />
+                <p className="mt-3 text-sm font-medium">Hill-country trains</p>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-white/8 px-4 py-4">
+                <Waves className="h-5 w-5 text-[#dcb87b]" />
+                <p className="mt-3 text-sm font-medium">South and east coast stays</p>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-white/8 px-4 py-4">
+                <Landmark className="h-5 w-5 text-[#dcb87b]" />
+                <p className="mt-3 text-sm font-medium">Cultural triangle routes</p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-teal-700 text-white">
-                  <MapPin className="h-4 w-4" />
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6]">
+                  <Compass className="h-4 w-4" />
                 </div>
-                <span className="font-semibold text-stone-800">Paraíso Ceylon Tours</span>
+                <span className="font-semibold text-stone-900">
+                  Paraíso Ceylon Tours
+                </span>
               </div>
-              <p className="mt-3 text-sm text-stone-600">
-                Crafted journeys across Sri Lanka
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                A client portal for tracking Sri Lanka routes, comparing package
+                styles, and keeping booking details close at hand.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold text-stone-800">Explore</h4>
+              <h4 className="font-semibold text-stone-900">Explore</h4>
               <ul className="mt-3 space-y-2">
-                <li><Link href="/packages" className="text-sm text-stone-600 transition hover:text-teal-600">Tour packages</Link></li>
-                <li><Link href="/my-bookings" className="text-sm text-stone-600 transition hover:text-teal-600">My Bookings</Link></li>
+                <li>
+                  <Link
+                    href="/packages"
+                    className="text-sm text-stone-600 transition hover:text-[#12343b]"
+                  >
+                    Tour packages
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/journey-builder"
+                    className="text-sm text-stone-600 transition hover:text-[#12343b]"
+                  >
+                    Build your journey
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/my-bookings"
+                    className="text-sm text-stone-600 transition hover:text-[#12343b]"
+                  >
+                    My bookings
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-stone-800">Contact</h4>
+              <h4 className="font-semibold text-stone-900">Contact</h4>
               <ul className="mt-3 space-y-2 text-sm text-stone-600">
-                <li className="flex items-center gap-2"><Mail className="h-4 w-4 text-teal-500" /> hello@paraisoceylontours.com</li>
-                <li className="flex items-center gap-2"><Phone className="h-4 w-4 text-teal-500" /> +94 11 234 5678</li>
+                <li className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-[#b67833]" />
+                  hello@paraisoceylontours.com
+                </li>
+                <li className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-[#b67833]" />
+                  +94 11 234 5678
+                </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-stone-800">Location</h4>
-              <p className="mt-3 text-sm text-stone-600">Colombo, Sri Lanka</p>
+              <h4 className="font-semibold text-stone-900">Base</h4>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                Colombo, Sri Lanka
+                <br />
+                Routing support from arrival to departure
+              </p>
             </div>
           </div>
-          <div className="mt-10 border-t border-teal-200/50 pt-8 text-center text-sm text-stone-500">
+
+          <div className="mt-10 border-t border-[#d9c6ad] pt-8 text-center text-sm text-stone-500">
             © {new Date().getFullYear()} Paraíso Ceylon Tours · Sri Lanka
           </div>
         </div>

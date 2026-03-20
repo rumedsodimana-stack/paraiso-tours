@@ -2,7 +2,20 @@ import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { supabase } from "./supabase";
 import { generateDocumentNumber } from "./document-number";
-import type { Lead, TourPackage, Tour, HotelSupplier, Invoice, Payment, Employee, PayrollRun, Todo } from "./types";
+import { resolveLeadPackage, resolveTourPackage } from "./package-snapshot";
+import type {
+  AuditEntityType,
+  AuditLog,
+  Lead,
+  TourPackage,
+  Tour,
+  HotelSupplier,
+  Invoice,
+  Payment,
+  Employee,
+  PayrollRun,
+  Todo,
+} from "./types";
 import { mockPackages } from "./mock-data";
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -20,7 +33,18 @@ function invalidateLocalCache() {
 }
 
 // In-memory store for Vercel (read-only filesystem). Only packages have data; all else is empty.
-let memoryStore: { leads: Lead[]; packages: TourPackage[]; tours: Tour[]; hotels: HotelSupplier[]; invoices: Invoice[]; payments: Payment[]; employees: Employee[]; payrollRuns: PayrollRun[]; todos: Todo[] } | null = null;
+let memoryStore: {
+  leads: Lead[];
+  packages: TourPackage[];
+  tours: Tour[];
+  hotels: HotelSupplier[];
+  invoices: Invoice[];
+  payments: Payment[];
+  employees: Employee[];
+  payrollRuns: PayrollRun[];
+  todos: Todo[];
+  auditLogs: AuditLog[];
+} | null = null;
 function getMemoryStore() {
   if (!memoryStore) {
     memoryStore = {
@@ -33,9 +57,16 @@ function getMemoryStore() {
       employees: [],
       payrollRuns: [],
       todos: [],
+      auditLogs: [],
     };
   }
   return memoryStore;
+}
+
+export interface AuditLogFilter {
+  entityTypes?: AuditEntityType[];
+  entityIds?: string[];
+  limit?: number;
 }
 
 async function ensureDataDir() {
@@ -59,6 +90,7 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
     if (file === "employees.json") return store.employees as T;
     if (file === "payroll.json") return store.payrollRuns as T;
     if (file === "todos.json") return store.todos as T;
+    if (file === "audit.json") return store.auditLogs as T;
     return fallback;
   }
   await ensureDataDir();
@@ -83,6 +115,7 @@ async function writeJson<T>(file: string, data: T): Promise<void> {
     else if (file === "employees.json") store.employees = data as Employee[];
     else if (file === "payroll.json") store.payrollRuns = data as PayrollRun[];
     else if (file === "todos.json") store.todos = data as Todo[];
+    else if (file === "audit.json") store.auditLogs = data as AuditLog[];
     return;
   }
   await ensureDataDir();
@@ -107,6 +140,12 @@ async function maybeSeed() {
   await writeJson("packages.json", pkgs);
   await writeJson("tours.json", []);
   await writeJson("hotels.json", []);
+  await writeJson("invoices.json", []);
+  await writeJson("payments.json", []);
+  await writeJson("employees.json", []);
+  await writeJson("payroll.json", []);
+  await writeJson("todos.json", []);
+  await writeJson("audit.json", []);
   await writeFile(flagPath, "seeded", "utf-8");
 }
 
@@ -676,6 +715,22 @@ export async function updateInvoice(id: string, data: Partial<Omit<Invoice, "id"
   return invoices[idx];
 }
 
+export async function deleteInvoice(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deleteInvoice(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const invoices = await getInvoices();
+  const filtered = invoices.filter((invoice) => invoice.id !== id);
+  if (filtered.length === invoices.length) return false;
+  await writeJson("invoices.json", filtered);
+  return true;
+}
+
 // --- EMPLOYEES ---
 export async function getEmployees(): Promise<Employee[]> {
   if (USE_SUPABASE) {
@@ -902,6 +957,22 @@ export async function updatePayment(id: string, data: Partial<Omit<Payment, "id"
   return payments[idx];
 }
 
+export async function deletePayment(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deletePayment(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const payments = await getPayments();
+  const filtered = payments.filter((payment) => payment.id !== id);
+  if (filtered.length === payments.length) return false;
+  await writeJson("payments.json", filtered);
+  return true;
+}
+
 // --- TODOS ---
 export async function getTodos(): Promise<Todo[]> {
   if (USE_SUPABASE) {
@@ -970,9 +1041,66 @@ export async function deleteTodo(id: string): Promise<boolean> {
   return true;
 }
 
+// --- AUDIT LOGS ---
+export async function getAuditLogs(
+  filter?: AuditLogFilter
+): Promise<AuditLog[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getAuditLogs(filter);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  let logs = await readJson<AuditLog[]>("audit.json", []);
+  logs = logs.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  if (filter?.entityTypes?.length) {
+    const allowedTypes = new Set(filter.entityTypes);
+    logs = logs.filter((log) => allowedTypes.has(log.entityType));
+  }
+  if (filter?.entityIds?.length) {
+    const allowedIds = new Set(filter.entityIds);
+    logs = logs.filter((log) => allowedIds.has(log.entityId));
+  }
+  if (filter?.limit) {
+    logs = logs.slice(0, filter.limit);
+  }
+  return logs;
+}
+
+export async function createAuditLog(
+  data: Omit<AuditLog, "id" | "createdAt">
+): Promise<AuditLog> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createAuditLog(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const logs = await getAuditLogs();
+  const log: AuditLog = {
+    ...data,
+    id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    createdAt: new Date().toISOString(),
+  };
+  logs.unshift(log);
+  await writeJson("audit.json", logs);
+  return log;
+}
+
 // --- CLIENT PORTAL ---
 export type ClientBookingResult =
-  | { tour: Tour; package: TourPackage }
+  | {
+      tour: Tour;
+      package: TourPackage;
+      invoice: Invoice | null;
+      payment: Payment | null;
+    }
   | { pending: true; lead: Lead; package: TourPackage | null };
 
 export async function getTourForClient(
@@ -997,9 +1125,14 @@ export async function getTourForClient(
     const lead = await getLead(tour.leadId);
     if (!lead) return null;
     if (verifyEmail && lead.email.toLowerCase() !== emailNorm) return null;
-    const pkg = await getPackage(tour.packageId);
+    const livePackage = await getPackage(tour.packageId);
+    const pkg = resolveTourPackage(tour, livePackage, lead);
     if (!pkg) return null;
-    return { tour, package: pkg };
+    const [invoice, payment] = await Promise.all([
+      getInvoiceByLeadId(lead.id),
+      getPaymentByTourId(tour.id),
+    ]);
+    return { tour, package: pkg, invoice, payment };
   }
 
   // Try as lead reference (e.g. PCT-20260312-A3B7)
@@ -1011,19 +1144,30 @@ export async function getTourForClient(
   const tours = await getTours();
   const linkedTour = tours.find((t) => t.leadId === lead.id);
   if (linkedTour) {
-    const pkg = await getPackage(linkedTour.packageId);
+    const livePackage = await getPackage(linkedTour.packageId);
+    const pkg = resolveTourPackage(linkedTour, livePackage, lead);
     if (!pkg) return null;
-    return { tour: linkedTour, package: pkg };
+    const [invoice, payment] = await Promise.all([
+      getInvoiceByLeadId(lead.id),
+      getPaymentByTourId(linkedTour.id),
+    ]);
+    return { tour: linkedTour, package: pkg, invoice, payment };
   }
 
   // Pending request – no tour yet
-  const pkg = lead.packageId ? await getPackage(lead.packageId) : null;
+  const livePackage = lead.packageId ? await getPackage(lead.packageId) : null;
+  const pkg = resolveLeadPackage(lead, livePackage);
   return { pending: true, lead, package: pkg };
 }
 
 export async function getClientBookings(email: string): Promise<{
   requests: Lead[];
-  tours: { tour: Tour; package: TourPackage }[];
+  tours: {
+    tour: Tour;
+    package: TourPackage;
+    invoice: Invoice | null;
+    payment: Payment | null;
+  }[];
 }> {
   if (USE_SUPABASE) {
     try {
@@ -1046,10 +1190,23 @@ export async function getClientBookings(email: string): Promise<{
   const tourIdsWithTour = new Set(clientTours.map((t) => t.leadId));
   const requests = clientLeads.filter((l) => !tourIdsWithTour.has(l.id));
 
-  const tourWithPackages: { tour: Tour; package: TourPackage }[] = [];
+  const tourWithPackages: {
+    tour: Tour;
+    package: TourPackage;
+    invoice: Invoice | null;
+    payment: Payment | null;
+  }[] = [];
   for (const t of clientTours) {
-    const pkg = await getPackage(t.packageId);
-    if (pkg) tourWithPackages.push({ tour: t, package: pkg });
+    const [livePackage, invoice, payment, lead] = await Promise.all([
+      getPackage(t.packageId),
+      getInvoiceByLeadId(t.leadId),
+      getPaymentByTourId(t.id),
+      getLead(t.leadId),
+    ]);
+    const pkg = resolveTourPackage(t, livePackage, lead);
+    if (pkg) {
+      tourWithPackages.push({ tour: t, package: pkg, invoice, payment });
+    }
   }
 
   return {

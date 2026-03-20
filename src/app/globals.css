@@ -1,3 +1,4 @@
+@import "maplibre-gl/dist/maplibre-gl.css";
 @import "tailwindcss";
 
 :root {
@@ -616,4 +617,164 @@ body::after {
 
 [data-theme] .to-white {
   --tw-gradient-to: rgb(var(--surface-strong-rgb)) var(--tw-gradient-to-position) !important;
+}
+
+.journey-map-shell .maplibregl-canvas-container,
+.journey-map-shell .maplibregl-canvas {
+  border-radius: 1.8rem;
+}
+
+.journey-map-shell .maplibregl-ctrl-group {
+  border: 1px solid rgba(216, 196, 168, 0.9);
+  box-shadow: 0 18px 40px -30px rgba(18, 52, 59, 0.7);
+}
+
+.journey-map-shell .maplibregl-ctrl button {
+  background: rgba(255, 248, 234, 0.95);
+}
+
+.journey-map-shell .maplibregl-ctrl button .maplibregl-ctrl-icon {
+  filter: saturate(0.8);
+}
+
+.journey-map-shell .maplibregl-compact {
+  background: rgba(255, 248, 234, 0.9);
+  border-radius: 999px;
+  color: rgb(68 64 60);
+}
+
+.journey-map-marker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.journey-map-marker__pulse {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  height: 2.8rem;
+  width: 2.8rem;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(220, 184, 123, 0.42);
+  animation: journey-map-pulse 1.8s ease-out infinite;
+}
+
+.journey-map-marker__dot {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  height: 1.25rem;
+  width: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
+  color: rgb(68 64 60);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 14px 34px -24px rgba(18, 52, 59, 0.85);
+}
+
+.journey-map-marker__label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 0.4rem);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid rgba(234, 216, 188, 0.95);
+  background: rgba(255, 248, 234, 0.96);
+  padding: 0.22rem 0.55rem;
+  color: rgb(68 64 60);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 18px 36px -26px rgba(18, 52, 59, 0.72);
+}
+
+.journey-map-marker[data-state="airport"] .journey-map-marker__dot {
+  height: 1.65rem;
+  width: 1.65rem;
+  background: rgb(18 52 59);
+  color: rgb(246 234 214);
+}
+
+.journey-map-marker[data-state="preview"] .journey-map-marker__dot {
+  height: 1.9rem;
+  width: 1.9rem;
+  background: rgb(255 243 223);
+  border-color: rgb(122 74 31);
+  color: rgb(122 74 31);
+}
+
+.journey-map-marker[data-state="route"] .journey-map-marker__dot {
+  height: 1.6rem;
+  width: 1.6rem;
+  background: rgb(18 52 59);
+  color: rgb(246 234 214);
+}
+
+.journey-map-marker[data-state="suggested"] .journey-map-marker__dot {
+  height: 1.5rem;
+  width: 1.5rem;
+  background: rgb(246 234 213);
+  border-color: rgb(207 165 103);
+  color: rgb(18 52 59);
+}
+
+.journey-map-marker[data-state="browse"] .journey-map-marker__dot {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(148, 163, 184, 0.95);
+}
+
+.journey-map-legend {
+  display: inline-block;
+  height: 0.8rem;
+  width: 0.8rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.journey-map-legend[data-state="preview"] {
+  background: rgb(255 243 223);
+  border-color: rgb(122 74 31);
+}
+
+.journey-map-legend[data-state="route"] {
+  background: rgb(18 52 59);
+}
+
+.journey-map-legend[data-state="suggested"] {
+  background: rgb(246 234 213);
+  border-color: rgb(207 165 103);
+}
+
+.journey-map-legend[data-state="browse"] {
+  border-color: rgba(148, 163, 184, 0.95);
+}
+
+@keyframes journey-map-pulse {
+  0% {
+    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+
+  70% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.25);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.35);
+  }
 }

@@ -1,7 +1,50 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Calendar, Users, Check, X, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  Check,
+  Clock3,
+  CreditCard,
+  FileText,
+  MapPin,
+  Users,
+  X,
+} from "lucide-react";
 import { getTourForClient } from "@/lib/db";
+import { getClientPackageVisual, homeHeroScene } from "../../client-visuals";
+
+function formatLongDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatShortDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function toLabel(value: string) {
+  return value.replace(/_/g, " ").replace(/-/g, " ");
+}
+
+const statusColors: Record<string, string> = {
+  scheduled: "bg-sky-100 text-sky-800",
+  confirmed: "bg-emerald-100 text-emerald-800",
+  "in-progress": "bg-amber-100 text-amber-800",
+  completed: "bg-stone-100 text-stone-700",
+  cancelled: "bg-rose-100 text-rose-800",
+  pending_payment: "bg-amber-100 text-amber-800",
+  paid: "bg-emerald-100 text-emerald-800",
+  pending: "bg-amber-100 text-amber-800",
+};
 
 export default async function ClientBookingPage({
   params,
@@ -18,187 +61,346 @@ export default async function ClientBookingPage({
     redirect("/?error=notfound");
   }
 
-  // Pending request – show status until service provider approves
   if ("pending" in result && result.pending) {
     const { lead, package: pkg } = result;
     const displayRef = lead.reference ?? ref;
+    const visual = pkg ? getClientPackageVisual(pkg) : homeHeroScene;
+
     return (
-      <div className="space-y-8">
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700"
-          >
-            ← Back to lookup
-          </Link>
-        </div>
-        <div className="rounded-2xl border border-white/50 bg-white/70 p-8 shadow-xl backdrop-blur-xl">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-stone-500">Booking reference {displayRef}</p>
-              <h1 className="mt-1 text-2xl font-bold text-stone-900">
-                {pkg?.name ?? lead.destination ?? "Tour request"}
+      <div className="space-y-8 pb-10">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-full border border-[#ddc8b0] bg-white/70 px-4 py-2 text-sm font-medium text-stone-700 backdrop-blur-sm transition hover:text-[#12343b]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to lookup
+        </Link>
+
+        <section
+          className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_28px_70px_-34px_rgba(18,52,59,0.95)]"
+          style={{
+            backgroundImage: `linear-gradient(120deg, rgba(11,33,38,0.92) 10%, rgba(11,33,38,0.64) 48%, rgba(11,33,38,0.22) 100%), url(${visual.imageUrl})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          <div className="relative grid gap-8 px-6 py-8 sm:px-8 sm:py-10 lg:grid-cols-[1.1fr_0.9fr] lg:px-10 lg:py-12">
+            <div className="max-w-3xl">
+              <p className="text-xs uppercase tracking-[0.28em] text-[#e5c48e]">
+                Booking request
+              </p>
+              <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+                Awaiting team approval
               </h1>
-              <p className="mt-2 text-stone-600">Dear {lead.name},</p>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#e5dccd] sm:text-base">
+                Your request is in the queue. Once the admin team approves and
+                schedules it, this page will turn into the live trip view.
+              </p>
+
+              <div className="mt-6 inline-flex rounded-[1.4rem] border border-white/12 bg-white/10 px-5 py-4 backdrop-blur-sm">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-[#e5c48e]">
+                    Reference
+                  </p>
+                  <p className="mt-2 font-mono text-2xl font-semibold text-white">
+                    {displayRef}
+                  </p>
+                </div>
+              </div>
             </div>
-            <span className="rounded-full bg-amber-100 px-4 py-2 text-sm font-medium text-amber-800">
-              Pending approval
-            </span>
+
+            <div className="rounded-[1.75rem] border border-white/12 bg-white/10 p-6 backdrop-blur-md">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-[#e5c48e]">
+                    Request status
+                  </p>
+                  <p className="mt-2 text-xl font-semibold text-white">
+                    {pkg?.name ?? lead.destination ?? "Tour request"}
+                  </p>
+                </div>
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-800">
+                  Pending
+                </span>
+              </div>
+
+              <div className="mt-6 grid gap-3">
+                {lead.travelDate ? (
+                  <div className="rounded-[1.2rem] bg-white/10 px-4 py-3 text-sm text-[#ece1cf]">
+                    Preferred date: {formatShortDate(lead.travelDate)}
+                  </div>
+                ) : null}
+                {lead.pax ? (
+                  <div className="rounded-[1.2rem] bg-white/10 px-4 py-3 text-sm text-[#ece1cf]">
+                    Travellers: {lead.pax}
+                  </div>
+                ) : null}
+                <div className="rounded-[1.2rem] bg-white/10 px-4 py-3 text-sm text-[#ece1cf]">
+                  We&apos;ll notify you when this turns into a scheduled tour.
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="mt-6 text-stone-600">
-            Your booking request has been received and is awaiting approval from our team.
-            We&apos;ll send you a confirmation and full itinerary once your tour has been approved.
-          </p>
-          {pkg && (
-            <div className="mt-6 rounded-xl border border-stone-100 bg-white/50 p-4">
-              <h3 className="font-medium text-stone-900">{pkg.name}</h3>
-              <p className="mt-1 text-sm text-stone-600">{pkg.description}</p>
-            </div>
-          )}
-        </div>
+        </section>
+
+        {pkg ? (
+          <section className="rounded-[2rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm sm:p-8">
+            <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+              Requested route
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900">
+              {pkg.name}
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-stone-600">
+              {pkg.description}
+            </p>
+          </section>
+        ) : null}
       </div>
     );
   }
 
-  const { tour, package: pkg } = result as { tour: import("@/lib/types").Tour; package: import("@/lib/types").TourPackage };
+  if (!("tour" in result)) {
+    redirect("/?error=notfound");
+  }
 
-  const formatDate = (s: string) =>
-    new Date(s).toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-
-  const statusColors: Record<string, string> = {
-    scheduled: "bg-sky-100 text-sky-800",
-    confirmed: "bg-emerald-100 text-emerald-800",
-    "in-progress": "bg-amber-100 text-amber-800",
-    completed: "bg-stone-100 text-stone-600",
-    cancelled: "bg-red-100 text-red-800",
-  };
+  const { tour, package: pkg, invoice, payment } = result;
+  const visual = getClientPackageVisual(pkg);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700"
-        >
-          ← Back to lookup
-        </Link>
-      </div>
+    <div className="space-y-8 pb-10">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 rounded-full border border-[#ddc8b0] bg-white/70 px-4 py-2 text-sm font-medium text-stone-700 backdrop-blur-sm transition hover:text-[#12343b]"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to lookup
+      </Link>
 
-      <div className="rounded-2xl border border-white/50 bg-white/70 p-8 shadow-xl backdrop-blur-xl">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-stone-500">Booking {ref}</p>
-            <h1 className="mt-1 text-2xl font-bold text-stone-900">
+      <section
+        className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_28px_70px_-34px_rgba(18,52,59,0.95)]"
+        style={{
+          backgroundImage: `linear-gradient(120deg, rgba(11,33,38,0.92) 10%, rgba(11,33,38,0.64) 48%, rgba(11,33,38,0.22) 100%), url(${visual.imageUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="relative grid gap-8 px-6 py-8 sm:px-8 sm:py-10 lg:grid-cols-[1.1fr_0.9fr] lg:px-10 lg:py-12">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.28em] text-[#e5c48e]">
+              Confirmed route
+            </p>
+            <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
               {tour.packageName}
             </h1>
-            <p className="mt-2 text-stone-600">Dear {tour.clientName},</p>
-          </div>
-          <span
-            className={`rounded-full px-4 py-2 text-sm font-medium ${statusColors[tour.status] ?? "bg-stone-100 text-stone-600"}`}
-          >
-            {tour.status.replace("-", " ")}
-          </span>
-        </div>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#e5dccd] sm:text-base">
+              Dear {tour.clientName}, your booking is now tied into the live
+              operations records from the admin side.
+            </p>
 
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
-          <div className="flex items-center gap-3 rounded-xl bg-teal-50/80 p-4">
-            <MapPin className="h-5 w-5 text-teal-600" />
-            <div>
-              <p className="text-xs text-stone-500">Destination</p>
-              <p className="font-medium text-stone-900">Sri Lanka</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span
+                className={`rounded-full px-4 py-2 text-sm font-medium ${
+                  statusColors[tour.status] ?? "bg-stone-100 text-stone-700"
+                }`}
+              >
+                {toLabel(tour.status)}
+              </span>
+              {invoice ? (
+                <span
+                  className={`rounded-full px-4 py-2 text-sm font-medium ${
+                    statusColors[invoice.status] ?? "bg-stone-100 text-stone-700"
+                  }`}
+                >
+                  Invoice {toLabel(invoice.status)}
+                </span>
+              ) : null}
+              {payment ? (
+                <span
+                  className={`rounded-full px-4 py-2 text-sm font-medium ${
+                    statusColors[payment.status] ?? "bg-stone-100 text-stone-700"
+                  }`}
+                >
+                  Payment {toLabel(payment.status)}
+                </span>
+              ) : null}
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl bg-amber-50/80 p-4">
-            <Calendar className="h-5 w-5 text-amber-600" />
-            <div>
-              <p className="text-xs text-stone-500">Dates</p>
-              <p className="font-medium text-stone-900">
-                {formatDate(tour.startDate)} – {formatDate(tour.endDate)}
+
+          <div className="rounded-[1.75rem] border border-white/12 bg-white/10 p-6 backdrop-blur-md">
+            <p className="text-xs uppercase tracking-[0.24em] text-[#e5c48e]">
+              Trip facts
+            </p>
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-[1.2rem] bg-white/10 px-4 py-3 text-sm text-[#ece1cf]">
+                Dates: {formatLongDate(tour.startDate)} to {formatLongDate(tour.endDate)}
+              </div>
+              <div className="rounded-[1.2rem] bg-white/10 px-4 py-3 text-sm text-[#ece1cf]">
+                Travellers: {tour.pax}
+              </div>
+              <div className="rounded-[1.2rem] bg-white/10 px-4 py-3 text-sm text-[#ece1cf]">
+                Reference: {ref}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-[1.6rem] border border-[#ddc8b0] bg-white/72 p-5 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+          <MapPin className="h-5 w-5 text-[#12343b]" />
+          <p className="mt-3 text-xs uppercase tracking-[0.2em] text-stone-500">
+            Destination
+          </p>
+          <p className="mt-2 font-semibold text-stone-900">{pkg.region ?? pkg.destination}</p>
+        </div>
+        <div className="rounded-[1.6rem] border border-[#ddc8b0] bg-white/72 p-5 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+          <Calendar className="h-5 w-5 text-[#12343b]" />
+          <p className="mt-3 text-xs uppercase tracking-[0.2em] text-stone-500">
+            Travel dates
+          </p>
+          <p className="mt-2 font-semibold text-stone-900">
+            {formatShortDate(tour.startDate)} to {formatShortDate(tour.endDate)}
+          </p>
+        </div>
+        <div className="rounded-[1.6rem] border border-[#ddc8b0] bg-white/72 p-5 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+          <Users className="h-5 w-5 text-[#12343b]" />
+          <p className="mt-3 text-xs uppercase tracking-[0.2em] text-stone-500">
+            Travellers
+          </p>
+          <p className="mt-2 font-semibold text-stone-900">{tour.pax} guests</p>
+        </div>
+        <div className="rounded-[1.6rem] border border-[#ddc8b0] bg-white/72 p-5 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+          <Clock3 className="h-5 w-5 text-[#12343b]" />
+          <p className="mt-3 text-xs uppercase tracking-[0.2em] text-stone-500">
+            Tour status
+          </p>
+          <p className="mt-2 font-semibold capitalize text-stone-900">
+            {toLabel(tour.status)}
+          </p>
+        </div>
+      </section>
+
+      {(invoice || payment) && (
+        <section className="grid gap-4 lg:grid-cols-2">
+          {invoice ? (
+            <div className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-[#12343b]" />
+                <h2 className="text-lg font-semibold text-stone-900">
+                  Invoice
+                </h2>
+              </div>
+              <p className="mt-4 text-sm text-stone-600">
+                Number: <span className="font-medium text-stone-900">{invoice.invoiceNumber}</span>
+              </p>
+              <p className="mt-2 text-sm text-stone-600">
+                Status: <span className="font-medium text-stone-900">{toLabel(invoice.status)}</span>
+              </p>
+              <p className="mt-2 text-sm text-stone-600">
+                Total: <span className="font-medium text-stone-900">{invoice.totalAmount.toLocaleString()} {invoice.currency}</span>
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl bg-sky-50/80 p-4">
-            <Users className="h-5 w-5 text-sky-600" />
-            <div>
-              <p className="text-xs text-stone-500">Travelers</p>
-              <p className="font-medium text-stone-900">{tour.pax} guests</p>
+          ) : null}
+
+          {payment ? (
+            <div className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-[#12343b]" />
+                <h2 className="text-lg font-semibold text-stone-900">
+                  Payment
+                </h2>
+              </div>
+              <p className="mt-4 text-sm text-stone-600">
+                Status: <span className="font-medium text-stone-900">{toLabel(payment.status)}</span>
+              </p>
+              <p className="mt-2 text-sm text-stone-600">
+                Amount: <span className="font-medium text-stone-900">{payment.amount.toLocaleString()} {payment.currency}</span>
+              </p>
+              <p className="mt-2 text-sm text-stone-600">
+                Date: <span className="font-medium text-stone-900">{payment.date}</span>
+              </p>
             </div>
-          </div>
+          ) : null}
+        </section>
+      )}
+
+      <section className="rounded-[2rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm sm:p-8">
+        <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+          Itinerary
+        </p>
+        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900">
+          Your trip flow
+        </h2>
+        <div className="mt-8 space-y-5">
+          {pkg.itinerary.map((day) => (
+            <div key={day.day} className="relative pl-12">
+              <div className="absolute left-4 top-10 h-full w-px bg-[#ddc8b0]" />
+              <div className="absolute left-0 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#12343b] text-sm font-semibold text-[#f6ead6]">
+                {day.day}
+              </div>
+              <div className="rounded-[1.5rem] border border-[#eadfce] bg-[#fbf7f1] p-5">
+                <h3 className="text-lg font-semibold text-stone-900">{day.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-600">
+                  {day.description}
+                </p>
+                {day.accommodation && (
+                  <p className="mt-3 text-sm font-medium text-[#12343b]">
+                    Stay suggestion: {day.accommodation}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+          <h3 className="flex items-center gap-2 font-semibold text-stone-900">
+            <Check className="h-5 w-5 text-emerald-600" />
+            Inclusions
+          </h3>
+          <ul className="mt-4 space-y-3">
+            {pkg.inclusions.map((item) => (
+              <li
+                key={item}
+                className="flex items-start gap-3 rounded-[1.2rem] bg-[#f8f3eb] px-4 py-3 text-sm text-stone-700"
+              >
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+          <h3 className="flex items-center gap-2 font-semibold text-stone-900">
+            <X className="h-5 w-5 text-stone-400" />
+            Exclusions
+          </h3>
+          <ul className="mt-4 space-y-3">
+            {pkg.exclusions.map((item) => (
+              <li
+                key={item}
+                className="flex items-start gap-3 rounded-[1.2rem] bg-[#f8f3eb] px-4 py-3 text-sm text-stone-700"
+              >
+                <X className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 
-      {pkg && (
-        <>
-          <div className="rounded-2xl border border-white/50 bg-white/70 p-8 shadow-xl backdrop-blur-xl">
-            <h2 className="text-lg font-semibold text-stone-900">Your Itinerary</h2>
-            <p className="mt-1 text-sm text-stone-600">{pkg.description}</p>
-            <div className="mt-6 space-y-4">
-              {pkg.itinerary.map((day) => (
-                <div
-                  key={day.day}
-                  className="flex gap-4 rounded-xl border border-stone-100 bg-white/50 p-4"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
-                    {day.day}
-                  </span>
-                  <div>
-                    <h3 className="font-medium text-stone-900">{day.title}</h3>
-                    <p className="mt-1 text-sm text-stone-600">{day.description}</p>
-                    {day.accommodation && (
-                      <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-500">
-                        <ChevronRight className="h-3.5 w-3.5" />
-                        Hotel: {day.accommodation}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-xl">
-              <h3 className="flex items-center gap-2 font-semibold text-stone-900">
-                <Check className="h-5 w-5 text-emerald-500" />
-                Inclusions
-              </h3>
-              <ul className="mt-3 space-y-2">
-                {pkg.inclusions.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-stone-700">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-xl">
-              <h3 className="flex items-center gap-2 font-semibold text-stone-900">
-                <X className="h-5 w-5 text-stone-400" />
-                Exclusions
-              </h3>
-              <ul className="mt-3 space-y-2">
-                {pkg.exclusions.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-stone-600">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="rounded-2xl border border-teal-200/50 bg-teal-50/50 p-6 text-center">
-        <p className="font-medium text-stone-800">Questions about your tour?</p>
-        <p className="mt-1 text-sm text-stone-600">
+      <div className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/72 p-6 text-center shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+        <p className="font-medium text-stone-900">Questions about this tour?</p>
+        <p className="mt-2 text-sm leading-6 text-stone-600">
           Contact us at{" "}
-          <a href="mailto:info@paraisoceylon.com" className="text-teal-600 hover:underline">
+          <a
+            href="mailto:info@paraisoceylon.com"
+            className="font-medium text-[#12343b] hover:underline"
+          >
             info@paraisoceylon.com
           </a>
         </p>

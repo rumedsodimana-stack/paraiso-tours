@@ -2,11 +2,19 @@
 
 import { getClientBookings } from "@/lib/db";
 import type { Lead } from "@/lib/types";
-import type { TourPackage, Tour } from "@/lib/types";
+import type { Invoice, Payment, TourPackage, Tour } from "@/lib/types";
 
 export async function getClientBookingsAction(email: string): Promise<
   | { error: string }
-  | { requests: Lead[]; tours: { tour: Tour; package: TourPackage }[] }
+  | {
+      requests: Lead[];
+      tours: {
+        tour: Tour;
+        package: TourPackage;
+        invoice: Invoice | null;
+        payment: Payment | null;
+      }[];
+    }
 > {
   const trimmed = email.trim();
   if (!trimmed) {

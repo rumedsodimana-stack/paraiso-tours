@@ -1,7 +1,10 @@
 import { supabase } from "./supabase";
 import { mockPackages } from "./mock-data";
 import { generateDocumentNumber } from "./document-number";
+import { resolveLeadPackage, resolveTourPackage } from "./package-snapshot";
 import type {
+  AuditEntityType,
+  AuditLog,
   Employee,
   HotelSupplier,
   Invoice,
@@ -32,7 +35,7 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
-function asObject<T extends object>(value: unknown): T | undefined {
+function asObject<T>(value: unknown): T | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   return value as T;
 }
@@ -64,6 +67,7 @@ function toLead(row: Record<string, unknown>): Lead {
       (row.selected_meal_option_id as string | null) ?? undefined,
     totalPrice:
       row.total_price == null ? undefined : Number(row.total_price),
+    packageSnapshot: asObject<Lead["packageSnapshot"]>(row.package_snapshot),
     archivedAt: (row.archived_at as string | null) ?? undefined,
     createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
     updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
@@ -113,6 +117,7 @@ function toTour(row: Record<string, unknown>): Tour {
     status: row.status as Tour["status"],
     totalValue: Number(row.total_value),
     currency: String(row.currency),
+    packageSnapshot: asObject<Tour["packageSnapshot"]>(row.package_snapshot),
     clientConfirmationSentAt:
       (row.client_confirmation_sent_at as string | null) ?? undefined,
     supplierNotificationsSentAt:
@@ -264,6 +269,20 @@ function toTodo(row: Record<string, unknown>): Todo {
   };
 }
 
+function toAuditLog(row: Record<string, unknown>): AuditLog {
+  return {
+    id: String(row.id),
+    entityType: row.entity_type as AuditEntityType,
+    entityId: String(row.entity_id),
+    action: String(row.action),
+    summary: String(row.summary),
+    actor: String(row.actor),
+    details: asArray<string>(row.details),
+    metadata: asObject<Record<string, unknown>>(row.metadata),
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
 function packageToRow(
   data: Omit<TourPackage, "id" | "createdAt"> & { id?: string; createdAt?: string }
 ): Record<string, unknown> {
@@ -370,6 +389,7 @@ export async function createLead(
     selected_transport_option_id: toNullable(data.selectedTransportOptionId),
     selected_meal_option_id: toNullable(data.selectedMealOptionId),
     total_price: toNullable(data.totalPrice),
+    package_snapshot: toNullable(data.packageSnapshot),
     archived_at: toNullable(data.archivedAt),
     created_at: now,
     updated_at: now,
@@ -430,6 +450,9 @@ export async function updateLead(
   }
   if (data.totalPrice !== undefined) {
     update.total_price = toNullable(data.totalPrice);
+  }
+  if (data.packageSnapshot !== undefined) {
+    update.package_snapshot = toNullable(data.packageSnapshot);
   }
   if (data.archivedAt !== undefined) {
     update.archived_at = toNullable(data.archivedAt);
@@ -585,6 +608,7 @@ export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
     status: data.status,
     total_value: data.totalValue,
     currency: data.currency,
+    package_snapshot: toNullable(data.packageSnapshot),
     client_confirmation_sent_at: toNullable(data.clientConfirmationSentAt),
     supplier_notifications_sent_at: toNullable(
       data.supplierNotificationsSentAt
@@ -622,6 +646,9 @@ export async function updateTour(
   if (data.status !== undefined) update.status = data.status;
   if (data.totalValue !== undefined) update.total_value = data.totalValue;
   if (data.currency !== undefined) update.currency = data.currency;
+  if (data.packageSnapshot !== undefined) {
+    update.package_snapshot = toNullable(data.packageSnapshot);
+  }
   if (data.clientConfirmationSentAt !== undefined) {
     update.client_confirmation_sent_at = toNullable(
       data.clientConfirmationSentAt
@@ -873,6 +900,11 @@ export async function updateInvoice(
     .maybeSingle();
   if (error || !updated) return null;
   return toInvoice(updated);
+}
+
+export async function deleteInvoice(id: string): Promise<boolean> {
+  const { error } = await supabase!.from("invoices").delete().eq("id", id);
+  return !error;
 }
 
 export async function getEmployees(): Promise<Employee[]> {
@@ -1179,6 +1211,11 @@ export async function updatePayment(
   return toPayment(updated);
 }
 
+export async function deletePayment(id: string): Promise<boolean> {
+  const { error } = await supabase!.from("payments").delete().eq("id", id);
+  return !error;
+}
+
 export async function getTodos(): Promise<Todo[]> {
   const { data, error } = await supabase!
     .from("todos")
@@ -1229,8 +1266,67 @@ export async function deleteTodo(id: string): Promise<boolean> {
   return !error;
 }
 
+export async function getAuditLogs(filter?: {
+  entityTypes?: AuditEntityType[];
+  entityIds?: string[];
+  limit?: number;
+}): Promise<AuditLog[]> {
+  let query = supabase!
+    .from("audit_logs")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (filter?.entityTypes?.length === 1) {
+    query = query.eq("entity_type", filter.entityTypes[0]);
+  } else if (filter?.entityTypes?.length) {
+    query = query.in("entity_type", filter.entityTypes);
+  }
+
+  if (filter?.entityIds?.length === 1) {
+    query = query.eq("entity_id", filter.entityIds[0]);
+  } else if (filter?.entityIds?.length) {
+    query = query.in("entity_id", filter.entityIds);
+  }
+
+  if (filter?.limit) {
+    query = query.limit(filter.limit);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map((row) => toAuditLog(row));
+}
+
+export async function createAuditLog(
+  data: Omit<AuditLog, "id" | "createdAt">
+): Promise<AuditLog> {
+  const row = {
+    id: generateId("audit"),
+    entity_type: data.entityType,
+    entity_id: data.entityId,
+    action: data.action,
+    summary: data.summary,
+    actor: data.actor,
+    details: data.details ?? [],
+    metadata: data.metadata ?? {},
+    created_at: new Date().toISOString(),
+  };
+  const { data: inserted, error } = await supabase!
+    .from("audit_logs")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toAuditLog(inserted);
+}
+
 export type ClientBookingResult =
-  | { tour: Tour; package: TourPackage }
+  | {
+      tour: Tour;
+      package: TourPackage;
+      invoice: Invoice | null;
+      payment: Payment | null;
+    }
   | { pending: true; lead: Lead; package: TourPackage | null };
 
 export async function getTourForClient(
@@ -1246,9 +1342,14 @@ export async function getTourForClient(
     const lead = await getLead(tour.leadId);
     if (!lead) return null;
     if (verifyEmail && lead.email.toLowerCase() !== emailNorm) return null;
-    const pkg = await getPackage(tour.packageId);
+    const livePackage = await getPackage(tour.packageId);
+    const pkg = resolveTourPackage(tour, livePackage, lead);
     if (!pkg) return null;
-    return { tour, package: pkg };
+    const [invoice, payment] = await Promise.all([
+      getInvoiceByLeadId(lead.id),
+      getPaymentByTourId(tour.id),
+    ]);
+    return { tour, package: pkg, invoice, payment };
   }
 
   const lead = await getLeadByReference(ref);
@@ -1258,18 +1359,29 @@ export async function getTourForClient(
   const tours = await getTours();
   const linkedTour = tours.find((candidate) => candidate.leadId === lead.id);
   if (linkedTour) {
-    const pkg = await getPackage(linkedTour.packageId);
+    const livePackage = await getPackage(linkedTour.packageId);
+    const pkg = resolveTourPackage(linkedTour, livePackage, lead);
     if (!pkg) return null;
-    return { tour: linkedTour, package: pkg };
+    const [invoice, payment] = await Promise.all([
+      getInvoiceByLeadId(lead.id),
+      getPaymentByTourId(linkedTour.id),
+    ]);
+    return { tour: linkedTour, package: pkg, invoice, payment };
   }
 
-  const pkg = lead.packageId ? await getPackage(lead.packageId) : null;
+  const livePackage = lead.packageId ? await getPackage(lead.packageId) : null;
+  const pkg = resolveLeadPackage(lead, livePackage);
   return { pending: true, lead, package: pkg };
 }
 
 export async function getClientBookings(email: string): Promise<{
   requests: Lead[];
-  tours: { tour: Tour; package: TourPackage }[];
+  tours: {
+    tour: Tour;
+    package: TourPackage;
+    invoice: Invoice | null;
+    payment: Payment | null;
+  }[];
 }> {
   const emailNorm = email.trim().toLowerCase();
   const leads = await getLeads();
@@ -1282,10 +1394,21 @@ export async function getClientBookings(email: string): Promise<{
   const tourLeadIds = new Set(clientTours.map((tour) => tour.leadId));
   const requests = clientLeads.filter((lead) => !tourLeadIds.has(lead.id));
 
-  const toursWithPackages: { tour: Tour; package: TourPackage }[] = [];
+  const toursWithPackages: {
+    tour: Tour;
+    package: TourPackage;
+    invoice: Invoice | null;
+    payment: Payment | null;
+  }[] = [];
   for (const tour of clientTours) {
-    const pkg = await getPackage(tour.packageId);
-    if (pkg) toursWithPackages.push({ tour, package: pkg });
+    const [livePackage, invoice, payment, lead] = await Promise.all([
+      getPackage(tour.packageId),
+      getInvoiceByLeadId(tour.leadId),
+      getPaymentByTourId(tour.id),
+      getLead(tour.leadId),
+    ]);
+    const pkg = resolveTourPackage(tour, livePackage, lead);
+    if (pkg) toursWithPackages.push({ tour, package: pkg, invoice, payment });
   }
 
   return {

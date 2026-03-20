@@ -2,6 +2,7 @@
 
 import { Bell } from "lucide-react";
 import { GlobalSearch } from "./GlobalSearch";
+import { AdminLogoutButton } from "./AdminLogoutButton";
 
 export function Header({ title }: { title?: string }) {
   return (
@@ -15,6 +16,7 @@ export function Header({ title }: { title?: string }) {
           <Bell className="h-5 w-5" />
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-teal-500" />
         </button>
+        <AdminLogoutButton />
       </div>
     </header>
   );

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, MapPin } from "lucide-react";
+import { Compass, Search } from "lucide-react";
 import { debugClient } from "@/lib/debug";
 
 export function ClientLookupForm() {
@@ -59,22 +59,22 @@ export function ClientLookupForm() {
 
   return (
     <div className="mx-auto max-w-md">
-      <div className="rounded-2xl border border-white/50 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
+      <div className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/82 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm sm:p-8">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-100">
-            <MapPin className="h-8 w-8 text-teal-600" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-[#12343b] text-[#f6ead6]">
+            <Compass className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold text-stone-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
             View Your Booking
           </h1>
-          <p className="mt-2 text-stone-600">
-            Enter your booking reference <span className="text-stone-500">or</span> email to find your booking
+          <p className="mt-2 text-sm leading-6 text-stone-600">
+            Enter your booking reference or email to reopen your trip details.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[1rem] bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
@@ -83,14 +83,14 @@ export function ClientLookupForm() {
               Booking Reference
             </label>
             <div className="relative mt-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
               <input
                 id="ref"
                 type="text"
                 value={bookingRef}
                 onChange={(e) => setBookingRef(e.target.value)}
                 placeholder="e.g. PCT-20260312-A3B7"
-                className="w-full rounded-xl border border-stone-200 bg-white py-3 pl-10 pr-4 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-[1rem] border border-[#ddc8b0] bg-white py-3 pl-11 pr-4 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
               />
             </div>
             <p className="mt-1 text-xs text-stone-500">
@@ -108,19 +108,18 @@ export function ClientLookupForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="mt-1 w-full rounded-xl border border-stone-200 bg-white py-3 px-4 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-teal-600 py-3.5 font-semibold text-white shadow-lg shadow-teal-600/25 transition hover:bg-teal-700 hover:shadow-xl disabled:opacity-70"
+            className="w-full rounded-full bg-[#12343b] py-3.5 font-semibold text-[#f6ead6] shadow-[0_16px_40px_-26px_rgba(18,52,59,0.95)] transition hover:bg-[#0f2b31] disabled:opacity-70"
           >
             {loading ? "Checking…" : "View Booking"}
           </button>
         </form>
       </div>
-
     </div>
   );
 }

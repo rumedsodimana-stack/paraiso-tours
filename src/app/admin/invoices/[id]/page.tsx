@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getInvoice } from "@/lib/db";
+import { getAuditLogsForEntities } from "@/lib/audit";
+import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { InvoiceDocument } from "../InvoiceDocument";
 import { InvoiceActions } from "./InvoiceActions";
 
@@ -12,6 +14,12 @@ export default async function InvoiceViewPage({
 }) {
   const { id } = await params;
   const invoice = await getInvoice(id);
+  const auditLogs = invoice
+    ? await getAuditLogsForEntities(
+        [{ entityType: "invoice", entityId: invoice.id }],
+        10
+      )
+    : [];
 
   if (!invoice) {
     notFound();
@@ -33,6 +41,8 @@ export default async function InvoiceViewPage({
       <div className="rounded-2xl border border-white/30 bg-white/80 p-8 shadow-lg backdrop-blur-xl print:border-0 print:shadow-none print:bg-white">
         <InvoiceDocument invoice={invoice} />
       </div>
+
+      <AuditTimeline title="Invoice Activity" logs={auditLogs} />
     </div>
   );
 }

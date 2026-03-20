@@ -7,7 +7,9 @@ import {
   deleteHotel,
   getPackages,
   getPayments,
+  getHotel,
 } from "@/lib/db";
+import { recordAuditEvent } from "@/lib/audit";
 import type { TourPackage } from "@/lib/types";
 
 function parseOptionalNum(val: string | null): number | undefined {
@@ -71,6 +73,20 @@ export async function createHotelAction(formData: FormData) {
     paymentReference,
   });
 
+  await recordAuditEvent({
+    entityType: "supplier",
+    entityId: hotel.id,
+    action: "created",
+    summary: `${hotel.type === "hotel" ? "Hotel" : "Supplier"} created: ${hotel.name}`,
+    details: [
+      `Type: ${hotel.type}`,
+      hotel.location ? `Location: ${hotel.location}` : "Location not set",
+      hotel.defaultPricePerNight != null
+        ? `Default rate: ${hotel.defaultPricePerNight} ${hotel.currency}`
+        : "Default rate not set",
+    ],
+  });
+
   revalidatePath("/admin/hotels");
   return { success: true, id: hotel.id };
 }
@@ -118,12 +134,27 @@ export async function updateHotelAction(id: string, formData: FormData) {
 
   if (!updated) return { error: "Hotel not found" };
 
+  await recordAuditEvent({
+    entityType: "supplier",
+    entityId: updated.id,
+    action: "updated",
+    summary: `${updated.type === "hotel" ? "Hotel" : "Supplier"} updated: ${updated.name}`,
+    details: [
+      `Type: ${updated.type}`,
+      updated.location ? `Location: ${updated.location}` : "Location not set",
+      updated.maxConcurrentBookings != null
+        ? `Concurrent capacity: ${updated.maxConcurrentBookings}`
+        : "Concurrent capacity unlimited",
+    ],
+  });
+
   revalidatePath("/admin/hotels");
   revalidatePath(`/admin/hotels/${id}`);
   return { success: true };
 }
 
 export async function deleteHotelAction(id: string) {
+  const hotel = await getHotel(id);
   const [packages, payments] = await Promise.all([getPackages(), getPayments()]);
   const blockingPackages = packages.filter((pkg) => packageUsesSupplier(pkg, id));
   const blockingPayments = payments.filter((payment) => payment.supplierId === id);
@@ -160,6 +191,15 @@ export async function deleteHotelAction(id: string) {
       error:
         "Supplier could not be archived. It may still be referenced elsewhere.",
     };
+  }
+
+  if (hotel) {
+    await recordAuditEvent({
+      entityType: "supplier",
+      entityId: hotel.id,
+      action: "archived",
+      summary: `${hotel.type === "hotel" ? "Hotel" : "Supplier"} archived: ${hotel.name}`,
+    });
   }
 
   revalidatePath("/admin/hotels");

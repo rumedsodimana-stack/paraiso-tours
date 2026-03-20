@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createLead } from "@/lib/db";
 import { getPackage } from "@/lib/db";
+import { recordAuditEvent } from "@/lib/audit";
 import { debugLog } from "@/lib/debug";
 import { sendBookingRequestConfirmation } from "@/lib/email";
+import { createPackageSnapshot } from "@/lib/package-snapshot";
 import {
   calculateBookingSelectionsTotal,
   normalizeSelectedAccommodationByNight,
@@ -100,6 +102,27 @@ export async function createClientBookingAction(
     selectedTransportOptionId: selectedTransportOptionId || undefined,
     selectedMealOptionId: selectedMealOptionId || undefined,
     totalPrice: pricing.totalPrice,
+    packageSnapshot: createPackageSnapshot({
+      pkg,
+      selectedAccommodationOptionId: selectedAccommodationOptionId || undefined,
+      selectedAccommodationByNight: normalizedAccommodationByNight,
+      selectedTransportOptionId: selectedTransportOptionId || undefined,
+      selectedMealOptionId: selectedMealOptionId || undefined,
+      totalPrice: pricing.totalPrice,
+    }),
+  });
+
+  await recordAuditEvent({
+    entityType: "lead",
+    entityId: lead.id,
+    action: "created_from_client_portal",
+    summary: `Booking created from client portal for ${lead.name}`,
+    actor: "Client Portal",
+    details: [
+      `Package: ${pkg.name}`,
+      `Travel date: ${lead.travelDate ?? "TBD"}`,
+      `Total: ${pricing.totalPrice} ${pkg.currency}`,
+    ],
   });
 
   revalidatePath("/admin/bookings");

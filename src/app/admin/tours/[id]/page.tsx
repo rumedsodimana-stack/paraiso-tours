@@ -14,9 +14,12 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { getTour, getLead, getPackage, getHotels } from "@/lib/db";
+import { getAuditLogsForEntities } from "@/lib/audit";
+import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { BookingSupplierBreakdown } from "../../bookings/BookingSupplierBreakdown";
 import { PrintButton } from "../../payables/PrintButton";
 import { CompletedPaidButton } from "./CompletedPaidButton";
+import { resolveTourPackage } from "@/lib/package-snapshot";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +38,16 @@ export default async function TourDetailPage({
   const tour = await getTour(id);
   if (!tour) notFound();
 
-  const [lead, pkg, suppliers] = await Promise.all([
+  const [lead, livePackage, suppliers] = await Promise.all([
     getLead(tour.leadId),
     getPackage(tour.packageId),
     getHotels(),
   ]);
+  const pkg = resolveTourPackage(tour, livePackage, lead);
+  const auditLogs = await getAuditLogsForEntities(
+    [{ entityType: "tour", entityId: tour.id }],
+    10
+  );
 
   const getSelectedHotelForDay = (dayIndex: number): string => {
     if (!pkg || !lead) return "—";
@@ -255,6 +263,8 @@ export default async function TourDetailPage({
           )}
         </div>
       </div>
+
+      <AuditTimeline title="Tour Activity" logs={auditLogs} />
     </div>
   );
 }

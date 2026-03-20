@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileText } from "lucide-react";
 import { getPayment, getInvoice, getInvoiceByLeadId, getInvoices } from "@/lib/db";
+import { getAuditLogsForEntities } from "@/lib/audit";
+import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { InvoiceDocument } from "../../invoices/InvoiceDocument";
 import { PrintButton } from "../../payables/PrintButton";
 import { PaymentVoucherDocument } from "../PaymentVoucherDocument";
@@ -37,6 +39,13 @@ export default async function PaymentDetailPage({
   if (!payment) notFound();
 
   const invoice = await getInvoiceForPayment(payment);
+  const auditLogs = await getAuditLogsForEntities(
+    [
+      { entityType: "payment", entityId: payment.id },
+      ...(invoice ? [{ entityType: "invoice" as const, entityId: invoice.id }] : []),
+    ],
+    10
+  );
 
   return (
     <div className="space-y-6">
@@ -162,6 +171,8 @@ export default async function PaymentDetailPage({
           )}
         </div>
       ) : null}
+
+      <AuditTimeline title="Payment Activity" logs={auditLogs} />
     </div>
   );
 }

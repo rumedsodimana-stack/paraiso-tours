@@ -1,4 +1,7 @@
+"use client";
+
 import { Suspense } from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 
@@ -7,6 +10,13 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isAuthSurface = pathname === "/admin/login";
+
+  if (isAuthSurface) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex min-h-screen print:block">
       <Sidebar />

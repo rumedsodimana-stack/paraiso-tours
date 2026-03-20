@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createPackage, updatePackage, deletePackage, getPackage } from "@/lib/db";
+import { recordAuditEvent } from "@/lib/audit";
 import type { ItineraryDay, PackageOption } from "@/lib/types";
 
 function parseItinerary(formData: FormData): ItineraryDay[] {
@@ -110,6 +111,18 @@ export async function createPackageAction(formData: FormData) {
     customOptions: customOptions.length ? customOptions : undefined,
   });
 
+  await recordAuditEvent({
+    entityType: "package",
+    entityId: pkg.id,
+    action: "created",
+    summary: `Package created: ${pkg.name}`,
+    details: [
+      `Duration: ${pkg.duration}`,
+      `Destination: ${pkg.destination}`,
+      `Base price: ${pkg.price} ${pkg.currency}`,
+    ],
+  });
+
   revalidatePath("/admin/packages");
   revalidatePath("/");
   return { success: true, id: pkg.id };
@@ -177,6 +190,18 @@ export async function updatePackageAction(id: string, formData: FormData) {
 
   if (!updated) return { error: "Package not found" };
 
+  await recordAuditEvent({
+    entityType: "package",
+    entityId: updated.id,
+    action: "updated",
+    summary: `Package updated: ${updated.name}`,
+    details: [
+      `Duration: ${updated.duration}`,
+      `Destination: ${updated.destination}`,
+      `Base price: ${updated.price} ${updated.currency}`,
+    ],
+  });
+
   revalidatePath("/admin/packages");
   revalidatePath(`/admin/packages/${id}`);
   revalidatePath("/");
@@ -184,8 +209,18 @@ export async function updatePackageAction(id: string, formData: FormData) {
 }
 
 export async function deletePackageAction(id: string) {
+  const pkg = await getPackage(id);
   const ok = await deletePackage(id);
   if (!ok) return { error: "Package not found" };
+
+  if (pkg) {
+    await recordAuditEvent({
+      entityType: "package",
+      entityId: pkg.id,
+      action: "archived",
+      summary: `Package archived: ${pkg.name}`,
+    });
+  }
 
   revalidatePath("/admin/packages");
   revalidatePath("/");

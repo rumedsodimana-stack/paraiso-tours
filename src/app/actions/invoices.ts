@@ -12,10 +12,16 @@ import {
   getPayment,
   getPayments,
   createLead,
+  updateLead,
   updatePayment,
 } from "@/lib/db";
+import { recordAuditEvent } from "@/lib/audit";
 import { getLeadBookingFinancials } from "@/lib/booking-pricing";
 import { generateDocumentNumber } from "@/lib/document-number";
+import {
+  createPackageSnapshotFromLead,
+  resolveLeadPackage,
+} from "@/lib/package-snapshot";
 import type { InvoiceStatus } from "@/lib/types";
 
 export async function createInvoiceFromLead(leadId: string) {
@@ -23,14 +29,27 @@ export async function createInvoiceFromLead(leadId: string) {
   if (!lead) return { error: "Lead not found" };
 
   const existing = await getInvoiceByLeadId(leadId);
-  if (existing) return { success: true, invoiceId: existing.id };
+  if (existing) return { success: true, invoiceId: existing.id, created: false };
 
-  if (!lead.packageId) return { error: "Lead has no package selected" };
+  if (!lead.packageId && !lead.packageSnapshot) {
+    return { error: "Lead has no package selected" };
+  }
 
-  const [pkg, suppliers] = await Promise.all([
-    getPackage(lead.packageId),
+  const [livePackage, suppliers] = await Promise.all([
+    lead.packageId ? getPackage(lead.packageId) : Promise.resolve(null),
     getHotels(),
   ]);
+  if (!lead.packageSnapshot && livePackage) {
+    const snappedLead = await updateLead(lead.id, {
+      packageSnapshot: createPackageSnapshotFromLead(lead, livePackage),
+    });
+    if (snappedLead) {
+      lead.packageSnapshot = snappedLead.packageSnapshot;
+    } else {
+      lead.packageSnapshot = createPackageSnapshotFromLead(lead, livePackage);
+    }
+  }
+  const pkg = resolveLeadPackage(lead, livePackage);
   if (!pkg) return { error: "Package not found" };
 
   const financials = getLeadBookingFinancials(lead, pkg, suppliers);
@@ -74,10 +93,22 @@ export async function createInvoiceFromLead(leadId: string) {
     currency: breakdown?.currency ?? pkg.currency,
   });
 
+  await recordAuditEvent({
+    entityType: "invoice",
+    entityId: invoice.id,
+    action: "created",
+    summary: `Invoice created: ${invoice.invoiceNumber}`,
+    details: [
+      `Client: ${invoice.clientName}`,
+      `Total: ${invoice.totalAmount} ${invoice.currency}`,
+      `Lead reference: ${lead.reference ?? lead.id}`,
+    ],
+  });
+
   revalidatePath("/admin/invoices");
   revalidatePath(`/admin/invoices/${invoice.id}`);
   revalidatePath(`/admin/bookings/${leadId}`);
-  return { success: true, invoiceId: invoice.id };
+  return { success: true, invoiceId: invoice.id, created: true };
 }
 
 export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStatus): Promise<{ success?: boolean; error?: string }> {
@@ -87,6 +118,13 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
   }
   const updated = await updateInvoice(invoiceId, updates);
   if (!updated) return { error: "Invoice not found" };
+
+  await recordAuditEvent({
+    entityType: "invoice",
+    entityId: updated.id,
+    action: "status_changed",
+    summary: `Invoice ${updated.invoiceNumber} marked ${status.replace(/_/g, " ")}`,
+  });
 
   // Sync: when invoice is marked paid, update linked payments to completed
   if (status === "paid") {
@@ -164,6 +202,17 @@ export async function createInvoiceFromPayment(paymentId: string) {
   });
 
   await updatePayment(paymentId, { leadId: lead.id, invoiceId: invoice.id });
+
+  await recordAuditEvent({
+    entityType: "invoice",
+    entityId: invoice.id,
+    action: "created_from_payment",
+    summary: `Invoice created from payment: ${invoice.invoiceNumber}`,
+    details: [
+      `Payment amount: ${payment.amount} ${payment.currency}`,
+      `Payment type: ${payment.type}`,
+    ],
+  });
 
   revalidatePath("/admin/invoices");
   revalidatePath(`/admin/invoices/${invoice.id}`);

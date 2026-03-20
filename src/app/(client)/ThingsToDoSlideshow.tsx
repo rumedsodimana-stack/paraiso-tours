@@ -1,178 +1,148 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
-const ACTIVITIES = [
-  {
-    name: "Whale Watching",
-    slug: "whale-watching",
-    description: "Spot blue whales off Mirissa and Kalpitiya",
-    imageUrl: "https://images.unsplash.com/photo-1559827260-dc66d43bef33?w=800&q=80",
-    searchTerm: "Mirissa",
-  },
-  {
-    name: "Hiking",
-    slug: "hiking",
-    description: "Trails to Little Adam's Peak, Ella Rock & more",
-    imageUrl: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&q=80",
-    searchTerm: "Ella",
-  },
-  {
-    name: "Surfing",
-    slug: "surfing",
-    description: "Best waves at Arugam Bay and Hikkaduwa",
-    imageUrl: "https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=800&q=80",
-    searchTerm: "Southern Coast",
-  },
-  {
-    name: "Wildlife Safari",
-    slug: "safari",
-    description: "Leopards, elephants & birds in Yala & Udawalawe",
-    imageUrl: "https://images.unsplash.com/photo-1523805009345-7448845a9e53?w=800&q=80",
-    searchTerm: "Yala",
-  },
-  {
-    name: "Tea Plantation Tours",
-    slug: "tea",
-    description: "Nuwara Eliya, Ella & the Hill Country",
-    imageUrl: "https://images.unsplash.com/photo-1569827156433-daf971e7d91a?w=800&q=80",
-    searchTerm: "Tea Country",
-  },
-  {
-    name: "Temple & Heritage",
-    slug: "heritage",
-    description: "Sigiriya, Dambulla, Temple of the Tooth",
-    imageUrl: "https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80",
-    searchTerm: "Cultural Triangle",
-  },
-  {
-    name: "Diving & Snorkeling",
-    slug: "diving",
-    description: "Pigeon Island, Unawatuna & Trincomalee",
-    imageUrl: "https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?w=800&q=80",
-    searchTerm: "Eastern Province",
-  },
-  {
-    name: "Scenic Train Rides",
-    slug: "train",
-    description: "Kandy–Ella & Colombo–Badulla railways",
-    imageUrl: "https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&q=80",
-    searchTerm: "Tea Country",
-  },
-];
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { destinationHighlights } from "./client-visuals";
 
 export function ThingsToDoSlideshow() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => {
-      setActiveIndex((i) => (i + 1) % ACTIVITIES.length);
+      setActiveIndex((index) => (index + 1) % destinationHighlights.length);
     }, 4500);
     return () => clearInterval(id);
   }, []);
 
-  const goPrev = () => setActiveIndex((i) => (i - 1 + ACTIVITIES.length) % ACTIVITIES.length);
-  const goNext = () => setActiveIndex((i) => (i + 1) % ACTIVITIES.length);
+  const activeScene = destinationHighlights[activeIndex];
 
   return (
-    <section className="rounded-2xl border border-white/50 bg-white/60 p-8 shadow-xl backdrop-blur-xl">
-      <h2 className="text-2xl font-bold text-stone-900">
-        Things to do in Sri Lanka
-      </h2>
-      <p className="mt-1 text-stone-600">
-        Whale watching, hiking, surfing & more
-      </p>
-
-      {/* Slideshow */}
-      <div className="relative mt-6 overflow-hidden rounded-2xl border border-white/60 bg-white/70 shadow-lg">
-        <div className="relative aspect-[16/9] w-full">
-          {ACTIVITIES.map((activity, i) => (
-            <div
-              key={activity.slug}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                i === activeIndex ? "opacity-100 z-10" : "opacity-0 z-0"
-              }`}
-            >
-              <img
-                src={activity.imageUrl}
-                alt={activity.name}
-                className="h-full w-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 via-stone-900/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                <h3 className="text-xl font-bold sm:text-2xl">{activity.name}</h3>
-                <p className="mt-1 text-sm text-stone-200">{activity.description}</p>
-                <Link
-                  href={`/packages?q=${encodeURIComponent(activity.searchTerm)}`}
-                  className="mt-3 inline-flex items-center gap-1 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium backdrop-blur-sm transition hover:bg-white/30"
-                >
-                  Find tours
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-          ))}
+    <section className="rounded-[2rem] border border-[#ddc8b0] bg-white/68 p-6 shadow-[0_20px_48px_-34px_rgba(43,32,15,0.55)] backdrop-blur-sm sm:p-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+            Sri Lanka Scene Board
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
+            Visual shortcuts to the island&apos;s strongest moods
+          </h2>
         </div>
-
-        {/* Nav buttons */}
-        <button
-          type="button"
-          onClick={goPrev}
-          className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 text-stone-700 shadow-lg backdrop-blur-sm transition hover:bg-white"
-          aria-label="Previous"
-        >
-          <ChevronLeft className="h-6 w-6" />
-        </button>
-        <button
-          type="button"
-          onClick={goNext}
-          className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 text-stone-700 shadow-lg backdrop-blur-sm transition hover:bg-white"
-          aria-label="Next"
-        >
-          <ChevronRight className="h-6 w-6" />
-        </button>
-
-        {/* Dots */}
-        <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-          {ACTIVITIES.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setActiveIndex(i)}
-              className={`h-2 w-2 rounded-full transition-all ${
-                i === activeIndex
-                  ? "w-6 bg-white"
-                  : "bg-white/50 hover:bg-white/70"
-              }`}
-              aria-label={`Go to slide ${i + 1}`}
-            />
-          ))}
+        <div className="inline-flex items-center gap-2 rounded-full border border-[#ddc8b0] bg-[#f7f1e7] px-3 py-2 text-xs uppercase tracking-[0.22em] text-stone-600">
+          Swipe through routes
         </div>
       </div>
 
-      {/* Thumbnail strip */}
-      <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-        {ACTIVITIES.map((activity, i) => (
-          <button
-            key={activity.slug}
-            type="button"
-            onClick={() => setActiveIndex(i)}
-            className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-lg transition ring-2 ring-offset-2 ring-offset-white/60 ${
-              i === activeIndex ? "ring-teal-500" : "ring-transparent hover:ring-teal-200"
-            }`}
-          >
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+        <div className="relative overflow-hidden rounded-[1.75rem] bg-[#12343b] text-[#f7ead7] shadow-[0_24px_56px_-32px_rgba(18,52,59,0.95)]">
+          <div className="absolute inset-0">
             <img
-              src={activity.imageUrl}
-              alt={activity.name}
+              src={activeScene.imageUrl}
+              alt={activeScene.title}
               className="h-full w-full object-cover"
             />
-            <span className="absolute inset-0 flex items-center justify-center bg-stone-900/50 text-xs font-medium text-white">
-              {activity.name}
-            </span>
-          </button>
-        ))}
+            <div className="absolute inset-0 bg-[linear-gradient(125deg,rgba(11,33,38,0.9)_8%,rgba(11,33,38,0.58)_46%,rgba(11,33,38,0.22)_100%)]" />
+          </div>
+
+          <div className="relative flex min-h-[28rem] flex-col justify-between p-6 sm:p-8">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-[#e5c48e]">
+                {activeScene.location}
+              </p>
+              <h3 className="mt-3 max-w-xl text-4xl font-semibold tracking-tight">
+                {activeScene.title}
+              </h3>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-[#e5dccd]">
+                {activeScene.summary}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {activeScene.chips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-full border border-white/14 bg-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[#efe3d0]"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+              <Link
+                href={activeScene.href}
+                className="inline-flex items-center gap-2 rounded-full bg-[#f2dfbf] px-5 py-3 text-sm font-semibold text-[#17343b] shadow-[0_16px_40px_-24px_rgba(239,214,174,0.95)] transition hover:bg-[#f7e8cf]"
+              >
+                Explore packages
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <div className="absolute bottom-6 right-6 flex gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveIndex(
+                    (index) =>
+                      (index - 1 + destinationHighlights.length) %
+                      destinationHighlights.length
+                  )
+                }
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/18 bg-white/12 text-white backdrop-blur-sm transition hover:bg-white/18"
+                aria-label="Previous scene"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveIndex(
+                    (index) => (index + 1) % destinationHighlights.length
+                  )
+                }
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/18 bg-white/12 text-white backdrop-blur-sm transition hover:bg-white/18"
+                aria-label="Next scene"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {destinationHighlights.map((scene, index) => (
+            <button
+              key={scene.title}
+              type="button"
+              onClick={() => setActiveIndex(index)}
+              className={`group grid overflow-hidden rounded-[1.35rem] border text-left transition sm:grid-cols-[116px_1fr] ${
+                index === activeIndex
+                  ? "border-[#12343b] bg-[#f7efe2] shadow-[0_16px_36px_-26px_rgba(18,52,59,0.55)]"
+                  : "border-[#ddc8b0] bg-white/72 hover:border-[#b78c54]"
+              }`}
+            >
+              <div className="h-32 overflow-hidden sm:h-full">
+                <img
+                  src={scene.imageUrl}
+                  alt={scene.title}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                />
+              </div>
+              <div className="flex flex-col justify-between gap-3 p-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-[#8c6a38]">
+                    {scene.location}
+                  </p>
+                  <h4 className="mt-2 text-lg font-semibold tracking-tight text-stone-900">
+                    {scene.title}
+                  </h4>
+                </div>
+                <p className="text-sm leading-6 text-stone-600">
+                  {scene.summary}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
     </section>
   );

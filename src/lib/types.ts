@@ -1,5 +1,31 @@
 export type LeadStatus = "new" | "contacted" | "quoted" | "negotiating" | "won" | "lost";
 
+export interface PackageSnapshot {
+  packageId?: string;
+  name: string;
+  duration: string;
+  destination: string;
+  price: number;
+  currency: string;
+  description: string;
+  itinerary: ItineraryDay[];
+  inclusions: string[];
+  exclusions: string[];
+  region?: string;
+  imageUrl?: string;
+  cancellationPolicy?: string;
+  mealOptions?: PackageOption[];
+  transportOptions?: PackageOption[];
+  accommodationOptions?: PackageOption[];
+  customOptions?: PackageOption[];
+  selectedAccommodationOptionId?: string;
+  selectedAccommodationByNight?: Record<string, string>;
+  selectedTransportOptionId?: string;
+  selectedMealOptionId?: string;
+  totalPrice?: number;
+  capturedAt: string;
+}
+
 export interface Lead {
   id: string;
   reference?: string; // e.g. PCT-20260312-A3B7 for client-facing lookup
@@ -22,6 +48,7 @@ export interface Lead {
   selectedTransportOptionId?: string;
   selectedMealOptionId?: string;
   totalPrice?: number;
+  packageSnapshot?: PackageSnapshot;
   archivedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -131,6 +158,7 @@ export interface Tour {
   status: "scheduled" | "confirmed" | "in-progress" | "completed" | "cancelled";
   totalValue: number;
   currency: string;
+  packageSnapshot?: PackageSnapshot;
   clientConfirmationSentAt?: string;
   supplierNotificationsSentAt?: string;
   paymentReceiptSentAt?: string;
@@ -281,5 +309,27 @@ export interface Todo {
   id: string;
   title: string;
   completed: boolean;
+  createdAt: string;
+}
+
+export type AuditEntityType =
+  | "lead"
+  | "package"
+  | "tour"
+  | "invoice"
+  | "payment"
+  | "supplier"
+  | "employee"
+  | "system";
+
+export interface AuditLog {
+  id: string;
+  entityType: AuditEntityType;
+  entityId: string;
+  action: string;
+  summary: string;
+  actor: string;
+  details?: string[];
+  metadata?: Record<string, unknown>;
   createdAt: string;
 }

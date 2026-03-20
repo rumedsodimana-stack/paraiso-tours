@@ -1,225 +1,367 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import {
-  MapPin,
-  Search,
-  Headphones,
-  Shield,
-  Clock,
+  ArrowRight,
   BadgeCheck,
-  ChevronRight,
+  Clock3,
+  Headphones,
+  MapPin,
+  ShieldCheck,
+  Sparkles,
   Star,
 } from "lucide-react";
 import { ClientLookupForm } from "./ClientLookupForm";
 import { ThingsToDoSlideshow } from "./ThingsToDoSlideshow";
+import {
+  clientPortalStats,
+  destinationHighlights,
+  getClientPackageVisual,
+  homeHeroScene,
+} from "./client-visuals";
 import { getPackagesForClient } from "@/lib/db";
 import { getFromPrice } from "@/lib/package-price";
 
-const TRUST_BADGES = [
+const SERVICE_PILLARS = [
   {
     icon: Headphones,
-    title: "24/7 support",
-    text: "We're here to help, anytime.",
+    title: "Local planning support",
+    text: "Real itinerary help before and after booking, not just a checkout page.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Flexible booking path",
+    text: "Compare package styles, keep your booking visible, and adjust the plan with context.",
   },
   {
     icon: BadgeCheck,
-    title: "Best price guarantee",
-    text: "Find a lower price? We'll match it.",
-  },
-  {
-    icon: Star,
-    title: "Expert-curated tours",
-    text: "Designed by local specialists.",
-  },
-  {
-    icon: Shield,
-    title: "Plan your way",
-    text: "Free cancellation & reserve now, pay later.",
+    title: "Curated Sri Lanka routing",
+    text: "Trips shaped around transfer times, scenic legs, and how the island actually moves.",
   },
 ];
 
 export default async function ClientPortalPage() {
   const allPackages = await getPackagesForClient();
-  const featuredPackages = allPackages.filter((p) => p.featured).slice(0, 6);
+  const featuredPackages = allPackages.filter((pkg) => pkg.featured).slice(0, 6);
+  const featuredStories = destinationHighlights.slice(0, 3);
 
   return (
-    <div className="space-y-20">
-      {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/70 px-8 py-16 text-center shadow-xl backdrop-blur-xl sm:px-12 sm:py-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-amber-50/30" aria-hidden="true" />
-        <h1 className="relative text-4xl font-bold tracking-tight text-stone-900 sm:text-5xl lg:text-6xl">
-          Do more with Paraíso Ceylon
-        </h1>
-        <p className="relative mx-auto mt-5 max-w-2xl text-lg text-stone-600">
-          Plan better with curated Sri Lanka experiences. Explore ancient cities,
-          tea country, wildlife safaris, and pristine beaches.
-        </p>
-        <div className="relative mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link
-            href="/packages"
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-teal-600/25 transition hover:bg-teal-700 hover:shadow-xl"
-          >
-            Explore tours
-            <ChevronRight className="h-5 w-5" />
-          </Link>
-          <Link
-            href="/my-bookings"
-            className="inline-flex items-center gap-2 rounded-xl border-2 border-stone-200 bg-white px-8 py-3.5 text-base font-semibold text-stone-800 transition hover:border-teal-300 hover:bg-teal-50/50"
-          >
-            Manage my bookings
-          </Link>
+    <div className="space-y-16 pb-16">
+      <section className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_28px_70px_-34px_rgba(18,52,59,0.95)]">
+        <div className="absolute inset-0">
+          <img
+            src={homeHeroScene.imageUrl}
+            alt="Sri Lanka travel panorama"
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(11,33,38,0.92)_8%,rgba(11,33,38,0.68)_46%,rgba(11,33,38,0.24)_100%)]" />
         </div>
-      </section>
 
-      {/* Why book with us */}
-      <section>
-        <h2 className="text-center text-2xl font-bold text-stone-900">
-          Why book with us?
-        </h2>
-        <p className="mx-auto mt-2 max-w-lg text-center text-stone-600">
-          Trust, flexibility, and local expertise in every trip
-        </p>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {TRUST_BADGES.map(({ icon: Icon, title, text }) => (
-            <div
-              key={title}
-              className="flex flex-col items-center rounded-2xl border border-white/50 bg-white/70 p-6 text-center shadow-xl backdrop-blur-xl transition hover:border-teal-200/60 hover:shadow-2xl"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-100 text-teal-600">
-                <Icon className="h-6 w-6" />
-              </div>
-              <h3 className="mt-4 font-semibold text-stone-900">{title}</h3>
-              <p className="mt-1 text-sm text-stone-600">{text}</p>
+        <div className="relative grid gap-10 px-6 py-10 sm:px-8 sm:py-12 lg:grid-cols-[1.18fr_0.82fr] lg:px-12 lg:py-14">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.28em] text-[#efd5aa] backdrop-blur-sm">
+              <Sparkles className="h-3.5 w-3.5" />
+              Curated island journeys
             </div>
-          ))}
+            <h1 className="mt-6 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+              {homeHeroScene.title}
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-[#e5dccd] sm:text-lg">
+              {homeHeroScene.summary}
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link
+                href="/journey-builder"
+                className="inline-flex items-center gap-2 rounded-full bg-[#f2dfbf] px-6 py-3 text-sm font-semibold text-[#17343b] shadow-[0_16px_38px_-22px_rgba(239,214,174,0.95)] transition hover:bg-[#f7e8cf]"
+              >
+                Build your journey
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/packages"
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/15"
+              >
+                Explore packages
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/my-bookings"
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/15"
+              >
+                View my bookings
+              </Link>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              {homeHeroScene.chips.map((chip) => (
+                <span
+                  key={chip}
+                  className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-[#efe3d0] backdrop-blur-sm"
+                >
+                  {chip}
+                </span>
+              ))}
+            </div>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {clientPortalStats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-[1.5rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm"
+                >
+                  <p className="text-sm text-[#d9ccb8]">{stat.label}</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            <div className="rounded-[1.75rem] border border-white/12 bg-white/10 p-5 backdrop-blur-md">
+              <p className="text-xs uppercase tracking-[0.3em] text-[#dcb87b]">
+                Route Notes
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold text-white">
+                Designed around transfer flow, not just map pins
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[#dfd7c6]">
+                Start in Colombo, move cleanly through heritage sites or tea
+                country, then finish on the coast without doubling back.
+              </p>
+              <Link
+                href="/journey-builder"
+                className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15"
+              >
+                Open the live route builder
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              {featuredStories.map((story) => (
+                <Link
+                  key={story.title}
+                  href={story.href}
+                  className="group overflow-hidden rounded-[1.5rem] border border-white/12 bg-[#f6ead5]/95 text-stone-900 shadow-[0_16px_40px_-28px_rgba(9,20,24,0.9)] transition hover:-translate-y-0.5"
+                >
+                  <div className="grid gap-3 p-3 sm:grid-cols-[112px_1fr] lg:grid-cols-[96px_1fr]">
+                    <div className="h-28 overflow-hidden rounded-[1.1rem] sm:h-full">
+                      <img
+                        src={story.imageUrl}
+                        alt={story.title}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    </div>
+                    <div className="flex flex-col justify-between gap-3 p-1">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+                          {story.location}
+                        </p>
+                        <h3 className="mt-2 text-lg font-semibold tracking-tight">
+                          {story.title}
+                        </h3>
+                        <p className="mt-2 text-sm leading-6 text-stone-600">
+                          {story.summary}
+                        </p>
+                      </div>
+                      <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#12343b]">
+                        See routes
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Things to do in Sri Lanka - slideshow */}
-      <ThingsToDoSlideshow />
-
-      {/* Keep things flexible */}
-      <section className="rounded-2xl border-2 border-teal-200/60 bg-teal-50/50 px-6 py-8 text-center backdrop-blur-sm">
-        <Clock className="mx-auto h-12 w-12 text-teal-600" />
-        <h2 className="mt-4 text-xl font-bold text-stone-900">
-          Keep things flexible
-        </h2>
-        <p className="mx-auto mt-2 max-w-xl text-stone-600">
-          Use Reserve Now & Pay Later to secure the tours you don&apos;t want to
-          miss. Free cancellation up to 24 hours before most experiences.
-        </p>
+      <section className="grid gap-4 lg:grid-cols-3">
+        {SERVICE_PILLARS.map(({ icon: Icon, title, text }) => (
+          <div
+            key={title}
+            className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/70 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#12343b] text-[#f4e3c5]">
+              <Icon className="h-5 w-5" />
+            </div>
+            <h2 className="mt-4 text-lg font-semibold text-stone-900">{title}</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-600">{text}</p>
+          </div>
+        ))}
       </section>
 
-      {/* Top / Featured tours */}
       {featuredPackages.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-bold text-stone-900">
-            Top tours
-          </h2>
-          <p className="mt-1 text-stone-600">
-            Our most popular Sri Lanka experiences
-          </p>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredPackages.map((pkg) => (
-              <Link
-                key={pkg.id}
-                href={`/packages/${pkg.id}`}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/80 shadow-xl backdrop-blur-xl transition hover:border-teal-200 hover:shadow-2xl"
-              >
-                <div className="aspect-[16/10] overflow-hidden">
-                  {pkg.imageUrl ? (
-                    <img src={pkg.imageUrl} alt={pkg.name} className="h-full w-full object-cover transition group-hover:scale-105" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-teal-100 to-amber-100">
-                      <MapPin className="h-12 w-12 text-teal-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="border-b border-white/30 bg-amber-500/10 px-6 py-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-lg font-semibold text-stone-900 group-hover:text-teal-700">
-                      {pkg.name}
-                    </h3>
-                    {(pkg.rating ?? 0) > 0 && (
-                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-sm font-medium text-amber-800">
-                        <Star className="h-3.5 w-3.5 fill-amber-400" />
-                        {pkg.rating!.toFixed(1)}
-                        {pkg.reviewCount != null && (
-                          <span className="text-amber-700/80">
-                            ({pkg.reviewCount})
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-stone-600">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {pkg.region ?? pkg.destination}
-                    </span>
-                    <span>{pkg.duration}</span>
-                  </div>
-                </div>
-                <div className="flex flex-1 flex-col p-6">
-                  <p className="line-clamp-2 text-sm text-stone-600">
-                    {pkg.description}
-                  </p>
-                  <div className="mt-4 flex items-end justify-between gap-4">
-                    <span className="text-lg font-bold text-teal-600">
-                      From {getFromPrice(pkg).toLocaleString()} {pkg.currency}
-                      <span className="text-sm font-medium text-stone-500"> / person</span>
-                    </span>
-                    <span className="text-teal-600 font-medium group-hover:text-teal-700">
-                      Book now →
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-8 text-center">
+        <section className="space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+                Featured Journeys
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
+                Popular ways to see the island
+              </h2>
+            </div>
             <Link
               href="/packages"
-              className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#12343b]"
             >
-              View all tours
-              <ChevronRight className="h-4 w-4" />
+              View every package
+              <ArrowRight className="h-4 w-4" />
             </Link>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            {featuredPackages.slice(0, 4).map((pkg, index) => {
+              const visual = getClientPackageVisual(pkg);
+
+              return (
+                <Link
+                  key={pkg.id}
+                  href={`/packages/${pkg.id}`}
+                  className={`group relative overflow-hidden rounded-[2rem] border border-white/25 bg-[#12343b] text-[#f7ead7] shadow-[0_24px_60px_-34px_rgba(18,52,59,0.95)] ${
+                    index === 0 ? "lg:col-span-2" : ""
+                  }`}
+                >
+                  <div className="absolute inset-0">
+                    <img
+                      src={visual.imageUrl}
+                      alt={pkg.name}
+                      className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(11,33,38,0.92)_6%,rgba(11,33,38,0.66)_46%,rgba(11,33,38,0.24)_100%)]" />
+                  </div>
+
+                  <div className="relative flex min-h-[22rem] flex-col justify-between p-6 sm:p-8">
+                    <div className="max-w-2xl">
+                      <p className="text-xs uppercase tracking-[0.28em] text-[#e5c48e]">
+                        {visual.eyebrow}
+                      </p>
+                      <h3 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+                        {pkg.name}
+                      </h3>
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[#ece1cf]">
+                        <span className="inline-flex items-center gap-1.5">
+                          <MapPin className="h-4 w-4" />
+                          {pkg.region ?? pkg.destination}
+                        </span>
+                        <span>{pkg.duration}</span>
+                        {(pkg.rating ?? 0) > 0 && (
+                          <span className="inline-flex items-center gap-1.5 text-[#f7d895]">
+                            <Star className="h-4 w-4 fill-current" />
+                            {pkg.rating?.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-4 max-w-xl text-sm leading-6 text-[#e1d8ca]">
+                        {visual.highlight}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-end justify-between gap-4">
+                      <div className="flex flex-wrap gap-2">
+                        {visual.chips.map((chip) => (
+                          <span
+                            key={chip}
+                            className="rounded-full border border-white/14 bg-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[#efe3d0]"
+                          >
+                            {chip}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="rounded-[1.4rem] bg-[#f5e2c3] px-4 py-3 text-right text-[#12343b]">
+                        <p className="text-xs uppercase tracking-[0.24em] text-[#7d5b2a]">
+                          From
+                        </p>
+                        <p className="mt-1 text-xl font-semibold">
+                          {getFromPrice(pkg).toLocaleString()} {pkg.currency}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {/* Free cancellation */}
-      <section className="rounded-2xl border border-emerald-200/60 bg-emerald-50/50 px-6 py-6 text-center">
-        <Shield className="mx-auto h-10 w-10 text-emerald-600" />
-        <h2 className="mt-3 font-semibold text-stone-900">
-          Free cancellation
-        </h2>
-        <p className="mt-1 text-sm text-stone-600">
-          Full refund if you cancel at least 24 hours before most experiences
-        </p>
+      <ThingsToDoSlideshow />
+
+      <section className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="overflow-hidden rounded-[2rem] border border-[#ddc8b0] bg-[#f2e2c6] shadow-[0_20px_48px_-34px_rgba(43,32,15,0.55)]">
+          <div className="p-6 sm:p-8">
+            <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+              Booking Visibility
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900">
+              Keep your trip visible after you request it
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-stone-700">
+              Use your reference or email to reopen your request, check dates,
+              and follow the package details after your first enquiry.
+            </p>
+          </div>
+          <div className="border-t border-[#d6bf9d] bg-white/50 p-6 sm:p-8">
+            <Suspense
+              fallback={
+                <div className="h-48 animate-pulse rounded-[1.5rem] bg-white/70" />
+              }
+            >
+              <ClientLookupForm />
+            </Suspense>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {destinationHighlights.slice(3, 6).map((scene) => (
+            <Link
+              key={scene.title}
+              href={scene.href}
+              className="group overflow-hidden rounded-[1.75rem] border border-[#ddc8b0] bg-white/70 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm"
+            >
+              <div className="aspect-[5/4] overflow-hidden">
+                <img
+                  src={scene.imageUrl}
+                  alt={scene.title}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                />
+              </div>
+              <div className="p-5">
+                <p className="text-xs uppercase tracking-[0.26em] text-[#8c6a38]">
+                  {scene.location}
+                </p>
+                <h3 className="mt-2 text-xl font-semibold tracking-tight text-stone-900">
+                  {scene.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-stone-600">
+                  {scene.summary}
+                </p>
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#12343b]">
+                  Explore this region
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
 
-      {/* View your booking */}
-      <section className="rounded-2xl border border-white/50 bg-white/70 p-8 shadow-xl backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          <Search className="h-6 w-6 text-teal-600" />
-          <h2 className="text-xl font-semibold text-stone-900">
-            View your booking
-          </h2>
-        </div>
-        <p className="mt-2 text-stone-600">
-          Already have a booking? Enter your reference or email to see your
-          itinerary and details.
-        </p>
-        <div className="mt-6">
-          <Suspense
-            fallback={
-              <div className="h-48 animate-pulse rounded-xl bg-stone-100" />
-            }
-          >
-            <ClientLookupForm />
-          </Suspense>
+      <section className="rounded-[2rem] border border-[#ddc8b0] bg-white/65 px-6 py-6 shadow-[0_18px_42px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm sm:px-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+              Planning Rhythm
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-900">
+              Reserve the route first, tune the details after
+            </h2>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#12343b] px-4 py-2 text-sm font-semibold text-[#f6ead6]">
+            <Clock3 className="h-4 w-4" />
+            Flexible follow-up after enquiry
+          </div>
         </div>
       </section>
     </div>

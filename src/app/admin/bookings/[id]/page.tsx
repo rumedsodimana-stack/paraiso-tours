@@ -10,8 +10,11 @@ import {
   Users,
 } from "lucide-react";
 import { getLead, getPackage, getHotels, getInvoiceByLeadId } from "@/lib/db";
+import { getAuditLogsForEntities } from "@/lib/audit";
+import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { getBookingSupplierEmails } from "@/lib/booking-breakdown";
 import { getLeadBookingFinancials } from "@/lib/booking-pricing";
+import { resolveLeadPackage } from "@/lib/package-snapshot";
 import { BookingSupplierBreakdown } from "../BookingSupplierBreakdown";
 import { EmailSuppliersButton } from "../EmailSuppliersButton";
 import { InvoiceButton } from "../InvoiceButton";
@@ -30,8 +33,20 @@ export default async function BookingDetailPage({
     getHotels(),
     getInvoiceByLeadId(id),
   ]);
-  const pkg = lead?.packageId ? await getPackage(lead.packageId) : null;
+  const livePackage = lead?.packageId ? await getPackage(lead.packageId) : null;
+  const pkg = lead ? resolveLeadPackage(lead, livePackage) : null;
   const financials = lead && pkg ? getLeadBookingFinancials(lead, pkg, suppliers) : null;
+  const auditLogs = lead
+    ? await getAuditLogsForEntities(
+        [
+          { entityType: "lead", entityId: lead.id },
+          ...(existingInvoice
+            ? [{ entityType: "invoice" as const, entityId: existingInvoice.id }]
+            : []),
+        ],
+        10
+      )
+    : [];
 
   if (!lead) {
     return (
@@ -216,6 +231,8 @@ export default async function BookingDetailPage({
           )}
         </div>
       </div>
+
+      <AuditTimeline title="Booking Activity" logs={auditLogs} />
     </div>
   );
 }

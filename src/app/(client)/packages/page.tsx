@@ -1,36 +1,38 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import {
-  MapPin,
-  Clock,
-  DollarSign,
-  ChevronRight,
-  Star,
-  Shield,
+  ArrowRight,
+  Clock3,
   Filter,
+  MapPin,
+  ShieldCheck,
+  Star,
 } from "lucide-react";
 import { PackageFilters } from "./PackageFilters";
+import {
+  destinationHighlights,
+  getClientPackageVisual,
+  homeHeroScene,
+} from "../client-visuals";
 import { getPackagesForClient } from "@/lib/db";
 import { getFromPrice } from "@/lib/package-price";
 
 const REGIONS = [
   "All",
   "Colombo",
-  "Kandy",
-  "Galle",
-  "Ella",
-  "Sigiriya",
   "Yala",
-  "Nuwara Eliya",
-  "Southern Coast",
-  "Cultural Triangle",
   "Tea Country",
+  "Cultural Triangle",
+  "Southern Coast",
+  "Eastern Province",
 ];
 
 export default async function ClientPackagesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ region?: string; q?: string; sort?: string }> | { region?: string; q?: string; sort?: string };
+  searchParams?:
+    | Promise<{ region?: string; q?: string; sort?: string }>
+    | { region?: string; q?: string; sort?: string };
 }) {
   const params = searchParams ? await Promise.resolve(searchParams) : {};
   const regionFilter = (params.region as string)?.trim() || "";
@@ -41,16 +43,18 @@ export default async function ClientPackagesPage({
 
   if (regionFilter && regionFilter.toLowerCase() !== "all") {
     packages = packages.filter(
-      (p) => (p.region ?? p.destination)?.toLowerCase() === regionFilter.toLowerCase()
+      (pkg) =>
+        (pkg.region ?? pkg.destination)?.toLowerCase() ===
+        regionFilter.toLowerCase()
     );
   }
 
   if (searchQ) {
     packages = packages.filter(
-      (p) =>
-        p.name.toLowerCase().includes(searchQ) ||
-        p.description?.toLowerCase().includes(searchQ) ||
-        (p.region ?? p.destination)?.toLowerCase().includes(searchQ)
+      (pkg) =>
+        pkg.name.toLowerCase().includes(searchQ) ||
+        pkg.description?.toLowerCase().includes(searchQ) ||
+        (pkg.region ?? pkg.destination)?.toLowerCase().includes(searchQ)
     );
   }
 
@@ -65,145 +69,217 @@ export default async function ClientPackagesPage({
   }
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-xl sm:p-8">
-        <h1 className="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
-          Our Tour Packages
-        </h1>
-        <p className="mt-2 text-stone-600">
-          Choose your perfect Sri Lanka experience
-        </p>
-
-        {/* Search and sort */}
-        <div className="mt-6">
-          <Suspense fallback={<div className="h-12 animate-pulse rounded-xl bg-stone-100" />}>
-            <PackageFilters
-              regionFilter={regionFilter}
-              initialQ={(params.q as string) || ""}
-              initialSort={sortBy}
-            />
-          </Suspense>
+    <div className="space-y-8 pb-10">
+      <section className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_28px_70px_-34px_rgba(18,52,59,0.95)]">
+        <div className="absolute inset-0">
+          <img
+            src={homeHeroScene.imageUrl}
+            alt="Sri Lanka route planning"
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(118deg,rgba(11,33,38,0.92)_12%,rgba(11,33,38,0.64)_46%,rgba(11,33,38,0.24)_100%)]" />
         </div>
 
-        {/* Region filter */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Filter className="h-4 w-4 text-stone-500" />
-          <span className="text-sm font-medium text-stone-600">Region:</span>
-          <Link
-            href="/packages"
-            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-              !regionFilter
-                ? "bg-teal-600 text-white shadow-md shadow-teal-600/20"
-                : "border border-white/60 bg-white/70 text-stone-600 backdrop-blur-sm hover:border-teal-200 hover:bg-white/90"
-            }`}
-          >
-            All
-          </Link>
-          {REGIONS.filter((r) => r !== "All").map((region) => (
-            <Link
-              key={region}
-              href={`/packages?region=${encodeURIComponent(region)}`}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                regionFilter.toLowerCase() === region.toLowerCase()
-                  ? "bg-teal-600 text-white shadow-md shadow-teal-600/20"
-                  : "border border-white/60 bg-white/70 text-stone-600 backdrop-blur-sm hover:border-teal-200 hover:bg-white/90"
-              }`}
+        <div className="relative px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.3em] text-[#e5c48e]">
+              Package Browser
+            </p>
+            <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+              Find the Sri Lanka route that matches your pace
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#e3dacb] sm:text-base">
+              Filter by region, compare package styles, then drill into the
+              route details before booking.
+            </p>
+          </div>
+
+          <div className="mt-6">
+            <Suspense
+              fallback={
+                <div className="h-14 animate-pulse rounded-[1.25rem] bg-white/10" />
+              }
             >
-              {region}
-            </Link>
-          ))}
-        </div>
-      </div>
+              <PackageFilters
+                regionFilter={regionFilter}
+                initialQ={(params.q as string) || ""}
+                initialSort={sortBy}
+              />
+            </Suspense>
+          </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {packages.map((pkg) => (
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <Filter className="h-4 w-4 text-[#e5c48e]" />
+            {REGIONS.map((region) => {
+              const href =
+                region === "All"
+                  ? "/packages"
+                  : `/packages?region=${encodeURIComponent(region)}`;
+              const active =
+                (region === "All" && !regionFilter) ||
+                regionFilter.toLowerCase() === region.toLowerCase();
+
+              return (
+                <Link
+                  key={region}
+                  href={href}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                    active
+                      ? "bg-[#f4dfbe] text-[#12343b]"
+                      : "border border-white/18 bg-white/10 text-[#efe3d0] backdrop-blur-sm hover:bg-white/14"
+                  }`}
+                >
+                  {region}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        {destinationHighlights.slice(0, 3).map((scene) => (
           <Link
-            key={pkg.id}
-            href={`/packages/${pkg.id}`}
-            className="group flex flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/70 shadow-xl backdrop-blur-xl transition hover:border-teal-200/60 hover:shadow-2xl"
+            key={scene.title}
+            href={scene.href}
+            className="overflow-hidden rounded-[1.6rem] border border-[#ddc8b0] bg-white/70 shadow-[0_16px_40px_-30px_rgba(43,32,15,0.5)] backdrop-blur-sm transition hover:-translate-y-0.5"
           >
-            <div className="relative block aspect-[16/10] overflow-hidden">
-              {pkg.imageUrl ? (
-                <img src={pkg.imageUrl} alt={pkg.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-teal-100 to-amber-100">
-                  <MapPin className="h-16 w-16 text-teal-400" />
-                </div>
-              )}
-              {pkg.featured && (
-                <span className="absolute right-3 top-3 rounded-full bg-amber-400/90 px-2.5 py-1 text-xs font-semibold text-amber-900 backdrop-blur-sm">
-                  Featured
-                </span>
-              )}
+            <div className="aspect-[5/4] overflow-hidden">
+              <img
+                src={scene.imageUrl}
+                alt={scene.title}
+                className="h-full w-full object-cover"
+              />
             </div>
-            <div className="flex flex-1 flex-col p-6">
-              <h2 className="text-xl font-semibold text-stone-900 group-hover:text-teal-700 transition">
-                {pkg.name}
-              </h2>
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-stone-600">
-                {pkg.rating != null && (
-                  <span className="flex items-center gap-1.5 font-medium text-amber-700">
-                    <Star className="h-4 w-4 fill-amber-400" />
-                    {pkg.rating.toFixed(1)}
-                    {pkg.reviewCount != null && (
-                      <span className="font-normal text-stone-500">
-                        ({pkg.reviewCount} reviews)
-                      </span>
-                    )}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4" />
-                  {pkg.region ?? pkg.destination}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4" />
-                  {pkg.duration}
-                </span>
-              </div>
-              <p className="mt-3 line-clamp-3 text-sm text-stone-600">
-                {pkg.description}
+            <div className="p-5">
+              <p className="text-xs uppercase tracking-[0.24em] text-[#8c6a38]">
+                {scene.location}
               </p>
-              {pkg.cancellationPolicy && (
-                <p className="mt-2 flex items-center gap-1.5 text-xs text-emerald-700">
-                  <Shield className="h-3.5 w-3.5" />
-                  {pkg.cancellationPolicy}
-                </p>
-              )}
-              <div className="mt-4 flex items-end justify-between gap-4">
-                <span className="flex items-center gap-1 text-lg font-bold text-teal-600">
-                  <DollarSign className="h-5 w-5" />
-                  From {getFromPrice(pkg).toLocaleString()}{" "}
-                  <span className="text-sm font-medium text-stone-500">
-                    {pkg.currency} / person
-                  </span>
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white group-hover:bg-teal-700 transition">
-                  Book now
-                  <ChevronRight className="h-4 w-4" />
-                </span>
-              </div>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-stone-900">
+                {scene.title}
+              </h2>
             </div>
           </Link>
         ))}
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {packages.map((pkg) => {
+          const visual = getClientPackageVisual(pkg);
+
+          return (
+            <Link
+              key={pkg.id}
+              href={`/packages/${pkg.id}`}
+              className="group relative overflow-hidden rounded-[2rem] border border-white/25 bg-[#12343b] text-[#f7ead7] shadow-[0_24px_60px_-34px_rgba(18,52,59,0.95)]"
+            >
+              <div className="absolute inset-0">
+                <img
+                  src={visual.imageUrl}
+                  alt={pkg.name}
+                  className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(11,33,38,0.92)_8%,rgba(11,33,38,0.62)_46%,rgba(11,33,38,0.24)_100%)]" />
+              </div>
+
+              <div className="relative flex min-h-[26rem] flex-col justify-between p-6 sm:p-8">
+                <div>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.26em] text-[#e5c48e]">
+                        {visual.eyebrow}
+                      </p>
+                      <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+                        {pkg.name}
+                      </h2>
+                    </div>
+                    {pkg.featured && (
+                      <span className="rounded-full bg-[#f2dfbf] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#17343b]">
+                        Featured
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-[#ece1cf]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" />
+                      {pkg.region ?? pkg.destination}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock3 className="h-4 w-4" />
+                      {pkg.duration}
+                    </span>
+                    {(pkg.rating ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1.5 text-[#f7d895]">
+                        <Star className="h-4 w-4 fill-current" />
+                        {pkg.rating?.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="mt-5 max-w-xl text-sm leading-7 text-[#e1d8ca]">
+                    {pkg.description}
+                  </p>
+                  <p className="mt-4 max-w-xl text-sm leading-6 text-[#d8ccb9]">
+                    {visual.microcopy}
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {visual.chips.map((chip) => (
+                      <span
+                        key={chip}
+                        className="rounded-full border border-white/14 bg-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-[#efe3d0]"
+                      >
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div className="rounded-[1.4rem] bg-[#f5e2c3] px-4 py-3 text-[#12343b]">
+                      <p className="text-xs uppercase tracking-[0.22em] text-[#7d5b2a]">
+                        From
+                      </p>
+                      <p className="mt-1 text-2xl font-semibold">
+                        {getFromPrice(pkg).toLocaleString()} {pkg.currency}
+                      </p>
+                    </div>
+
+                    {pkg.cancellationPolicy && (
+                      <div className="inline-flex items-center gap-2 rounded-full border border-white/16 bg-white/10 px-4 py-2 text-sm text-[#efe3d0]">
+                        <ShieldCheck className="h-4 w-4 text-[#f2dfbf]" />
+                        {pkg.cancellationPolicy}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       {packages.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white/60 py-20 text-center backdrop-blur-sm">
-          <MapPin className="mx-auto h-16 w-16 text-stone-300" />
-          <p className="mt-4 text-lg font-medium text-stone-600">
-            {regionFilter
-              ? `No packages in ${regionFilter} yet.`
-              : "No packages available yet."}
+        <div className="rounded-[2rem] border border-[#ddc8b0] bg-white/70 px-6 py-16 text-center shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+          <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+            No matching routes
           </p>
-          <p className="mt-1 text-sm text-stone-500">
-            Try a different region or search term
+          <p className="mt-3 text-2xl font-semibold tracking-tight text-stone-900">
+            {regionFilter
+              ? `Nothing is published in ${regionFilter} yet`
+              : "No packages are published yet"}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-stone-600">
+            Try a different region or clear the current search.
           </p>
           <Link
             href="/packages"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#12343b] px-5 py-3 text-sm font-semibold text-[#f6ead6]"
           >
-            View all tours
+            Reset filters
+            <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       )}

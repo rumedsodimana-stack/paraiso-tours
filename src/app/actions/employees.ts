@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createEmployee, updateEmployee, deleteEmployee } from "@/lib/db";
+import { createEmployee, updateEmployee, deleteEmployee, getEmployee } from "@/lib/db";
+import { recordAuditEvent } from "@/lib/audit";
 import type { EmployeePayType } from "@/lib/types";
 
 function parseOptionalNum(val: string | null): number | undefined {
@@ -51,6 +52,18 @@ export async function createEmployeeAction(formData: FormData) {
     startDate,
   });
 
+  await recordAuditEvent({
+    entityType: "employee",
+    entityId: employee.id,
+    action: "created",
+    summary: `Employee created: ${employee.name}`,
+    details: [
+      `Role: ${employee.role}`,
+      `Pay type: ${employee.payType}`,
+      `Status: ${employee.status}`,
+    ],
+  });
+
   revalidatePath("/admin/employees");
   revalidatePath("/admin/payroll");
   return { success: true, id: employee.id };
@@ -97,14 +110,35 @@ export async function updateEmployeeAction(id: string, formData: FormData) {
   });
 
   if (!updated) return { error: "Employee not found" };
+
+  await recordAuditEvent({
+    entityType: "employee",
+    entityId: updated.id,
+    action: "updated",
+    summary: `Employee updated: ${updated.name}`,
+    details: [
+      `Role: ${updated.role}`,
+      `Pay type: ${updated.payType}`,
+      `Status: ${updated.status}`,
+    ],
+  });
   revalidatePath("/admin/employees");
   revalidatePath("/admin/payroll");
   return { success: true };
 }
 
 export async function deleteEmployeeAction(id: string): Promise<{ success?: boolean; error?: string }> {
+  const employee = await getEmployee(id);
   const ok = await deleteEmployee(id);
   if (!ok) return { error: "Employee not found" };
+  if (employee) {
+    await recordAuditEvent({
+      entityType: "employee",
+      entityId: employee.id,
+      action: "archived",
+      summary: `Employee archived: ${employee.name}`,
+    });
+  }
   revalidatePath("/admin/employees");
   revalidatePath("/admin/payroll");
   return { success: true };

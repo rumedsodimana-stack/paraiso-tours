@@ -217,35 +217,44 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-lg font-semibold text-stone-900">Choose your options</h2>
+    <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="space-y-3">
+        <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+          Configure this route
+        </p>
+        <h2 className="text-2xl font-semibold tracking-tight text-stone-900">
+          Choose the stay style and traveller details
+        </h2>
+      </div>
 
-      <div className="sticky top-4 z-10 rounded-xl border-2 border-teal-200 bg-teal-50/90 p-4 shadow-lg backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-stone-600">Total price</span>
-          <span className="text-2xl font-bold text-teal-700">
+      <div className="sticky top-24 z-10 rounded-[1.6rem] border border-[#d7c2a4] bg-[#f3e3c7]/92 p-5 shadow-[0_18px_44px_-30px_rgba(43,32,15,0.55)] backdrop-blur-md">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-medium uppercase tracking-[0.18em] text-[#8c6a38]">
+            Estimated total
+          </span>
+          <span className="text-2xl font-semibold text-[#12343b]">
             {totalPrice.toLocaleString()} {pkg.currency}
           </span>
         </div>
-        <p className="mt-1 text-xs text-stone-500">
+        <p className="mt-2 text-sm text-stone-700">
           For {pax} traveller{pax !== 1 ? "s" : ""} × {nights} nights
         </p>
       </div>
 
       <div className="space-y-6">
-        <section>
-          <h3 className="mb-3 flex items-center gap-2 font-medium text-stone-800">
-            <Car className="h-5 w-5 text-teal-600" />
-            1. Select transportation
+        <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-stone-900">
+            <Car className="h-5 w-5 text-[#12343b]" />
+            1. Choose transportation
           </h3>
           <div className="grid gap-2 sm:grid-cols-2">
             {transportOptions.map((opt) => (
               <label
                 key={opt.id}
-                className={`flex cursor-pointer items-center justify-between rounded-xl border-2 p-4 transition ${
+                className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] border p-4 transition ${
                   transportId === opt.id
-                    ? "border-teal-500 bg-teal-50"
-                    : "border-stone-200 bg-white hover:border-teal-300"
+                    ? "border-[#12343b] bg-[#f3e3c7]"
+                    : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
                 }`}
               >
                 <input
@@ -256,8 +265,8 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
                   onChange={() => setTransportId(opt.id)}
                   className="sr-only"
                 />
-                <span className="font-medium">{opt.label}</span>
-                <span className="text-sm text-teal-600">
+                <span className="font-medium text-stone-900">{opt.label}</span>
+                <span className="text-sm font-medium text-[#12343b]">
                   +{calcOptionPrice(opt, pax, nights).toLocaleString()} {pkg.currency}
                 </span>
               </label>
@@ -265,20 +274,20 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
           </div>
         </section>
 
-        <section>
-          <h3 className="mb-3 flex items-center gap-2 font-medium text-stone-800">
-            <Building2 className="h-5 w-5 text-teal-600" />
-            2. Select accommodation per night
+        <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-stone-900">
+            <Building2 className="h-5 w-5 text-[#12343b]" />
+            2. Choose accommodation
           </h3>
           {legacyAccommodation ? (
             <div className="grid gap-2 sm:grid-cols-2">
               {legacyAccommodationOptions.map((opt) => (
                 <label
                   key={opt.id}
-                  className={`flex cursor-pointer items-center justify-between rounded-xl border-2 p-4 transition ${
+                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] border p-4 transition ${
                     accommodationId === opt.id
-                      ? "border-teal-500 bg-teal-50"
-                      : "border-stone-200 bg-white hover:border-teal-300"
+                      ? "border-[#12343b] bg-[#f3e3c7]"
+                      : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
                   }`}
                 >
                   <input
@@ -290,12 +299,12 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
                     className="sr-only"
                   />
                   <div className="flex flex-col">
-                    <span className="font-medium">{opt.label}</span>
+                    <span className="font-medium text-stone-900">{opt.label}</span>
                     {getStarRating(opt.supplierId) != null && (
                       <StarRating stars={getStarRating(opt.supplierId)!} />
                     )}
                   </div>
-                  <span className="text-sm text-teal-600">
+                  <span className="text-sm font-medium text-[#12343b]">
                     +{calcOptionPrice(opt, pax, nights).toLocaleString()} {pkg.currency}
                   </span>
                 </label>
@@ -304,16 +313,21 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
           ) : (
             <div className="space-y-4">
               {perNightAccommodation.map(({ nightIndex, options }) => (
-                <div key={nightIndex} className="rounded-xl border border-stone-200 bg-white p-4">
-                  <p className="mb-2 text-sm font-medium text-stone-600">Night {nightIndex + 1}</p>
+                <div
+                  key={nightIndex}
+                  className="rounded-[1.35rem] border border-[#ddc8b0] bg-white p-4"
+                >
+                  <p className="mb-3 text-sm font-medium uppercase tracking-[0.14em] text-stone-500">
+                    Night {nightIndex + 1}
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {options.map((opt) => (
                       <label
                         key={opt.id}
-                        className={`flex cursor-pointer items-center justify-between rounded-lg border-2 p-3 transition ${
+                        className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.15rem] border p-3 transition ${
                           accommodationByNight[nightIndex] === opt.id
-                            ? "border-teal-500 bg-teal-50"
-                            : "border-stone-200 hover:border-teal-300"
+                            ? "border-[#12343b] bg-[#f3e3c7]"
+                            : "border-[#ddc8b0] hover:border-[#b78c54]"
                         }`}
                       >
                         <input
@@ -330,12 +344,12 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
                           className="sr-only"
                         />
                         <div className="flex flex-col">
-                          <span className="font-medium">{opt.label}</span>
+                          <span className="font-medium text-stone-900">{opt.label}</span>
                           {getStarRating(opt.supplierId) != null && (
                             <StarRating stars={getStarRating(opt.supplierId)!} />
                           )}
                         </div>
-                        <span className="text-sm text-teal-600">
+                        <span className="text-sm font-medium text-[#12343b]">
                           +{calcOptionPrice(opt, pax, 1).toLocaleString()} {pkg.currency}
                         </span>
                       </label>
@@ -347,19 +361,19 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
           )}
         </section>
 
-        <section>
-          <h3 className="mb-3 flex items-center gap-2 font-medium text-stone-800">
-            <UtensilsCrossed className="h-5 w-5 text-teal-600" />
-            3. Select meal plan
+        <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-stone-900">
+            <UtensilsCrossed className="h-5 w-5 text-[#12343b]" />
+            3. Choose meal plan
           </h3>
           <div className="grid gap-2 sm:grid-cols-2">
             {mealOptions.map((opt) => (
               <label
                 key={opt.id}
-                className={`flex cursor-pointer items-center justify-between rounded-xl border-2 p-4 transition ${
+                className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] border p-4 transition ${
                   mealId === opt.id
-                    ? "border-teal-500 bg-teal-50"
-                    : "border-stone-200 bg-white hover:border-teal-300"
+                    ? "border-[#12343b] bg-[#f3e3c7]"
+                    : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
                 }`}
               >
                 <input
@@ -370,8 +384,8 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
                   onChange={() => setMealId(opt.id)}
                   className="sr-only"
                 />
-                <span className="font-medium">{opt.label}</span>
-                <span className="text-sm text-teal-600">
+                <span className="font-medium text-stone-900">{opt.label}</span>
+                <span className="text-sm font-medium text-[#12343b]">
                   +{calcOptionPrice(opt, pax, nights).toLocaleString()} {pkg.currency}
                 </span>
               </label>
@@ -379,21 +393,30 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
           </div>
         </section>
 
-        <section>
-          <label className="block font-medium text-stone-800">Number of travellers</label>
+        <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
+          <label className="block text-lg font-semibold text-stone-900">
+            4. Number of travellers
+          </label>
           <input
             type="number"
             min={1}
             value={pax}
             onChange={(e) => setPax(Math.max(1, parseInt(e.target.value, 10) || 1))}
-            className="mt-1 w-24 rounded-xl border border-stone-200 bg-white px-4 py-2.5 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="mt-3 w-28 rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
           />
         </section>
       </div>
 
-      <hr className="border-stone-200" />
+      <div className="h-px bg-[#ddc8b0]" />
 
-      <h3 className="font-medium text-stone-800">Your details</h3>
+      <div className="space-y-3">
+        <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+          Traveller details
+        </p>
+        <h3 className="text-2xl font-semibold tracking-tight text-stone-900">
+          Tell us how to reach you
+        </h3>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-stone-700">
@@ -404,7 +427,7 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
             name="name"
             type="text"
             required
-            className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
             placeholder="John & Sarah"
           />
         </div>
@@ -417,7 +440,7 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
             name="email"
             type="email"
             required
-            className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
             placeholder="your@email.com"
           />
         </div>
@@ -431,7 +454,7 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
             id="phone"
             name="phone"
             type="tel"
-            className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
             placeholder="+1 234 567 8900"
           />
         </div>
@@ -443,7 +466,7 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
             id="travelDate"
             name="travelDate"
             type="date"
-            className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
           />
         </div>
       </div>
@@ -455,19 +478,21 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
           id="notes"
           name="notes"
           rows={2}
-          className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+          className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
           placeholder="Dietary needs, accessibility..."
         />
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="rounded-[1rem] bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
       )}
 
       <button
         type="submit"
         disabled={loading || !canSubmit}
-        className="w-full rounded-xl bg-teal-600 py-3 font-medium text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-full bg-[#12343b] py-3.5 font-semibold text-[#f6ead6] shadow-[0_16px_40px_-26px_rgba(18,52,59,0.95)] transition hover:bg-[#0f2b31] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "Submitting…" : "Submit booking request"}
       </button>
