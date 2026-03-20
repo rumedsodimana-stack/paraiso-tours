@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { recordAuditEvent } from "@/lib/audit";
-import { getAppSettings, updateAppSettings } from "@/lib/app-config";
+import {
+  getAppSettings,
+  getStoredAiApiKeyRecord,
+  setStoredAiApiKeyRecord,
+  updateAppSettings,
+} from "@/lib/app-config";
+import { encryptStoredSecret } from "@/lib/settings-secrets";
 import { supabase } from "@/lib/supabase";
 
 export interface AppSettingsActionState {
@@ -142,6 +148,12 @@ export async function updateAppSettingsAction(
         ),
         myBookingsLabel: String(formData.get("myBookingsLabel") ?? ""),
         trackBookingLabel: String(formData.get("trackBookingLabel") ?? ""),
+        customJourneyGuidanceFee: Number(
+          formData.get("customJourneyGuidanceFee") ?? ""
+        ),
+        customJourneyGuidanceLabel: String(
+          formData.get("customJourneyGuidanceLabel") ?? ""
+        ),
         copyrightSuffix: String(formData.get("copyrightSuffix") ?? ""),
       },
     });
@@ -171,6 +183,7 @@ export async function updateAppSettingsAction(
     revalidatePath("/admin");
     revalidatePath("/admin/payments");
     revalidatePath("/admin/invoices");
+    revalidatePath("/admin/ai");
 
     return {
       ok: true,
@@ -185,6 +198,137 @@ export async function updateAppSettingsAction(
         error instanceof Error
           ? error.message
           : "Unable to update settings.",
+    };
+  }
+}
+
+export async function updateAiSettingsAction(
+  _prevState: AppSettingsActionState,
+  formData: FormData
+): Promise<AppSettingsActionState> {
+  try {
+    const previous = await getAppSettings();
+    const previousStoredKey = await getStoredAiApiKeyRecord();
+    const providerKindValue = String(formData.get("aiProviderKind") ?? "");
+    const providerKind =
+      providerKindValue === "openai_compatible"
+        ? "openai_compatible"
+        : providerKindValue === "anthropic"
+          ? "anthropic"
+          : "gemini";
+    const promptCacheTtlValue = String(formData.get("aiPromptCacheTtl") ?? "");
+    const promptCacheTtl = promptCacheTtlValue === "1h" ? "1h" : "5m";
+    const apiKey = String(formData.get("aiApiKey") ?? "").trim();
+    const clearSavedApiKey = formData.get("aiClearSavedApiKey") === "on";
+
+    const next = await updateAppSettings({
+      ai: {
+        enabled: formData.get("aiEnabled") === "on",
+        providerKind,
+        providerLabel: String(formData.get("aiProviderLabel") ?? ""),
+        baseUrl: String(formData.get("aiBaseUrl") ?? ""),
+        model: String(formData.get("aiModel") ?? ""),
+        simpleModel: String(formData.get("aiSimpleModel") ?? ""),
+        defaultModel: String(formData.get("aiDefaultModel") ?? ""),
+        heavyModel: String(formData.get("aiHeavyModel") ?? ""),
+        temperature: Number(formData.get("aiTemperature") ?? ""),
+        maxTokens: Number(formData.get("aiMaxTokens") ?? ""),
+        bookingBriefEnabled: formData.get("aiBookingBriefEnabled") === "on",
+        packageWriterEnabled: formData.get("aiPackageWriterEnabled") === "on",
+        journeyAssistantEnabled:
+          formData.get("aiJourneyAssistantEnabled") === "on",
+        workspaceCopilotEnabled:
+          formData.get("aiWorkspaceCopilotEnabled") === "on",
+        clientConciergeEnabled:
+          formData.get("aiClientConciergeEnabled") === "on",
+        ragEnabled: formData.get("aiRagEnabled") === "on",
+        ragMaxChunks: Number(formData.get("aiRagMaxChunks") ?? ""),
+        selfLearningEnabled:
+          formData.get("aiSelfLearningEnabled") === "on",
+        promptCacheEnabled:
+          formData.get("aiPromptCacheEnabled") === "on",
+        promptCacheTtl,
+        dailyBudgetAlertUsd: Number(
+          formData.get("aiDailyBudgetAlertUsd") ?? ""
+        ),
+        superpowerEnabled:
+          formData.get("aiSuperpowerEnabled") === "on",
+        globalInstructions: String(formData.get("aiGlobalInstructions") ?? ""),
+        knowledgeNotes: String(formData.get("aiKnowledgeNotes") ?? ""),
+      },
+    });
+
+    let credentialsMessage = "Stored AI key unchanged.";
+    if (apiKey) {
+      await setStoredAiApiKeyRecord({
+        encryptedKey: encryptStoredSecret(apiKey),
+        updatedAt: new Date().toISOString(),
+      });
+      credentialsMessage = "Stored AI key encrypted and updated.";
+    } else if (clearSavedApiKey) {
+      await setStoredAiApiKeyRecord({
+        encryptedKey: "",
+        updatedAt: new Date().toISOString(),
+      });
+      credentialsMessage = previousStoredKey.encryptedKey
+        ? "Stored AI key cleared."
+        : "No stored AI key was present.";
+    }
+
+    await recordAuditEvent({
+      entityType: "system",
+      entityId: "app_settings",
+      action: "ai_settings_updated",
+      summary: `AI settings updated for ${next.ai.providerLabel}`,
+      actor: "Admin",
+      details: [
+        `AI enabled: ${next.ai.enabled ? "Yes" : "No"}`,
+        `Model: ${next.ai.model}`,
+        `Previous model: ${previous.ai.model}`,
+        `Provider kind: ${next.ai.providerKind}`,
+        credentialsMessage,
+      ],
+      metadata: {
+        providerKind: next.ai.providerKind,
+        providerLabel: next.ai.providerLabel,
+        baseUrl: next.ai.baseUrl,
+        simpleModel: next.ai.simpleModel,
+        defaultModel: next.ai.defaultModel,
+        heavyModel: next.ai.heavyModel,
+        bookingBriefEnabled: next.ai.bookingBriefEnabled,
+        packageWriterEnabled: next.ai.packageWriterEnabled,
+        journeyAssistantEnabled: next.ai.journeyAssistantEnabled,
+        workspaceCopilotEnabled: next.ai.workspaceCopilotEnabled,
+        clientConciergeEnabled: next.ai.clientConciergeEnabled,
+        ragEnabled: next.ai.ragEnabled,
+        ragMaxChunks: next.ai.ragMaxChunks,
+        selfLearningEnabled: next.ai.selfLearningEnabled,
+        promptCacheEnabled: next.ai.promptCacheEnabled,
+        promptCacheTtl: next.ai.promptCacheTtl,
+        dailyBudgetAlertUsd: next.ai.dailyBudgetAlertUsd,
+        superpowerEnabled: next.ai.superpowerEnabled,
+        storedAiKeyChanged: Boolean(apiKey) || clearSavedApiKey,
+      },
+    });
+
+    revalidatePath("/admin/settings");
+    revalidatePath("/admin/ai");
+    revalidatePath("/admin", "layout");
+    revalidatePath("/journey-builder");
+
+    return {
+      ok: true,
+      message: credentialsMessage === "Stored AI key unchanged."
+        ? "AI settings updated."
+        : `AI settings updated. ${credentialsMessage}`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unable to update AI settings.",
     };
   }
 }

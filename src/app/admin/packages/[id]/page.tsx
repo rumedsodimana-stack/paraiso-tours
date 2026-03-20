@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, MapPin, Clock, DollarSign, Check, X } from "lucide-react";
+import { ArrowLeft, Bot, MapPin, Clock, DollarSign, Check, X } from "lucide-react";
 import { getPackage } from "@/lib/db";
 import { PackageActions } from "./PackageActions";
 import { CostBreakdown } from "./CostBreakdown";
@@ -42,7 +42,16 @@ export default async function PackageDetailPage({
           <ArrowLeft className="h-5 w-5" />
           Back
         </Link>
-        <PackageActions pkgId={pkg.id} pkgName={pkg.name} />
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/admin/ai?tool=package_writer&packageId=${pkg.id}`}
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-white"
+          >
+            <Bot className="h-4 w-4" />
+            AI copy
+          </Link>
+          <PackageActions pkgId={pkg.id} pkgName={pkg.name} />
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-white/30 bg-white/50 shadow-lg backdrop-blur-xl">

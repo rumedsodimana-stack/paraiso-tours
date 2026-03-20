@@ -15,19 +15,11 @@ export function ThemeSelector() {
             <Palette className="h-3.5 w-3.5" />
             Appearance
           </div>
-          <h2 className="mt-4 text-2xl font-semibold text-stone-900">
-            Pick a workspace theme
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm text-stone-600">
-            The current glassy teal version stays available as{" "}
-            <span className="font-semibold text-stone-900">Lagoon Glass</span>.
-            Choose any of the ten extra looks and the whole app will keep that
-            style on this browser.
-          </p>
+          <h2 className="mt-4 text-2xl font-semibold text-stone-900">Theme</h2>
         </div>
         <div className="rounded-2xl border border-white/30 bg-white/60 px-4 py-3 text-sm text-stone-600">
           <span className="font-semibold text-stone-900">{themes.length}</span>{" "}
-          total themes
+          themes
         </div>
       </div>
 
@@ -75,14 +67,9 @@ export function ThemeSelector() {
               </div>
 
               <div className="mt-4 flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-base font-semibold text-stone-900">
-                    {option.name}
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-stone-600">
-                    {option.description}
-                  </p>
-                </div>
+                <h3 className="text-base font-semibold text-stone-900">
+                  {option.name}
+                </h3>
                 <span className="rounded-full border border-white/30 bg-white/65 px-3 py-1 text-xs font-medium text-stone-500">
                   {isActive ? "Active" : "Apply"}
                 </span>

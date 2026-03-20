@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   BookOpen,
+  Bot,
   Home,
   Package,
   MapPin,
@@ -71,9 +72,10 @@ export default async function UserGuidePage() {
           <li><a href="#admin-portal" className="text-teal-600 hover:underline">3. Admin Portal (Staff)</a></li>
           <li><a href="#key-concepts" className="text-teal-600 hover:underline">4. Key Concepts</a></li>
           <li><a href="#auth-password" className="text-teal-600 hover:underline">5. Login & Password</a></li>
-          <li><a href="#whatsapp" className="text-teal-600 hover:underline">6. WhatsApp Integration</a></li>
-          <li><a href="#logging" className="text-teal-600 hover:underline">7. Logging</a></li>
-          <li><a href="#launch-readiness" className="text-teal-600 hover:underline">8. Launch Readiness Checklist</a></li>
+          <li><a href="#ai-setup" className="text-teal-600 hover:underline">6. AI Setup</a></li>
+          <li><a href="#whatsapp" className="text-teal-600 hover:underline">7. WhatsApp Integration</a></li>
+          <li><a href="#logging" className="text-teal-600 hover:underline">8. Logging</a></li>
+          <li><a href="#launch-readiness" className="text-teal-600 hover:underline">9. Launch Readiness Checklist</a></li>
         </ol>
       </nav>
 
@@ -326,6 +328,7 @@ export default async function UserGuidePage() {
             </h3>
             <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-stone-600">
               <li>Theme selector — 11 visual themes (glass, dark, light variants)</li>
+              <li>AI control center — Gemini API key, model routing, and tool switches</li>
               <li><strong>Change Admin Password</strong> — update login password (local only; on Vercel use ADMIN_PASSWORD env var)</li>
               <li>WhatsApp Business integration</li>
               <li>Profile, Company, Notifications cards (UI only — not wired to backend yet)</li>
@@ -390,10 +393,31 @@ export default async function UserGuidePage() {
         </ul>
       </section>
 
-      {/* 6. WhatsApp Integration */}
-      <section id="whatsapp" className="scroll-mt-6">
+      {/* 6. AI Setup */}
+      <section id="ai-setup" className="scroll-mt-6">
         <h2 className="flex items-center gap-2 text-xl font-bold text-stone-900">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700">6</span>
+          AI Setup
+        </h2>
+        <div className="mt-6 rounded-xl border border-stone-200 bg-white/80 p-6">
+          <h3 className="flex items-center gap-2 font-semibold text-stone-900">
+            <Bot className="h-5 w-5 text-teal-600" />
+            Gemini runtime
+          </h3>
+          <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-stone-600">
+            <li>Open <Link href="/admin/settings?section=ai" className="text-teal-600 hover:underline">Settings → AI Control Center</Link>.</li>
+            <li>Preferred env variable: <code className="rounded bg-stone-100 px-1">GEMINI_API_KEY</code>.</li>
+            <li>You can save an encrypted fallback key inside settings if needed.</li>
+            <li>Default model routing uses <code className="rounded bg-stone-100 px-1">gemini-2.5-flash-lite</code>, <code className="rounded bg-stone-100 px-1">gemini-2.5-flash</code>, and <code className="rounded bg-stone-100 px-1">gemini-2.5-pro</code>.</li>
+            <li>Use the header AI button for quick chat, or <Link href="/admin/ai" className="text-teal-600 hover:underline">AI Workspace</Link> for the full screen.</li>
+          </ul>
+        </div>
+      </section>
+
+      {/* 7. WhatsApp Integration */}
+      <section id="whatsapp" className="scroll-mt-6">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-stone-900">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700">7</span>
           WhatsApp Integration
         </h2>
         <p className="mt-4 text-stone-600">
@@ -438,10 +462,10 @@ export default async function UserGuidePage() {
         </div>
       </section>
 
-      {/* 7. Logging */}
+      {/* 8. Logging */}
       <section id="logging" className="scroll-mt-6">
         <h2 className="flex items-center gap-2 text-xl font-bold text-stone-900">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700">7</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700">8</span>
           Logging
         </h2>
         <p className="mt-4 text-stone-600">
@@ -452,10 +476,10 @@ export default async function UserGuidePage() {
         </p>
       </section>
 
-      {/* 8. Current Production Setup */}
+      {/* 9. Current Production Setup */}
       <section id="launch-readiness" className="scroll-mt-6">
         <h2 className="flex items-center gap-2 text-xl font-bold text-stone-900">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700">8</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700">9</span>
           Current Production Setup
         </h2>
         <p className="mt-4 text-stone-600">

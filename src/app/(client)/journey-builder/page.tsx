@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { getAppSettings } from "@/lib/app-config";
+import { getAiRuntimeStatus } from "@/lib/ai";
 import { getHotels, getPackagesForClient } from "@/lib/db";
 import { JourneyPlanner } from "./JourneyPlanner";
 
 export default async function JourneyBuilderPage() {
-  const [hotels, packages] = await Promise.all([
+  const [hotels, packages, settings, aiRuntime] = await Promise.all([
     getHotels(),
     getPackagesForClient(),
+    getAppSettings(),
+    getAiRuntimeStatus(),
   ]);
 
   return (
@@ -19,7 +23,17 @@ export default async function JourneyBuilderPage() {
         Back to client portal
       </Link>
 
-      <JourneyPlanner hotels={hotels} packages={packages} />
+      <JourneyPlanner
+        hotels={hotels}
+        packages={packages}
+        guidanceFee={settings.portal.customJourneyGuidanceFee}
+        guidanceLabel={settings.portal.customJourneyGuidanceLabel}
+        aiConciergeEnabled={
+          settings.ai.clientConciergeEnabled &&
+          aiRuntime.enabled &&
+          aiRuntime.configured
+        }
+      />
     </div>
   );
 }

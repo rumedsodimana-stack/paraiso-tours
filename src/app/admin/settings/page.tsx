@@ -1,92 +1,162 @@
-import { Bell, Globe, Settings as SettingsIcon, User, WandSparkles } from "lucide-react";
-import { getAppSettings } from "@/lib/app-config";
-import { BrandSettingsSection } from "./BrandSettingsSection";
+import Link from "next/link";
+import type { ComponentType } from "react";
 import {
-  ChangePasswordSection,
-} from "./ChangePasswordSection";
+  Bot,
+  KeyRound,
+  MessageCircle,
+  Palette,
+  Sparkles,
+} from "lucide-react";
+import { getAppSettings } from "@/lib/app-config";
+import { getAiRuntimeStatus } from "@/lib/ai";
+import { BrandSettingsSection } from "./BrandSettingsSection";
+import { AiSettingsSection } from "./AiSettingsSection";
+import { ChangePasswordSection } from "./ChangePasswordSection";
 import { WhatsAppSection } from "./whatsapp-section";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 
-export default async function SettingsPage() {
-  const settings = await getAppSettings();
-  const settingCards = [
-    {
-      icon: User,
-      title: "Profile",
-      description: "Update your name, direct contact, and staff identity.",
-    },
-    {
-      icon: Globe,
-      title: "Company",
-      description: "Manage brand details, invoice defaults, and currency.",
-    },
-    {
-      icon: Bell,
-      title: "Notifications",
-      description: "Tune reminders, follow-ups, and booking alerts.",
-    },
-  ];
+type SettingsSectionId =
+  | "brand"
+  | "ai"
+  | "appearance"
+  | "security"
+  | "whatsapp";
+
+const sectionMeta: Array<{
+  id: SettingsSectionId;
+  title: string;
+  eyebrow: string;
+  icon: ComponentType<{ className?: string }>;
+}> = [
+  {
+    id: "brand",
+    title: "Brand & Portal",
+    eyebrow: "Company",
+    icon: Sparkles,
+  },
+  {
+    id: "ai",
+    title: "AI Control Center",
+    eyebrow: "Automation",
+    icon: Bot,
+  },
+  {
+    id: "appearance",
+    title: "Appearance",
+    eyebrow: "Theme",
+    icon: Palette,
+  },
+  {
+    id: "security",
+    title: "Security",
+    eyebrow: "Access",
+    icon: KeyRound,
+  },
+  {
+    id: "whatsapp",
+    title: "WhatsApp",
+    eyebrow: "Messaging",
+    icon: MessageCircle,
+  },
+];
+
+function resolveSection(value?: string): SettingsSectionId {
+  if (
+    value === "brand" ||
+    value === "ai" ||
+    value === "appearance" ||
+    value === "security" ||
+    value === "whatsapp"
+  ) {
+    return value;
+  }
+  return "brand";
+}
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ section?: string }> | { section?: string };
+}) {
+  const params = searchParams ? await Promise.resolve(searchParams) : {};
+  const activeSection = resolveSection(params.section);
+  const [settings, aiRuntime] = await Promise.all([
+    getAppSettings(),
+    getAiRuntimeStatus(),
+  ]);
+
+  const activeMeta =
+    sectionMeta.find((section) => section.id === activeSection) ?? sectionMeta[0];
 
   return (
-    <div className="space-y-8">
-      <div className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-              <SettingsIcon className="h-3.5 w-3.5" />
-              Workspace Settings
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold text-stone-900 dark:text-stone-50">
-              Personalize the operations hub
-            </h1>
-            <p className="mt-3 text-stone-600 dark:text-stone-400">
-              Update branding, portal copy, and theme choices without changing
-              the core booking and operations structure.
-            </p>
-          </div>
-
-          <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-white/30 bg-white/60 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
-              <WandSparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-medium text-stone-900">Appearance is now themeable</p>
-              <p className="mt-1 text-sm text-stone-500">
-                Choose from eleven looks and keep the original glass theme as
-                the baseline option.
-              </p>
-            </div>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold text-stone-900 dark:text-stone-50">
+            Settings
+          </h1>
+          <p className="mt-1 text-sm text-stone-500">{activeMeta.title}</p>
         </div>
+        <Link
+          href="/admin/user-guide#ai-setup"
+          className="inline-flex items-center gap-2 self-start rounded-xl border border-white/30 bg-white/70 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-white"
+        >
+          Setup guide
+        </Link>
       </div>
 
-      <BrandSettingsSection settings={settings} />
+      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="rounded-[2rem] border border-white/20 bg-white/40 p-4 shadow-lg shadow-stone-200/50 backdrop-blur-xl xl:sticky xl:top-6 xl:h-fit">
+          <nav className="space-y-2">
+            {sectionMeta.map(({ icon: Icon, id, title, eyebrow }) => {
+              const isActive = id === activeSection;
 
-      <ThemeSelector />
+              return (
+                <Link
+                  key={id}
+                  href={`/admin/settings?section=${id}`}
+                  className={`flex items-start gap-3 rounded-2xl border px-4 py-3 transition ${
+                    isActive
+                      ? "border-teal-200 bg-teal-50/90 shadow-sm"
+                      : "border-transparent bg-white/55 hover:border-white/30 hover:bg-white/70"
+                  }`}
+                >
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+                      isActive
+                        ? "bg-teal-600 text-white"
+                        : "bg-white text-stone-500"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                      {eyebrow}
+                    </p>
+                    <p className="mt-1 font-medium text-stone-900">{title}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
 
-      <ChangePasswordSection />
+        <div className="space-y-6">
+          {activeSection === "brand" ? (
+            <BrandSettingsSection settings={settings} />
+          ) : null}
 
-      <WhatsAppSection />
+          {activeSection === "ai" ? (
+            <AiSettingsSection settings={settings} runtime={aiRuntime} />
+          ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        {settingCards.map(({ description, icon: Icon, title }) => (
-          <div
-            key={title}
-            className="flex items-center gap-4 rounded-2xl border border-white/20 bg-white/40 p-5 shadow-lg shadow-stone-200/50 backdrop-blur-xl"
-          >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/70">
-              <Icon className="h-5 w-5 text-stone-500" />
-            </div>
-            <div>
-              <p className="font-medium text-stone-900 dark:text-stone-50">
-                {title}
-              </p>
-              <p className="text-sm text-stone-500 dark:text-stone-400">
-                {description}
-              </p>
-            </div>
-          </div>
-        ))}
+          {activeSection === "appearance" ? <ThemeSelector /> : null}
+
+          {activeSection === "security" ? <ChangePasswordSection /> : null}
+
+          {activeSection === "whatsapp" ? <WhatsAppSection /> : null}
+        </div>
       </div>
     </div>
   );

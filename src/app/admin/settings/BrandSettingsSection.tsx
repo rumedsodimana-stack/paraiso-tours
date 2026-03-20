@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Building2, Database, Globe2, ImageIcon, Loader2 } from "lucide-react";
 import { updateAppSettingsAction } from "@/app/actions/app-settings";
 import type { AppSettings } from "@/lib/types";
@@ -159,10 +160,13 @@ export function BrandSettingsSection({
                   <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[#12343b] text-[#f7e8d1]">
                     {settings.company.logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={settings.company.logoUrl}
                         alt={displayName}
-                        className="h-full w-full object-cover"
+                        fill
+                        unoptimized
+                        className="object-cover"
+                        sizes="100vw"
                       />
                     ) : (
                       <ImageIcon className="h-7 w-7" />
@@ -237,6 +241,18 @@ export function BrandSettingsSection({
                 label="Track booking label"
                 name="trackBookingLabel"
                 defaultValue={settings.portal.trackBookingLabel}
+              />
+              <InputField
+                label="Journey guidance fee"
+                name="customJourneyGuidanceFee"
+                defaultValue={String(settings.portal.customJourneyGuidanceFee)}
+                placeholder="150"
+                type="number"
+              />
+              <InputField
+                label="Journey guidance label"
+                name="customJourneyGuidanceLabel"
+                defaultValue={settings.portal.customJourneyGuidanceLabel}
               />
               <InputField
                 label="Footer explore title"

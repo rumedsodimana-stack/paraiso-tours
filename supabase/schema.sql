@@ -203,8 +203,104 @@ CREATE TABLE IF NOT EXISTS app_settings (
   id TEXT PRIMARY KEY,
   company JSONB NOT NULL DEFAULT '{}'::jsonb,
   portal JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ai JSONB NOT NULL DEFAULT '{}'::jsonb,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS app_secrets (
+  id TEXT PRIMARY KEY,
+  ai_api_key_encrypted TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ai_knowledge_documents (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  source_type TEXT NOT NULL,
+  source_ref TEXT,
+  tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ai_interactions (
+  id TEXT PRIMARY KEY,
+  tool TEXT NOT NULL,
+  request_text TEXT NOT NULL,
+  response_text TEXT NOT NULL,
+  planned_action JSONB NOT NULL DEFAULT '{}'::jsonb,
+  executed_ok BOOLEAN,
+  helpful BOOLEAN,
+  feedback_notes TEXT,
+  promoted_to_knowledge BOOLEAN,
+  provider_label TEXT,
+  model TEXT,
+  model_mode TEXT,
+  superpower_used BOOLEAN,
+  input_tokens INTEGER,
+  output_tokens INTEGER,
+  cache_creation_input_tokens INTEGER,
+  cache_read_input_tokens INTEGER,
+  estimated_cost_usd NUMERIC,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE app_settings
+  ADD COLUMN IF NOT EXISTS ai JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE app_secrets
+  ADD COLUMN IF NOT EXISTS ai_api_key_encrypted TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE ai_knowledge_documents
+  ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+ALTER TABLE ai_knowledge_documents
+  ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS planned_action JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS executed_ok BOOLEAN;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS helpful BOOLEAN;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS feedback_notes TEXT;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS promoted_to_knowledge BOOLEAN;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS provider_label TEXT;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS model TEXT;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS model_mode TEXT;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS superpower_used BOOLEAN;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS input_tokens INTEGER;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS output_tokens INTEGER;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS cache_creation_input_tokens INTEGER;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS cache_read_input_tokens INTEGER;
+
+ALTER TABLE ai_interactions
+  ADD COLUMN IF NOT EXISTS estimated_cost_usd NUMERIC;
 
 ALTER TABLE leads
   ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
@@ -259,6 +355,10 @@ CREATE INDEX IF NOT EXISTS idx_payments_invoice_id
   ON payments(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_payments_date
   ON payments(date);
+CREATE INDEX IF NOT EXISTS idx_ai_knowledge_documents_active
+  ON ai_knowledge_documents(active, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_interactions_updated_at
+  ON ai_interactions(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_hotels_type
   ON hotels(type);
 CREATE INDEX IF NOT EXISTS idx_hotels_archived_at

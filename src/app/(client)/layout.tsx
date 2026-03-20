@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Compass, Mail, Phone, Waves, Mountain, Landmark } from "lucide-react";
 import { ClientHeader } from "./ClientHeader";
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
@@ -72,10 +73,13 @@ export default async function ClientLayout({
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6]">
                   {settings.company.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={settings.company.logoUrl}
                       alt={brandName}
-                      className="h-full w-full rounded-2xl object-cover"
+                      fill
+                      unoptimized
+                      className="rounded-2xl object-cover"
+                      sizes="100vw"
                     />
                   ) : (
                     <Compass className="h-4 w-4" />

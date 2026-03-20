@@ -6,24 +6,42 @@ import { createLead, updateLead, deleteLead, getLead, getPackage } from "@/lib/d
 import { recordAuditEvent } from "@/lib/audit";
 import { createPackageSnapshot } from "@/lib/package-snapshot";
 import type { LeadStatus } from "@/lib/types";
+import { leadSchema, zodErrorMessage } from "@/lib/validation";
 
 export async function createLeadAction(formData: FormData) {
   try {
-    const name = (formData.get("name") as string)?.trim();
-    const email = (formData.get("email") as string)?.trim();
-    const phone = (formData.get("phone") as string)?.trim();
-    const source = (formData.get("source") as string) || "Manual";
-    const status = (formData.get("status") as LeadStatus) || "new";
-    const destination = (formData.get("destination") as string)?.trim();
-    const travelDate = (formData.get("travelDate") as string)?.trim();
-    const pax = formData.get("pax") ? parseInt(String(formData.get("pax")), 10) : undefined;
-    const accompaniedGuestName = (formData.get("accompaniedGuestName") as string)?.trim();
-    const notes = (formData.get("notes") as string)?.trim();
-    const packageId = (formData.get("packageId") as string)?.trim() || undefined;
+    const rawPax = formData.get("pax") ? parseInt(String(formData.get("pax")), 10) : undefined;
+    const parsed = leadSchema.safeParse({
+      name: (formData.get("name") as string)?.trim(),
+      email: (formData.get("email") as string)?.trim(),
+      phone: (formData.get("phone") as string)?.trim() || undefined,
+      source: (formData.get("source") as string) || undefined,
+      status: (formData.get("status") as string) || undefined,
+      destination: (formData.get("destination") as string)?.trim() || undefined,
+      travelDate: (formData.get("travelDate") as string)?.trim() || undefined,
+      pax: isNaN(rawPax!) ? undefined : rawPax,
+      accompaniedGuestName: (formData.get("accompaniedGuestName") as string)?.trim() || undefined,
+      notes: (formData.get("notes") as string)?.trim() || undefined,
+      packageId: (formData.get("packageId") as string)?.trim() || undefined,
+    });
 
-    if (!name || !email) {
-      return { error: "Name and email are required" };
+    if (!parsed.success) {
+      return { error: zodErrorMessage(parsed.error) };
     }
+
+    const {
+      name,
+      email,
+      phone,
+      source = "Manual",
+      status = "new" as LeadStatus,
+      destination,
+      travelDate,
+      pax,
+      accompaniedGuestName,
+      notes,
+      packageId,
+    } = parsed.data;
 
     let packageSnapshot;
     if (packageId) {
@@ -75,21 +93,38 @@ export async function createLeadAction(formData: FormData) {
 }
 
 export async function updateLeadAction(id: string, formData: FormData) {
-  const name = (formData.get("name") as string)?.trim();
-  const email = (formData.get("email") as string)?.trim();
-  const phone = (formData.get("phone") as string)?.trim();
-  const source = (formData.get("source") as string) || "Manual";
-  const status = (formData.get("status") as LeadStatus) || "new";
-  const destination = (formData.get("destination") as string)?.trim();
-  const travelDate = (formData.get("travelDate") as string)?.trim();
-  const pax = formData.get("pax") ? parseInt(String(formData.get("pax")), 10) : undefined;
-  const accompaniedGuestName = (formData.get("accompaniedGuestName") as string)?.trim();
-  const notes = (formData.get("notes") as string)?.trim();
-  const packageId = (formData.get("packageId") as string)?.trim() || undefined;
+  const rawPax = formData.get("pax") ? parseInt(String(formData.get("pax")), 10) : undefined;
+  const parsed = leadSchema.safeParse({
+    name: (formData.get("name") as string)?.trim(),
+    email: (formData.get("email") as string)?.trim(),
+    phone: (formData.get("phone") as string)?.trim() || undefined,
+    source: (formData.get("source") as string) || undefined,
+    status: (formData.get("status") as string) || undefined,
+    destination: (formData.get("destination") as string)?.trim() || undefined,
+    travelDate: (formData.get("travelDate") as string)?.trim() || undefined,
+    pax: isNaN(rawPax!) ? undefined : rawPax,
+    accompaniedGuestName: (formData.get("accompaniedGuestName") as string)?.trim() || undefined,
+    notes: (formData.get("notes") as string)?.trim() || undefined,
+    packageId: (formData.get("packageId") as string)?.trim() || undefined,
+  });
 
-  if (!name || !email) {
-    return { error: "Name and email are required" };
+  if (!parsed.success) {
+    return { error: zodErrorMessage(parsed.error) };
   }
+
+  const {
+    name,
+    email,
+    phone,
+    source = "Manual",
+    status = "new" as LeadStatus,
+    destination,
+    travelDate,
+    pax,
+    accompaniedGuestName,
+    notes,
+    packageId,
+  } = parsed.data;
 
   const existing = await getLead(id);
   if (!existing) return { error: "Lead not found" };

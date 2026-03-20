@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 interface InvoiceLetterheadProps {
   companyName?: string;
   tagline?: string;
@@ -21,12 +23,16 @@ export function InvoiceLetterhead({
     <div className="border-b border-stone-200 pb-6 mb-6 print:border-stone-300">
       <div className="flex items-start gap-4">
         {logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl}
-            alt={companyName}
-            className="h-14 w-14 rounded-2xl object-cover"
-          />
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl">
+            <Image
+              src={logoUrl}
+              alt={companyName}
+              fill
+              unoptimized
+              className="object-cover"
+              sizes="56px"
+            />
+          </div>
         ) : null}
         <div>
           <h1 className="text-2xl font-bold text-stone-900 tracking-tight">

@@ -6,6 +6,8 @@ import { resolveLeadPackage, resolveTourPackage } from "./package-snapshot";
 import type {
   AuditEntityType,
   AuditLog,
+  AiInteraction,
+  AiKnowledgeDocument,
   Lead,
   TourPackage,
   Tour,
@@ -44,6 +46,8 @@ let memoryStore: {
   payrollRuns: PayrollRun[];
   todos: Todo[];
   auditLogs: AuditLog[];
+  aiKnowledgeDocuments: AiKnowledgeDocument[];
+  aiInteractions: AiInteraction[];
 } | null = null;
 function getMemoryStore() {
   if (!memoryStore) {
@@ -58,6 +62,8 @@ function getMemoryStore() {
       payrollRuns: [],
       todos: [],
       auditLogs: [],
+      aiKnowledgeDocuments: [],
+      aiInteractions: [],
     };
   }
   return memoryStore;
@@ -91,6 +97,8 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
     if (file === "payroll.json") return store.payrollRuns as T;
     if (file === "todos.json") return store.todos as T;
     if (file === "audit.json") return store.auditLogs as T;
+    if (file === "ai-knowledge.json") return store.aiKnowledgeDocuments as T;
+    if (file === "ai-interactions.json") return store.aiInteractions as T;
     return fallback;
   }
   await ensureDataDir();
@@ -116,6 +124,10 @@ async function writeJson<T>(file: string, data: T): Promise<void> {
     else if (file === "payroll.json") store.payrollRuns = data as PayrollRun[];
     else if (file === "todos.json") store.todos = data as Todo[];
     else if (file === "audit.json") store.auditLogs = data as AuditLog[];
+    else if (file === "ai-knowledge.json")
+      store.aiKnowledgeDocuments = data as AiKnowledgeDocument[];
+    else if (file === "ai-interactions.json")
+      store.aiInteractions = data as AiInteraction[];
     return;
   }
   await ensureDataDir();
@@ -146,6 +158,8 @@ async function maybeSeed() {
   await writeJson("payroll.json", []);
   await writeJson("todos.json", []);
   await writeJson("audit.json", []);
+  await writeJson("ai-knowledge.json", []);
+  await writeJson("ai-interactions.json", []);
   await writeFile(flagPath, "seeded", "utf-8");
 }
 
@@ -1091,6 +1105,167 @@ export async function createAuditLog(
   logs.unshift(log);
   await writeJson("audit.json", logs);
   return log;
+}
+
+// --- AI KNOWLEDGE ---
+export async function getAiKnowledgeDocuments(): Promise<AiKnowledgeDocument[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getAiKnowledgeDocuments();
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const documents = await readJson<AiKnowledgeDocument[]>("ai-knowledge.json", []);
+  return documents
+    .filter((document) => document.active)
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+}
+
+export async function createAiKnowledgeDocument(
+  data: Omit<AiKnowledgeDocument, "id" | "createdAt" | "updatedAt">
+): Promise<AiKnowledgeDocument> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createAiKnowledgeDocument(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const documents = await readJson<AiKnowledgeDocument[]>("ai-knowledge.json", []);
+  const now = new Date().toISOString();
+  const document: AiKnowledgeDocument = {
+    ...data,
+    id: `aik_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    createdAt: now,
+    updatedAt: now,
+  };
+  documents.unshift(document);
+  await writeJson("ai-knowledge.json", documents);
+  return document;
+}
+
+export async function updateAiKnowledgeDocument(
+  id: string,
+  data: Partial<
+    Omit<AiKnowledgeDocument, "id" | "createdAt" | "updatedAt">
+  >
+): Promise<AiKnowledgeDocument | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateAiKnowledgeDocument(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const documents = await readJson<AiKnowledgeDocument[]>("ai-knowledge.json", []);
+  const index = documents.findIndex((document) => document.id === id);
+  if (index === -1) return null;
+  documents[index] = {
+    ...documents[index],
+    ...data,
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJson("ai-knowledge.json", documents);
+  return documents[index];
+}
+
+// --- AI INTERACTIONS ---
+export async function getAiInteractions(limit = 30): Promise<AiInteraction[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getAiInteractions(limit);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const interactions = await readJson<AiInteraction[]>(
+    "ai-interactions.json",
+    []
+  );
+  return interactions
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    )
+    .slice(0, limit);
+}
+
+export async function getAiInteraction(id: string): Promise<AiInteraction | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getAiInteraction(id);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const interactions = await readJson<AiInteraction[]>(
+    "ai-interactions.json",
+    []
+  );
+  return interactions.find((interaction) => interaction.id === id) ?? null;
+}
+
+export async function createAiInteraction(
+  data: Omit<AiInteraction, "id" | "createdAt" | "updatedAt">
+): Promise<AiInteraction> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createAiInteraction(data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const interactions = await readJson<AiInteraction[]>(
+    "ai-interactions.json",
+    []
+  );
+  const now = new Date().toISOString();
+  const interaction: AiInteraction = {
+    ...data,
+    id: `aii_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    createdAt: now,
+    updatedAt: now,
+  };
+  interactions.unshift(interaction);
+  await writeJson("ai-interactions.json", interactions);
+  return interaction;
+}
+
+export async function updateAiInteraction(
+  id: string,
+  data: Partial<Omit<AiInteraction, "id" | "createdAt" | "updatedAt">>
+): Promise<AiInteraction | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateAiInteraction(id, data);
+    } catch {
+      // fall through to file/memory
+    }
+  }
+  const interactions = await readJson<AiInteraction[]>(
+    "ai-interactions.json",
+    []
+  );
+  const index = interactions.findIndex((interaction) => interaction.id === id);
+  if (index === -1) return null;
+  interactions[index] = {
+    ...interactions[index],
+    ...data,
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJson("ai-interactions.json", interactions);
+  return interactions[index];
 }
 
 // --- CLIENT PORTAL ---

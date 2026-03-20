@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Suspense } from "react";
 import {
   ArrowRight,
@@ -14,6 +15,8 @@ import {
   getClientPackageVisual,
   homeHeroScene,
 } from "../client-visuals";
+import { CraftJourneyPromoCard } from "../CraftJourneyPromoCard";
+import { getAppSettings } from "@/lib/app-config";
 import { getPackagesForClient } from "@/lib/db";
 import { getFromPrice } from "@/lib/package-price";
 
@@ -39,6 +42,7 @@ export default async function ClientPackagesPage({
   const searchQ = (params.q as string)?.trim().toLowerCase() || "";
   const sortBy = (params.sort as string) || "default";
 
+  const settings = await getAppSettings();
   let packages = await getPackagesForClient();
 
   if (regionFilter && regionFilter.toLowerCase() !== "all") {
@@ -72,10 +76,13 @@ export default async function ClientPackagesPage({
     <div className="space-y-8 pb-10">
       <section className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_28px_70px_-34px_rgba(18,52,59,0.95)]">
         <div className="absolute inset-0">
-          <img
+          <Image
             src={homeHeroScene.imageUrl}
             alt="Sri Lanka route planning"
-            className="h-full w-full object-cover"
+            fill
+            unoptimized
+            className="object-cover"
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-[linear-gradient(118deg,rgba(11,33,38,0.92)_12%,rgba(11,33,38,0.64)_46%,rgba(11,33,38,0.24)_100%)]" />
         </div>
@@ -144,11 +151,14 @@ export default async function ClientPackagesPage({
             href={scene.href}
             className="overflow-hidden rounded-[1.6rem] border border-[#ddc8b0] bg-white/70 shadow-[0_16px_40px_-30px_rgba(43,32,15,0.5)] backdrop-blur-sm transition hover:-translate-y-0.5"
           >
-            <div className="aspect-[5/4] overflow-hidden">
-              <img
+            <div className="relative aspect-[5/4] overflow-hidden">
+              <Image
                 src={scene.imageUrl}
                 alt={scene.title}
-                className="h-full w-full object-cover"
+                fill
+                unoptimized
+                className="object-cover"
+                sizes="100vw"
               />
             </div>
             <div className="p-5">
@@ -164,6 +174,10 @@ export default async function ClientPackagesPage({
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <CraftJourneyPromoCard
+          label={settings.portal.journeyBuilderLabel}
+          className="lg:col-span-2"
+        />
         {packages.map((pkg) => {
           const visual = getClientPackageVisual(pkg);
 
@@ -174,10 +188,13 @@ export default async function ClientPackagesPage({
               className="group relative overflow-hidden rounded-[2rem] border border-white/25 bg-[#12343b] text-[#f7ead7] shadow-[0_24px_60px_-34px_rgba(18,52,59,0.95)]"
             >
               <div className="absolute inset-0">
-                <img
+                <Image
                   src={visual.imageUrl}
                   alt={pkg.name}
-                  className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                  fill
+                  unoptimized
+                  className="object-cover transition duration-700 group-hover:scale-105"
+                  sizes="100vw"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(11,33,38,0.92)_8%,rgba(11,33,38,0.62)_46%,rgba(11,33,38,0.24)_100%)]" />
               </div>

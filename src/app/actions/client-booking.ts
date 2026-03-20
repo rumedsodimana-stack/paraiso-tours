@@ -15,40 +15,59 @@ import {
   isWhatsAppConfigured,
   sendWhatsAppBookingConfirmation,
 } from "@/lib/whatsapp";
+import { clientBookingSchema, zodErrorMessage } from "@/lib/validation";
 
 export async function createClientBookingAction(
   packageId: string,
   formData: FormData
 ) {
-  const name = (formData.get("name") as string)?.trim();
-  const email = (formData.get("email") as string)?.trim();
-  const phone = (formData.get("phone") as string)?.trim();
-  const travelDate = (formData.get("travelDate") as string)?.trim();
-  const pax = formData.get("pax")
-    ? parseInt(String(formData.get("pax")), 10)
-    : undefined;
-  const notes = (formData.get("notes") as string)?.trim();
-  const selectedAccommodationOptionId = (formData.get("selectedAccommodationOptionId") as string)?.trim();
+  // Parse raw fields from form
+  const rawPax = formData.get("pax") ? parseInt(String(formData.get("pax")), 10) : undefined;
+  const rawTotalPrice = formData.get("totalPrice") ? parseFloat(String(formData.get("totalPrice"))) : undefined;
   const selectedAccommodationByNightRaw = (formData.get("selectedAccommodationByNight") as string)?.trim();
-  let selectedAccommodationByNight: Record<string, string> | undefined;
+  let selectedAccommodationByNightParsed: Record<string, string> | undefined;
   if (selectedAccommodationByNightRaw) {
     try {
       const parsed = JSON.parse(selectedAccommodationByNightRaw);
       if (parsed && typeof parsed === "object")
-        selectedAccommodationByNight = parsed as Record<string, string>;
+        selectedAccommodationByNightParsed = parsed as Record<string, string>;
     } catch {
-      /* ignore */
+      /* ignore malformed JSON */
     }
   }
-  const selectedTransportOptionId = (formData.get("selectedTransportOptionId") as string)?.trim();
-  const selectedMealOptionId = (formData.get("selectedMealOptionId") as string)?.trim();
-  const clientReportedTotalPrice = formData.get("totalPrice")
-    ? parseFloat(String(formData.get("totalPrice")))
-    : undefined;
 
-  if (!name || !email) {
-    return { error: "Name and email are required" };
+  // Validate with Zod
+  const parsed = clientBookingSchema.safeParse({
+    name: (formData.get("name") as string)?.trim(),
+    email: (formData.get("email") as string)?.trim(),
+    phone: (formData.get("phone") as string)?.trim() || undefined,
+    travelDate: (formData.get("travelDate") as string)?.trim() || undefined,
+    pax: isNaN(rawPax!) ? undefined : rawPax,
+    notes: (formData.get("notes") as string)?.trim() || undefined,
+    selectedAccommodationOptionId: (formData.get("selectedAccommodationOptionId") as string)?.trim() || undefined,
+    selectedAccommodationByNight: selectedAccommodationByNightParsed,
+    selectedTransportOptionId: (formData.get("selectedTransportOptionId") as string)?.trim() || undefined,
+    selectedMealOptionId: (formData.get("selectedMealOptionId") as string)?.trim() || undefined,
+    totalPrice: isNaN(rawTotalPrice!) ? undefined : rawTotalPrice,
+  });
+
+  if (!parsed.success) {
+    return { error: zodErrorMessage(parsed.error) };
   }
+
+  const {
+    name,
+    email,
+    phone,
+    travelDate,
+    pax,
+    notes,
+    selectedAccommodationOptionId,
+    selectedAccommodationByNight,
+    selectedTransportOptionId,
+    selectedMealOptionId,
+    totalPrice: clientReportedTotalPrice,
+  } = parsed.data;
 
   const pkg = await getPackage(packageId);
   if (!pkg) {

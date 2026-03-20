@@ -322,7 +322,7 @@ export function JourneyMap({
             </span>
           </div>
           <p className="mt-3 text-sm leading-6 text-stone-600">
-            Click any marker to inspect it, then use the disclosure panels to edit the route.
+            Click any marker to inspect it, then use the builder steps to shape the trip.
           </p>
         </div>
 

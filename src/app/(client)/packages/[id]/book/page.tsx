@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, CalendarRange, MapPin, Star } from "lucide-react";
 import { getPackage, getHotels } from "@/lib/db";
 import { ClientBookingForm } from "./ClientBookingForm";
@@ -41,10 +42,13 @@ export default async function ClientBookPackagePage({
       <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
         <aside className="overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_28px_70px_-34px_rgba(18,52,59,0.95)]">
           <div className="relative min-h-[26rem]">
-            <img
+            <Image
               src={visual.imageUrl}
               alt={pkg.name}
-              className="absolute inset-0 h-full w-full object-cover"
+              fill
+              unoptimized
+              className="absolute inset-0 object-cover"
+              sizes="100vw"
             />
             <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(11,33,38,0.92)_10%,rgba(11,33,38,0.6)_48%,rgba(11,33,38,0.22)_100%)]" />
 

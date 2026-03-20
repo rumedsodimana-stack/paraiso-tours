@@ -1,4 +1,5 @@
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
+import { getAiRuntimeStatus } from "@/lib/ai";
 import { AdminShell } from "@/components/AdminShell";
 
 export default async function DashboardLayout({
@@ -6,12 +7,16 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const settings = await getAppSettings();
+  const [settings, aiRuntime] = await Promise.all([
+    getAppSettings(),
+    getAiRuntimeStatus(),
+  ]);
 
   return (
     <AdminShell
       brandName={getDisplayCompanyName(settings)}
       logoUrl={settings.company.logoUrl}
+      aiRuntime={aiRuntime}
     >
       {children}
     </AdminShell>

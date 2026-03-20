@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
@@ -49,10 +50,13 @@ export default async function PackageDetailPage({
 
       <section className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_28px_70px_-34px_rgba(18,52,59,0.95)]">
         <div className="absolute inset-0">
-          <img
+          <Image
             src={visual.imageUrl}
             alt={pkg.name}
-            className="h-full w-full object-cover"
+            fill
+            unoptimized
+            className="object-cover"
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(11,33,38,0.92)_8%,rgba(11,33,38,0.62)_46%,rgba(11,33,38,0.24)_100%)]" />
         </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -21,6 +22,7 @@ import {
   ChevronDown,
   ChevronRight,
   ListTodo,
+  Bot,
 } from "lucide-react";
 
 const navBeforeFinance = [
@@ -30,6 +32,7 @@ const navBeforeFinance = [
   { href: "/admin/calendar", label: "Scheduled Tours", icon: Calendar },
   { href: "/admin/quotations", label: "Quotations", icon: FileText },
   { href: "/admin/todos", label: "Todo List", icon: ListTodo },
+  { href: "/admin/ai", label: "AI Workspace", icon: Bot },
 ];
 
 const financeSubItems = [
@@ -72,13 +75,15 @@ export function Sidebar({
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-white/20 bg-white/40 shadow-xl backdrop-blur-xl print:hidden">
       <div className="flex h-16 shrink-0 items-center gap-2 border-b border-white/30 px-6">
-        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-white shadow-lg shadow-teal-500/25">
+        <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-white shadow-lg shadow-teal-500/25">
           {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={logoUrl}
               alt={brandName}
-              className="h-full w-full object-cover"
+              fill
+              unoptimized
+              className="object-cover"
+              sizes="100vw"
             />
           ) : (
             <MapPin className="h-5 w-5" />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Compass, MapPin, Menu, Sparkles, X } from "lucide-react";
 
 export function ClientHeader({
@@ -61,10 +62,13 @@ export function ClientHeader({
           <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#12343b] text-[#f7e8d1] shadow-[0_12px_32px_-18px_rgba(18,52,59,0.9)]">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={logoUrl}
                 alt={brandName}
-                className="h-full w-full object-cover"
+                fill
+                unoptimized
+                className="object-cover"
+                sizes="100vw"
               />
             ) : (
               <Compass className="h-5 w-5" />

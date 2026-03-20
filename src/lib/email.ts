@@ -16,6 +16,34 @@ export function isEmailConfigured(): boolean {
   return resend !== null;
 }
 
+/**
+ * Retry an async email send with exponential backoff.
+ * Retries up to maxAttempts times on transient failures (5xx or network errors).
+ * Rate-limit (429) and client errors (4xx) are not retried.
+ */
+async function withEmailRetry<T>(
+  fn: () => Promise<{ data: T | null; error: { statusCode?: number; message: string } | null }>,
+  maxAttempts = 3
+): Promise<{ data: T | null; error: string | null }> {
+  let lastError = "Unknown error";
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const result = await fn();
+    if (!result.error) {
+      return { data: result.data, error: null };
+    }
+    const status = result.error.statusCode ?? 0;
+    // Do not retry client errors (4xx) — they won't change
+    if (status >= 400 && status < 500) {
+      return { data: null, error: result.error.message };
+    }
+    lastError = result.error.message;
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** (attempt - 1)));
+    }
+  }
+  return { data: null, error: lastError };
+}
+
 async function getEmailBranding() {
   const settings = await getAppSettings();
   return {
@@ -119,14 +147,14 @@ export async function sendTourConfirmationEmail(
   `.trim();
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
       to: [email],
       subject: `Tour confirmed: ${packageName} – ${branding.companyName}`,
       html,
-    });
+    }));
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error };
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -225,14 +253,14 @@ export async function sendBookingRequestConfirmation(
   `.trim();
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
       to: [email],
       subject: `Booking received: ${packageName} – ${reference}`,
       html,
-    });
+    }));
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error };
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -309,15 +337,15 @@ export async function sendTourConfirmationWithInvoice(
   }
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
       to: [email],
       subject: `Tour confirmed: ${packageName} – ${branding.companyName}`,
       html,
       attachments: attachments.length > 0 ? attachments : undefined,
-    });
+    }));
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error };
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -560,14 +588,14 @@ export async function sendSupplierReservationEmail(
       : `Meal reservation – ${reference} – ${escapeHtml(clientName)}`;
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
       to: [email],
       subject,
       html,
-    });
+    }));
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error };
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -627,14 +655,14 @@ export async function sendPaymentReceiptEmail(
   `.trim();
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
       to: [email],
       subject: `Payment received – ${description} – ${branding.companyName}`,
       html,
-    });
+    }));
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error };
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

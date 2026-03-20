@@ -5,6 +5,8 @@ import { resolveLeadPackage, resolveTourPackage } from "./package-snapshot";
 import type {
   AuditEntityType,
   AuditLog,
+  AiInteraction,
+  AiKnowledgeDocument,
   Employee,
   HotelSupplier,
   Invoice,
@@ -280,6 +282,61 @@ function toAuditLog(row: Record<string, unknown>): AuditLog {
     details: asArray<string>(row.details),
     metadata: asObject<Record<string, unknown>>(row.metadata),
     createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function toAiKnowledgeDocument(row: Record<string, unknown>): AiKnowledgeDocument {
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    content: String(row.content),
+    sourceType: row.source_type as AiKnowledgeDocument["sourceType"],
+    sourceRef: (row.source_ref as string | null) ?? undefined,
+    tags: asArray<string>(row.tags),
+    active: Boolean(row.active),
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+    updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+function toAiInteraction(row: Record<string, unknown>): AiInteraction {
+  return {
+    id: String(row.id),
+    tool: String(row.tool),
+    requestText: String(row.request_text),
+    responseText: String(row.response_text),
+    plannedAction: asObject<Record<string, unknown>>(row.planned_action),
+    executedOk:
+      row.executed_ok == null ? undefined : Boolean(row.executed_ok),
+    helpful: row.helpful == null ? undefined : Boolean(row.helpful),
+    feedbackNotes: (row.feedback_notes as string | null) ?? undefined,
+    promotedToKnowledge:
+      row.promoted_to_knowledge == null
+        ? undefined
+        : Boolean(row.promoted_to_knowledge),
+    providerLabel: (row.provider_label as string | null) ?? undefined,
+    model: (row.model as string | null) ?? undefined,
+    modelMode: (row.model_mode as AiInteraction["modelMode"] | null) ?? undefined,
+    superpowerUsed:
+      row.superpower_used == null ? undefined : Boolean(row.superpower_used),
+    inputTokens:
+      row.input_tokens == null ? undefined : Number(row.input_tokens),
+    outputTokens:
+      row.output_tokens == null ? undefined : Number(row.output_tokens),
+    cacheCreationInputTokens:
+      row.cache_creation_input_tokens == null
+        ? undefined
+        : Number(row.cache_creation_input_tokens),
+    cacheReadInputTokens:
+      row.cache_read_input_tokens == null
+        ? undefined
+        : Number(row.cache_read_input_tokens),
+    estimatedCostUsd:
+      row.estimated_cost_usd == null
+        ? undefined
+        : Number(row.estimated_cost_usd),
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+    updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
   };
 }
 
@@ -1318,6 +1375,174 @@ export async function createAuditLog(
     .single();
   if (error) throw error;
   return toAuditLog(inserted);
+}
+
+export async function getAiKnowledgeDocuments(): Promise<AiKnowledgeDocument[]> {
+  const { data, error } = await supabase!
+    .from("ai_knowledge_documents")
+    .select("*")
+    .eq("active", true)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => toAiKnowledgeDocument(row));
+}
+
+export async function createAiKnowledgeDocument(
+  data: Omit<AiKnowledgeDocument, "id" | "createdAt" | "updatedAt">
+): Promise<AiKnowledgeDocument> {
+  const row = {
+    id: generateId("aik"),
+    title: data.title,
+    content: data.content,
+    source_type: data.sourceType,
+    source_ref: toNullable(data.sourceRef),
+    tags: data.tags ?? [],
+    active: data.active,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const { data: inserted, error } = await supabase!
+    .from("ai_knowledge_documents")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toAiKnowledgeDocument(inserted);
+}
+
+export async function updateAiKnowledgeDocument(
+  id: string,
+  data: Partial<
+    Omit<AiKnowledgeDocument, "id" | "createdAt" | "updatedAt">
+  >
+): Promise<AiKnowledgeDocument | null> {
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.title !== undefined) update.title = data.title;
+  if (data.content !== undefined) update.content = data.content;
+  if (data.sourceType !== undefined) update.source_type = data.sourceType;
+  if (data.sourceRef !== undefined) update.source_ref = toNullable(data.sourceRef);
+  if (data.tags !== undefined) update.tags = data.tags;
+  if (data.active !== undefined) update.active = data.active;
+
+  const { data: updated, error } = await supabase!
+    .from("ai_knowledge_documents")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error || !updated) return null;
+  return toAiKnowledgeDocument(updated);
+}
+
+export async function getAiInteractions(limit = 30): Promise<AiInteraction[]> {
+  const { data, error } = await supabase!
+    .from("ai_interactions")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((row) => toAiInteraction(row));
+}
+
+export async function getAiInteraction(id: string): Promise<AiInteraction | null> {
+  const { data, error } = await supabase!
+    .from("ai_interactions")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toAiInteraction(data);
+}
+
+export async function createAiInteraction(
+  data: Omit<AiInteraction, "id" | "createdAt" | "updatedAt">
+): Promise<AiInteraction> {
+  const row = {
+    id: generateId("aii"),
+    tool: data.tool,
+    request_text: data.requestText,
+    response_text: data.responseText,
+    planned_action: data.plannedAction ?? {},
+    executed_ok: toNullable(data.executedOk),
+    helpful: toNullable(data.helpful),
+    feedback_notes: toNullable(data.feedbackNotes),
+    promoted_to_knowledge: toNullable(data.promotedToKnowledge),
+    provider_label: toNullable(data.providerLabel),
+    model: toNullable(data.model),
+    model_mode: toNullable(data.modelMode),
+    superpower_used: toNullable(data.superpowerUsed),
+    input_tokens: toNullable(data.inputTokens),
+    output_tokens: toNullable(data.outputTokens),
+    cache_creation_input_tokens: toNullable(data.cacheCreationInputTokens),
+    cache_read_input_tokens: toNullable(data.cacheReadInputTokens),
+    estimated_cost_usd: toNullable(data.estimatedCostUsd),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const { data: inserted, error } = await supabase!
+    .from("ai_interactions")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toAiInteraction(inserted);
+}
+
+export async function updateAiInteraction(
+  id: string,
+  data: Partial<Omit<AiInteraction, "id" | "createdAt" | "updatedAt">>
+): Promise<AiInteraction | null> {
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.tool !== undefined) update.tool = data.tool;
+  if (data.requestText !== undefined) update.request_text = data.requestText;
+  if (data.responseText !== undefined) update.response_text = data.responseText;
+  if (data.plannedAction !== undefined) update.planned_action = data.plannedAction;
+  if (data.executedOk !== undefined) update.executed_ok = data.executedOk;
+  if (data.helpful !== undefined) update.helpful = data.helpful;
+  if (data.feedbackNotes !== undefined) {
+    update.feedback_notes = toNullable(data.feedbackNotes);
+  }
+  if (data.promotedToKnowledge !== undefined) {
+    update.promoted_to_knowledge = data.promotedToKnowledge;
+  }
+  if (data.providerLabel !== undefined) {
+    update.provider_label = toNullable(data.providerLabel);
+  }
+  if (data.model !== undefined) update.model = toNullable(data.model);
+  if (data.modelMode !== undefined) {
+    update.model_mode = toNullable(data.modelMode);
+  }
+  if (data.superpowerUsed !== undefined) {
+    update.superpower_used = data.superpowerUsed;
+  }
+  if (data.inputTokens !== undefined) {
+    update.input_tokens = data.inputTokens;
+  }
+  if (data.outputTokens !== undefined) {
+    update.output_tokens = data.outputTokens;
+  }
+  if (data.cacheCreationInputTokens !== undefined) {
+    update.cache_creation_input_tokens = data.cacheCreationInputTokens;
+  }
+  if (data.cacheReadInputTokens !== undefined) {
+    update.cache_read_input_tokens = data.cacheReadInputTokens;
+  }
+  if (data.estimatedCostUsd !== undefined) {
+    update.estimated_cost_usd = data.estimatedCostUsd;
+  }
+
+  const { data: updated, error } = await supabase!
+    .from("ai_interactions")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error || !updated) return null;
+  return toAiInteraction(updated);
 }
 
 export type ClientBookingResult =

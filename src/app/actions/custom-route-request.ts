@@ -32,6 +32,11 @@ export interface CustomRouteRequestInput {
   desiredNights: number;
   stayStyle: string;
   transportLabel: string;
+  mealLabel?: string;
+  mealRequest?: string;
+  accommodationMode?: "auto" | "choose";
+  guidanceFee?: number;
+  guidanceLabel?: string;
   routeStops: CustomRouteRequestStopInput[];
   estimatedTotal: number;
   estimatedCurrency: string;
@@ -44,7 +49,16 @@ function formatCustomRouteNotes(input: CustomRouteRequestInput) {
     "Custom route builder request",
     `Stay style: ${input.stayStyle}`,
     `Transport: ${input.transportLabel}`,
+    `Meals: ${input.mealLabel || "No meal plan"}`,
+    `Accommodation handling: ${
+      input.accommodationMode === "choose"
+        ? "Guest selected each stay"
+        : "Best available stay requested"
+    }`,
     `Target nights: ${input.desiredNights}`,
+    `Guidance fee: ${(input.guidanceFee ?? 0).toLocaleString()} ${input.estimatedCurrency}${
+      input.guidanceLabel ? ` (${input.guidanceLabel})` : ""
+    }`,
     `Estimated total: ${input.estimatedTotal.toLocaleString()} ${input.estimatedCurrency}`,
     `Estimated drive time: ${input.totalDriveHours.toFixed(1)} hours`,
     "",
@@ -80,6 +94,10 @@ function formatCustomRouteNotes(input: CustomRouteRequestInput) {
       lines.push(`   Activities: ${stop.activities.join(", ")}`);
     }
   });
+
+  if (input.mealRequest?.trim()) {
+    lines.push("", "Meal request:", input.mealRequest.trim());
+  }
 
   if (input.notes?.trim()) {
     lines.push("", "Guest notes:", input.notes.trim());
@@ -139,11 +157,18 @@ export async function createCustomRouteRequestAction(
       `Stop count: ${input.routeStops.length}`,
       `Estimated total: ${input.estimatedTotal.toLocaleString()} ${input.estimatedCurrency}`,
       `Travel date: ${travelDate || "TBD"}`,
+      `Transport: ${input.transportLabel}`,
+      `Meals: ${input.mealLabel || "No meal plan"}`,
     ],
     metadata: {
       routeStops: input.routeStops,
       stayStyle: input.stayStyle,
       transportLabel: input.transportLabel,
+      mealLabel: input.mealLabel ?? "No meal plan",
+      mealRequest: input.mealRequest ?? "",
+      accommodationMode: input.accommodationMode ?? "auto",
+      guidanceFee: input.guidanceFee ?? 0,
+      guidanceLabel: input.guidanceLabel ?? "",
       desiredNights: input.desiredNights,
     },
   });

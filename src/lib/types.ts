@@ -264,12 +264,46 @@ export interface PortalSettings {
   journeyBuilderLabel: string;
   myBookingsLabel: string;
   trackBookingLabel: string;
+  customJourneyGuidanceFee: number;
+  customJourneyGuidanceLabel: string;
   copyrightSuffix?: string;
+}
+
+export type AiProviderKind = "gemini" | "openai_compatible" | "anthropic";
+export type AiPromptCacheTtl = "5m" | "1h";
+export type AiModelMode = "auto" | "simple" | "default" | "heavy";
+
+export interface AiSettings {
+  enabled: boolean;
+  providerKind: AiProviderKind;
+  providerLabel: string;
+  baseUrl: string;
+  model: string;
+  simpleModel: string;
+  defaultModel: string;
+  heavyModel: string;
+  temperature: number;
+  maxTokens: number;
+  bookingBriefEnabled: boolean;
+  packageWriterEnabled: boolean;
+  journeyAssistantEnabled: boolean;
+  workspaceCopilotEnabled: boolean;
+  clientConciergeEnabled: boolean;
+  ragEnabled: boolean;
+  ragMaxChunks: number;
+  selfLearningEnabled: boolean;
+  promptCacheEnabled: boolean;
+  promptCacheTtl: AiPromptCacheTtl;
+  dailyBudgetAlertUsd: number;
+  superpowerEnabled: boolean;
+  globalInstructions?: string;
+  knowledgeNotes?: string;
 }
 
 export interface AppSettings {
   company: Company;
   portal: PortalSettings;
+  ai: AiSettings;
   updatedAt: string;
 }
 
@@ -360,4 +394,45 @@ export interface AuditLog {
   details?: string[];
   metadata?: Record<string, unknown>;
   createdAt: string;
+}
+
+export type AiKnowledgeSourceType =
+  | "manual"
+  | "system"
+  | "learned"
+  | "interaction";
+
+export interface AiKnowledgeDocument {
+  id: string;
+  title: string;
+  content: string;
+  sourceType: AiKnowledgeSourceType;
+  sourceRef?: string;
+  tags?: string[];
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiInteraction {
+  id: string;
+  tool: string;
+  requestText: string;
+  responseText: string;
+  plannedAction?: Record<string, unknown>;
+  executedOk?: boolean;
+  helpful?: boolean;
+  feedbackNotes?: string;
+  promotedToKnowledge?: boolean;
+  providerLabel?: string;
+  model?: string;
+  modelMode?: AiModelMode;
+  superpowerUsed?: boolean;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
+  estimatedCostUsd?: number;
+  createdAt: string;
+  updatedAt: string;
 }

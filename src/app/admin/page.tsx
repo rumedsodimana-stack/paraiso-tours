@@ -7,9 +7,11 @@ import {
   TrendingUp,
   MapPin,
   ArrowRight,
+  AlertTriangle,
 } from "lucide-react";
 import { getLeads, getTours } from "@/lib/db";
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
+import { supabase } from "@/lib/supabase";
 import { WorldClockWidget } from "@/components/WorldClockWidget";
 import { ExchangeRatesWidget } from "@/components/ExchangeRatesWidget";
 import type { Lead } from "@/lib/types";
@@ -140,8 +142,32 @@ export default async function DashboardPage() {
     },
   ];
 
+  const isVercel = process.env.VERCEL === "1";
+  const hasSupabase = supabase !== null;
+
   return (
     <div className="space-y-8">
+      {isVercel && !hasSupabase && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+          <div>
+            <p className="font-semibold">Data persistence not configured</p>
+            <p className="mt-0.5 text-amber-800">
+              Running on Vercel without Supabase — bookings, tours, invoices and payments
+              are stored in memory and will be lost on cold start. Set{" "}
+              <code className="rounded bg-amber-100 px-1 font-mono text-xs">
+                NEXT_PUBLIC_SUPABASE_URL
+              </code>{" "}
+              and{" "}
+              <code className="rounded bg-amber-100 px-1 font-mono text-xs">
+                SUPABASE_SERVICE_ROLE_KEY
+              </code>{" "}
+              in Vercel to enable persistent storage.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold text-slate-900">
           Welcome back to {brandName}
