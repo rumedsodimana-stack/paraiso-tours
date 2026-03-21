@@ -519,13 +519,22 @@ export function AiStudio({
               </div>
             </div>
             {!runtimeReady ? (
-              <Link
-                href="/admin/settings"
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
-              >
-                <Settings className="h-4 w-4" />
-                Open AI settings
-              </Link>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="/admin/settings?section=ai"
+                  className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
+                >
+                  <Settings className="h-4 w-4" />
+                  Open AI settings
+                </Link>
+                <p className="w-full text-xs leading-5 text-amber-800">
+                  Checklist:{" "}
+                  <strong>1)</strong> Paste your API key &nbsp;
+                  <strong>2)</strong> Toggle &ldquo;Enable AI features&rdquo; ON &nbsp;
+                  <strong>3)</strong> Click &ldquo;Save AI settings&rdquo; &nbsp;
+                  <strong>4)</strong> Come back here
+                </p>
+              </div>
             ) : null}
           </div>
         </div>
@@ -1042,6 +1051,33 @@ export function AiStudio({
                       ? `Rewrite the customer-facing copy for ${activePackage.name}.`
                       : "Choose a package in the workspace first."}
                   </p>
+                </div>
+              ) : null}
+
+              {/* ── Why is the button disabled? ── */}
+              {!canSubmit && !running ? (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {!runtimeReady ? (
+                    <span>
+                      <strong>AI not ready —</strong>{" "}
+                      {runtime.missingReason ||
+                        "Check AI settings."}{" "}
+                      <Link
+                        href="/admin/settings?section=ai"
+                        className="font-semibold underline underline-offset-2 hover:text-amber-900"
+                      >
+                        Open AI settings →
+                      </Link>
+                    </span>
+                  ) : tool === "booking_brief" && !leadId ? (
+                    "Select a booking from the dropdown above first."
+                  ) : tool === "package_writer" && !packageId ? (
+                    "Select a package from the dropdown above first."
+                  ) : tool === "journey_assistant" ? (
+                    "Type your guest request in the prompt box above."
+                  ) : (
+                    "Type a prompt in the box above to get started."
+                  )}
                 </div>
               ) : null}
 

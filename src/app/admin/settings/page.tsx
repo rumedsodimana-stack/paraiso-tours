@@ -26,36 +26,42 @@ const sectionMeta: Array<{
   id: SettingsSectionId;
   title: string;
   eyebrow: string;
+  description: string;
   icon: ComponentType<{ className?: string }>;
 }> = [
   {
     id: "brand",
     title: "Brand & Portal",
     eyebrow: "Company",
+    description: "Logo, name, colours & portal copy",
     icon: Sparkles,
   },
   {
     id: "ai",
     title: "AI Control Center",
     eyebrow: "Automation",
+    description: "API key, models & AI tools",
     icon: Bot,
   },
   {
     id: "appearance",
     title: "Appearance",
     eyebrow: "Theme",
+    description: "Light / dark mode & colour theme",
     icon: Palette,
   },
   {
     id: "security",
     title: "Security",
     eyebrow: "Access",
+    description: "Admin password & login settings",
     icon: KeyRound,
   },
   {
     id: "whatsapp",
     title: "WhatsApp",
     eyebrow: "Messaging",
+    description: "Business account & notifications",
     icon: MessageCircle,
   },
 ];
@@ -88,6 +94,8 @@ export default async function SettingsPage({
   const activeMeta =
     sectionMeta.find((section) => section.id === activeSection) ?? sectionMeta[0];
 
+  const aiKeyMissing = aiRuntime.credentialSource === "missing";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
@@ -95,7 +103,7 @@ export default async function SettingsPage({
           <h1 className="text-3xl font-semibold text-stone-900 dark:text-stone-50">
             Settings
           </h1>
-          <p className="mt-1 text-sm text-stone-500">{activeMeta.title}</p>
+          <p className="mt-1 text-sm text-stone-500">{activeMeta.description}</p>
         </div>
         <Link
           href="/admin/user-guide#ai-setup"
@@ -108,8 +116,9 @@ export default async function SettingsPage({
       <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="rounded-[2rem] border border-white/20 bg-white/40 p-4 shadow-lg shadow-stone-200/50 backdrop-blur-xl xl:sticky xl:top-6 xl:h-fit">
           <nav className="space-y-2">
-            {sectionMeta.map(({ icon: Icon, id, title, eyebrow }) => {
+            {sectionMeta.map(({ icon: Icon, id, title, eyebrow, description }) => {
               const isActive = id === activeSection;
+              const showBadge = id === "ai" && aiKeyMissing;
 
               return (
                 <Link
@@ -122,19 +131,26 @@ export default async function SettingsPage({
                   }`}
                 >
                   <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+                    className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
                       isActive
                         ? "bg-teal-600 text-white"
                         : "bg-white text-stone-500"
                     }`}
                   >
                     <Icon className="h-5 w-5" />
+                    {showBadge && (
+                      <span className="absolute -right-1 -top-1 flex h-3 w-3">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                        <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500" />
+                      </span>
+                    )}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                       {eyebrow}
                     </p>
-                    <p className="mt-1 font-medium text-stone-900">{title}</p>
+                    <p className="mt-0.5 font-medium text-stone-900">{title}</p>
+                    <p className="mt-0.5 text-xs text-stone-400 leading-4">{description}</p>
                   </div>
                 </Link>
               );

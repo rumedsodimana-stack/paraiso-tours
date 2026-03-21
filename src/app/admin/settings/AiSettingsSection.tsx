@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   Bot,
   KeyRound,
   Loader2,
@@ -35,10 +36,14 @@ function InputField(props: {
   placeholder?: string;
   step?: number | string;
   autoComplete?: string;
+  hint?: string;
 }) {
   return (
     <label className="block">
       <span className="text-sm font-medium text-stone-700">{props.label}</span>
+      {props.hint && (
+        <span className="ml-2 text-xs text-stone-400">{props.hint}</span>
+      )}
       <input
         name={props.name}
         type={props.type ?? "text"}
@@ -104,7 +109,6 @@ function ToggleField(props: {
 
 function formatSavedTime(value?: string) {
   if (!value) return "";
-
   try {
     return new Intl.DateTimeFormat(undefined, {
       dateStyle: "medium",
@@ -134,6 +138,8 @@ export function AiSettingsSection({
     }
   }, [router, state.ok]);
 
+  const isMissingKey = runtime.credentialSource === "missing";
+
   const credentialLabel =
     runtime.credentialSource === "environment"
       ? "Using environment key"
@@ -152,6 +158,7 @@ export function AiSettingsSection({
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+      {/* Header */}
       <div className="flex items-start gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
           <Bot className="h-6 w-6" />
@@ -167,6 +174,160 @@ export function AiSettingsSection({
       </div>
 
       <form action={formAction} className="mt-6 space-y-8">
+
+        {/* ── Step 1 banner ─ shown when no API key is configured ── */}
+        {isMissingKey && (
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+            <div>
+              <p className="font-semibold">Step 1 — Paste your API key below</p>
+              <p className="mt-1 text-sm leading-6">
+                AI features won&apos;t work until a key is saved. Scroll down to
+                the <strong>Credentials</strong> section and paste your Gemini
+                (or compatible) key, then hit{" "}
+                <strong>Save AI settings</strong>.{" "}
+                <Link
+                  href="/admin/user-guide#ai-setup"
+                  className="font-medium underline underline-offset-2 hover:text-amber-700"
+                >
+                  Setup guide →
+                </Link>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
+            SECTION 1 — CREDENTIALS  (moved to top so it's easy to find)
+        ══════════════════════════════════════════════════════ */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
+            <KeyRound className="h-4 w-4" />
+            Credentials
+            {isMissingKey && (
+              <span className="ml-auto rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                Required
+              </span>
+            )}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
+            {/* Key input */}
+            <div
+              className={`space-y-4 rounded-2xl border p-5 ${
+                isMissingKey
+                  ? "border-amber-200 bg-amber-50/60"
+                  : "border-stone-200 bg-white/70"
+              }`}
+            >
+              <div>
+                <label className="block">
+                  <span className="text-sm font-medium text-stone-700">
+                    AI API key
+                  </span>
+                  <span className="ml-2 text-xs text-stone-400">
+                    — encrypted when saved
+                  </span>
+                  <input
+                    name="aiApiKey"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={
+                      runtime.hasStoredKey
+                        ? "Stored securely. Enter a new key to replace it."
+                        : "Paste your Gemini API key here…"
+                    }
+                    className={`mt-1 w-full rounded-xl border px-4 py-2.5 text-sm text-stone-900 outline-none transition focus:ring-2 ${
+                      isMissingKey
+                        ? "border-amber-300 bg-white focus:border-teal-500 focus:ring-teal-500/20"
+                        : "border-stone-200 bg-white focus:border-teal-500 focus:ring-teal-500/20"
+                    }`}
+                  />
+                </label>
+              </div>
+
+              {runtime.hasStoredKey ? (
+                <label className="flex items-start gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    name="aiClearSavedApiKey"
+                    className="mt-1 h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-500"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-stone-900">
+                      Clear saved settings key
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-stone-500">
+                      Leave this off to keep the current saved key.
+                    </span>
+                  </span>
+                </label>
+              ) : null}
+
+              <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-500">
+                Use{" "}
+                <code className="rounded bg-stone-200 px-1 text-stone-700">
+                  GEMINI_API_KEY
+                </code>{" "}
+                as an env variable, or save a fallback key here. Environment
+                variable always wins.{" "}
+                <Link
+                  href="/admin/user-guide#ai-setup"
+                  className="font-medium text-teal-700 hover:text-teal-800"
+                >
+                  Setup guide
+                </Link>
+              </div>
+            </div>
+
+            {/* Status panel */}
+            <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${credentialTone}`}
+                >
+                  {credentialLabel}
+                </span>
+                {runtime.hasEnvironmentKey ? (
+                  <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-600">
+                    Env key detected
+                  </span>
+                ) : null}
+                {runtime.hasStoredKey ? (
+                  <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-600">
+                    Saved fallback ready
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-4 space-y-3 text-sm leading-6 text-stone-600">
+                <p>
+                  Provider:{" "}
+                  <span className="font-semibold text-stone-900">
+                    {runtime.providerLabel}
+                  </span>
+                </p>
+                {savedKeyUpdated ? (
+                  <p>
+                    Saved key last updated{" "}
+                    <span className="font-medium text-stone-900">
+                      {savedKeyUpdated}
+                    </span>
+                  </p>
+                ) : null}
+                {runtime.missingReason ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+                    {runtime.missingReason}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════
+            SECTION 2 — RUNTIME
+        ══════════════════════════════════════════════════════ */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
             <Orbit className="h-4 w-4" />
@@ -212,6 +373,7 @@ export function AiSettingsSection({
               name="aiSimpleModel"
               defaultValue={settings.ai.simpleModel}
               placeholder="gemini-2.5-flash-lite"
+              hint="lightweight tasks"
             />
             <InputField
               label="Default route model"
@@ -224,6 +386,7 @@ export function AiSettingsSection({
               name="aiHeavyModel"
               defaultValue={settings.ai.heavyModel}
               placeholder="gemini-2.5-pro"
+              hint="complex reasoning"
             />
             <InputField
               label="Temperature"
@@ -232,6 +395,7 @@ export function AiSettingsSection({
               step="0.1"
               defaultValue={settings.ai.temperature}
               placeholder="0.4"
+              hint="0 = focused, 1 = creative"
             />
             <InputField
               label="Max tokens"
@@ -267,105 +431,13 @@ export function AiSettingsSection({
           </div>
         </section>
 
-        <section className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
-            <KeyRound className="h-4 w-4" />
-            Credentials
-          </div>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
-            <div className="space-y-4 rounded-2xl border border-stone-200 bg-white/70 p-5">
-              <InputField
-                label="AI API key"
-                name="aiApiKey"
-                type="password"
-                autoComplete="new-password"
-                placeholder={
-                  runtime.hasStoredKey
-                    ? "Stored securely. Enter a new key to replace it."
-                    : "Paste your Gemini API key"
-                }
-              />
-              {runtime.hasStoredKey ? (
-                <label className="flex items-start gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    name="aiClearSavedApiKey"
-                    className="mt-1 h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-500"
-                  />
-                  <span>
-                    <span className="block text-sm font-medium text-stone-900">
-                      Clear saved settings key
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-stone-500">
-                      Leave this off to keep the current saved key.
-                    </span>
-                  </span>
-                </label>
-              ) : null}
-              <div className="flex flex-wrap items-center gap-3 text-xs text-stone-500">
-                <span>Encrypted when saved.</span>
-                <span>Env still wins.</span>
-                <Link
-                  href="/admin/user-guide#ai-setup"
-                  className="font-medium text-teal-700 hover:text-teal-800"
-                >
-                  Setup guide
-                </Link>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${credentialTone}`}
-                >
-                  {credentialLabel}
-                </span>
-                {runtime.hasEnvironmentKey ? (
-                  <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-600">
-                    Env key detected
-                  </span>
-                ) : null}
-                {runtime.hasStoredKey ? (
-                  <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-600">
-                    Saved fallback ready
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="mt-4 space-y-3 text-sm leading-6 text-stone-600">
-                <p>
-                  Provider:{" "}
-                  <span className="font-semibold text-stone-900">
-                    {runtime.providerLabel}
-                  </span>
-                </p>
-                {savedKeyUpdated ? (
-                  <p>
-                    Saved key last updated{" "}
-                    <span className="font-medium text-stone-900">
-                      {savedKeyUpdated}
-                    </span>
-                  </p>
-                ) : null}
-                {runtime.missingReason ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-                    {runtime.missingReason}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="mt-4 rounded-xl border border-stone-200 bg-white px-4 py-3 text-xs leading-5 text-stone-500">
-                Use <code>GEMINI_API_KEY</code> in env, or save a fallback key here.
-              </div>
-            </div>
-          </div>
-        </section>
-
+        {/* ══════════════════════════════════════════════════════
+            SECTION 3 — KNOWLEDGE & GUIDANCE
+        ══════════════════════════════════════════════════════ */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
             <ShieldCheck className="h-4 w-4" />
-            Knowledge & guidance
+            Knowledge &amp; guidance
           </div>
           <label className="block">
             <span className="text-sm font-medium text-stone-700">
@@ -393,6 +465,9 @@ export function AiSettingsSection({
           </label>
         </section>
 
+        {/* ══════════════════════════════════════════════════════
+            SECTION 4 — TOOLS
+        ══════════════════════════════════════════════════════ */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
             <Sparkles className="h-4 w-4" />
@@ -456,6 +531,7 @@ export function AiSettingsSection({
           </div>
         </section>
 
+        {/* Status message */}
         {state.message ? (
           <div
             className={`rounded-xl px-4 py-3 text-sm ${
@@ -468,8 +544,11 @@ export function AiSettingsSection({
           </div>
         ) : null}
 
+        {/* Footer */}
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-stone-500">Shared by AI Studio and concierge.</p>
+          <p className="text-sm text-stone-500">
+            Shared by AI Studio and concierge.
+          </p>
           <button
             type="submit"
             disabled={isPending}

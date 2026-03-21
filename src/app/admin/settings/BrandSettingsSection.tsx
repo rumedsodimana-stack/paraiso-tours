@@ -157,16 +157,15 @@ export function BrandSettingsSection({
                   Live branding preview
                 </p>
                 <div className="mt-4 flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-4">
-                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[#12343b] text-[#f7e8d1]">
+                  <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#12343b] text-[#f7e8d1]">
                     {settings.company.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <Image
                         src={settings.company.logoUrl}
                         alt={displayName}
                         fill
                         unoptimized
                         className="object-cover"
-                        sizes="100vw"
+                        sizes="64px"
                       />
                     ) : (
                       <ImageIcon className="h-7 w-7" />
