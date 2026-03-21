@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowUpRight,
   Bot,
   CheckCircle2,
+  ChevronDown,
   Loader2,
+  Plus,
   Settings,
   Sparkles,
   X,
+  Zap,
 } from "lucide-react";
 import { runAiToolAction, type AiToolActionState } from "@/app/actions/ai";
 
@@ -35,175 +38,120 @@ interface ChatEntry {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  ok?: boolean;
 }
 
-const initialState: AiToolActionState = {
-  ok: false,
-  message: "",
-};
+const initialState: AiToolActionState = { ok: false, message: "" };
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function getTimeLabel() {
-  return new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function buildPageContext(pathname: string) {
-  const cleanPath = pathname.replace(/\/+$/, "") || pathname;
-  const bookingMatch = cleanPath.match(/^\/admin\/bookings\/([^/]+)$/);
-  const invoiceMatch = cleanPath.match(/^\/admin\/invoices\/([^/]+)$/);
-  const paymentMatch = cleanPath.match(/^\/admin\/payments\/([^/]+)$/);
-  const packageMatch = cleanPath.match(/^\/admin\/packages\/([^/]+)$/);
-  const tourMatch = cleanPath.match(/^\/admin\/tours\/([^/]+)$/);
+  const p = pathname.replace(/\/+$/, "") || pathname;
+  const bookingMatch = p.match(/^\/admin\/bookings\/([^/]+)$/);
+  const invoiceMatch = p.match(/^\/admin\/invoices\/([^/]+)$/);
+  const paymentMatch = p.match(/^\/admin\/payments\/([^/]+)$/);
+  const packageMatch = p.match(/^\/admin\/packages\/([^/]+)$/);
+  const tourMatch = p.match(/^\/admin\/tours\/([^/]+)$/);
 
-  if (bookingMatch) {
-    return {
-      label: "Booking detail",
-      details: [
-        `Current admin page path: ${cleanPath}`,
-        `Current page type: booking detail`,
-        `Current booking query: ${bookingMatch[1]}`,
-        `If the staff says "this booking" or "current booking", use booking query ${bookingMatch[1]}.`,
-      ],
-      prompts: [
-        "What is missing before this booking can move forward?",
-        "Is this booking ready to schedule?",
-        "Draft the next client update for this booking.",
-      ],
-    };
-  }
-
-  if (invoiceMatch) {
-    return {
-      label: "Invoice detail",
-      details: [
-        `Current admin page path: ${cleanPath}`,
-        `Current page type: invoice detail`,
-        `Current invoice query: ${invoiceMatch[1]}`,
-        `If the staff says "this invoice" or "current invoice", use invoice query ${invoiceMatch[1]}.`,
-      ],
-      prompts: [
-        "Summarize the status of this invoice.",
-        "Is there any next finance action needed here?",
-        "Draft a payment reminder for this invoice.",
-      ],
-    };
-  }
-
-  if (paymentMatch) {
-    return {
-      label: "Payment detail",
-      details: [
-        `Current admin page path: ${cleanPath}`,
-        `Current page type: payment detail`,
-        `Current payment query: ${paymentMatch[1]}`,
-        `If the staff says "this payment" or "current payment", use payment query ${paymentMatch[1]}.`,
-      ],
-      prompts: [
-        "Explain the status of this payment.",
-        "Should this payment trigger any next step?",
-        "Summarize this payment for finance handoff.",
-      ],
-    };
-  }
-
-  if (packageMatch) {
-    return {
-      label: "Package detail",
-      details: [
-        `Current admin page path: ${cleanPath}`,
-        `Current page type: package detail`,
-        `Current package id: ${packageMatch[1]}`,
-      ],
-      prompts: [
-        "Summarize this package for the sales team.",
-        "What weak spots or gaps do you see in this package?",
-        "Suggest a stronger sales angle for this package.",
-      ],
-    };
-  }
-
-  if (tourMatch) {
-    return {
-      label: "Tour detail",
-      details: [
-        `Current admin page path: ${cleanPath}`,
-        `Current page type: scheduled tour detail`,
-        `Current tour id: ${tourMatch[1]}`,
-      ],
-      prompts: [
-        "Summarize the operational status of this tour.",
-        "What is the next best action on this tour?",
-        "Check if anything looks risky for this tour.",
-      ],
-    };
-  }
-
-  if (cleanPath === "/admin/bookings") {
-    return {
-      label: "Bookings list",
-      details: [
-        `Current admin page path: ${cleanPath}`,
-        `Current page type: booking list`,
-      ],
-      prompts: [
-        "What should I focus on in bookings right now?",
-        "Which bookings look risky or incomplete?",
-        "Summarize the latest booking workload.",
-      ],
-    };
-  }
-
-  if (cleanPath === "/admin/payments") {
-    return {
-      label: "Payments list",
-      details: [
-        `Current admin page path: ${cleanPath}`,
-        `Current page type: payments list`,
-      ],
-      prompts: [
-        "Summarize the payment status across the workspace.",
-        "Which payments need attention first?",
-        "What finance follow-ups are missing?",
-      ],
-    };
-  }
-
+  if (bookingMatch) return {
+    label: "Booking detail",
+    details: [`Current admin page path: ${p}`, `Current page type: booking detail`, `Current booking id: ${bookingMatch[1]}`, `If staff says "this booking", use booking id ${bookingMatch[1]}.`],
+    prompts: ["What's missing before this booking can move forward?", "Is this booking ready to schedule?", "Draft the next client update for this booking."],
+  };
+  if (invoiceMatch) return {
+    label: "Invoice detail",
+    details: [`Current admin page path: ${p}`, `Current page type: invoice detail`, `Current invoice id: ${invoiceMatch[1]}`],
+    prompts: ["Summarize the status of this invoice.", "Is there a next finance action needed?", "Draft a payment reminder for this invoice."],
+  };
+  if (paymentMatch) return {
+    label: "Payment detail",
+    details: [`Current admin page path: ${p}`, `Current page type: payment detail`, `Current payment id: ${paymentMatch[1]}`],
+    prompts: ["Explain the status of this payment.", "Should this trigger any next step?", "Summarize for finance handoff."],
+  };
+  if (packageMatch) return {
+    label: "Package detail",
+    details: [`Current admin page path: ${p}`, `Current page type: package detail`, `Current package id: ${packageMatch[1]}`],
+    prompts: ["Summarize this package for the sales team.", "What gaps do you see in this package?", "Suggest a stronger sales angle."],
+  };
+  if (tourMatch) return {
+    label: "Tour detail",
+    details: [`Current admin page path: ${p}`, `Current page type: scheduled tour`, `Current tour id: ${tourMatch[1]}`],
+    prompts: ["Summarize the operational status of this tour.", "What's the next best action here?", "Does anything look risky?"],
+  };
+  if (p === "/admin/bookings") return {
+    label: "Bookings",
+    details: [`Current admin page path: ${p}`, `Current page type: booking list`],
+    prompts: ["What should I focus on in bookings right now?", "Which bookings look risky or incomplete?", "Summarize the latest booking workload."],
+  };
+  if (p === "/admin/payments") return {
+    label: "Payments",
+    details: [`Current admin page path: ${p}`, `Current page type: payments list`],
+    prompts: ["Summarize payment status across the workspace.", "Which payments need attention?", "What finance follow-ups are missing?"],
+  };
   return {
     label: "Admin workspace",
-    details: [
-      `Current admin page path: ${cleanPath}`,
-      `Current page type: general admin workspace`,
-    ],
-    prompts: [
-      "What should I focus on from this screen?",
-      "Summarize the most important next actions.",
-      "Explain how to use this part of the app.",
-    ],
+    details: [`Current admin page path: ${p}`, `Current page type: general admin workspace`],
+    prompts: ["What should I focus on right now?", "Summarize the most important next actions.", "Explain how this part of the app works."],
   };
 }
 
-function buildTrace(executeActions: boolean, superpowerArmed: boolean) {
-  return {
-    thinking:
-      superpowerArmed
-        ? "Checking page context before guarded build mode."
-        : "Checking page context and live workspace data.",
-    tasks: [
-      "Read the current page context",
-      "Match live workspace data",
-      superpowerArmed
-        ? "Draft the cowork handoff"
-        : executeActions
-          ? "Plan and run the safe action"
-          : "Draft the final answer",
-    ],
-  };
+/** Render AI text — handles bold (**text**), inline code (`code`), and newlines */
+function RenderText({ text }: { text: string }) {
+  const lines = text.split("\n");
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, li) => {
+        if (line.trim() === "") return <div key={li} className="h-2" />;
+        // Parse inline bold and code
+        const parts: React.ReactNode[] = [];
+        const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+        let last = 0;
+        let match;
+        let ki = 0;
+        while ((match = regex.exec(line)) !== null) {
+          if (match.index > last) parts.push(<span key={ki++}>{line.slice(last, match.index)}</span>);
+          const raw = match[0];
+          if (raw.startsWith("**")) {
+            parts.push(<strong key={ki++} className="font-semibold">{raw.slice(2, -2)}</strong>);
+          } else {
+            parts.push(<code key={ki++} className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[12px] text-stone-700">{raw.slice(1, -1)}</code>);
+          }
+          last = match.index + raw.length;
+        }
+        if (last < line.length) parts.push(<span key={ki++}>{line.slice(last)}</span>);
+        // Detect list items
+        const isListItem = /^[-•*]\s/.test(line.trim()) || /^\d+\.\s/.test(line.trim());
+        return (
+          <p key={li} className={`text-sm leading-6 ${isListItem ? "pl-3" : ""}`}>
+            {isListItem && <span className="mr-1 text-stone-400">·</span>}
+            {parts}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Animated thinking dots */
+function ThinkingDots() {
+  return (
+    <div className="flex items-center gap-1 px-1 py-2">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-2 w-2 rounded-full bg-stone-400"
+          style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+        />
+      ))}
+      <style>{`@keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }`}</style>
+    </div>
+  );
 }
 
 export function GlobalAdminAiChat({
@@ -222,6 +170,7 @@ export function GlobalAdminAiChat({
   const pathname = usePathname();
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const requestCounterRef = useRef(0);
   const pageContext = useMemo(() => buildPageContext(pathname), [pathname]);
   const runtimeReady = runtime.enabled && runtime.configured;
@@ -230,354 +179,398 @@ export function GlobalAdminAiChat({
   const [executeActions, setExecuteActions] = useState(false);
   const [modelMode, setModelMode] = useState<ModelMode>("auto");
   const [superpowerArmed, setSuperpowerArmed] = useState(false);
-  const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [running, setRunning] = useState(false);
-  const [thinkingSummary, setThinkingSummary] = useState("");
-  const [activeTasks, setActiveTasks] = useState<string[]>([]);
+  const [showThinking, setShowThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatEntry[]>([]);
   const [runState, setRunState] = useState<AiToolActionState>(initialState);
 
+  // Auto-scroll to bottom
   useEffect(() => {
-    if (!desktopOpen && !mobileOpen) return;
     const node = scrollRef.current;
-    if (node) {
-      node.scrollTop = node.scrollHeight;
-    }
-  }, [desktopOpen, mobileOpen, chatHistory, thinkingSummary, activeTasks]);
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [chatHistory, showThinking]);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmedRequest = request.trim();
-    if (!runtimeReady || running || !trimmedRequest) return;
+  // Auto-resize textarea
+  const resizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+  }, []);
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [request, resizeTextarea]);
+
+  // Focus textarea when panel opens
+  useEffect(() => {
+    if ((desktopOpen || mobileOpen) && textareaRef.current) {
+      setTimeout(() => textareaRef.current?.focus(), 80);
+    }
+  }, [desktopOpen, mobileOpen]);
+
+  async function handleSubmit(text?: string) {
+    const trimmed = (text ?? request).trim();
+    if (!runtimeReady || running || !trimmed) return;
 
     requestCounterRef.current += 1;
     const requestId = `global_${requestCounterRef.current}`;
-    const trace = buildTrace(executeActions, superpowerArmed);
     const contextualRequest = [
       "Current admin page context:",
       ...pageContext.details,
       "",
-      `Staff request: ${trimmedRequest}`,
+      `Staff request: ${trimmed}`,
     ].join("\n");
 
     setRunState(initialState);
     setRequest("");
-    setChatHistory((current) => [
-      ...current,
-      {
-        id: `user_${requestId}`,
-        role: "user",
-        content: trimmedRequest,
-        timestamp: getTimeLabel(),
-      },
-    ]);
+    setChatHistory((h) => [...h, { id: `user_${requestId}`, role: "user", content: trimmed, timestamp: getTimeLabel() }]);
     setRunning(true);
-    setThinkingSummary(trace.thinking);
-    setActiveTasks([]);
+    setShowThinking(true);
 
     const formData = new FormData();
     formData.set("tool", "workspace_copilot");
     formData.set("workspaceRequest", contextualRequest);
     formData.set("modelMode", modelMode);
-    if (executeActions) {
-      formData.set("executeActions", "on");
-    }
-    if (superpowerArmed) {
-      formData.set("superpowerEnabled", "on");
-    }
+    if (executeActions) formData.set("executeActions", "on");
+    if (superpowerArmed) formData.set("superpowerEnabled", "on");
 
     const resultPromise = runAiToolAction(initialState, formData);
 
-    await wait(340);
-    setThinkingSummary("");
-
-    for (let index = 0; index < trace.tasks.length; index += 1) {
-      setActiveTasks(trace.tasks.slice(index));
-      await wait(index === trace.tasks.length - 1 ? 720 : 620);
-    }
-
-    setActiveTasks(["Finalize the response"]);
+    // Small delay so the thinking dots are visible
+    await wait(600);
 
     const result = await resultPromise;
-    setRunState(result);
+    setShowThinking(false);
     setRunning(false);
-    setThinkingSummary("");
-    setActiveTasks([]);
-    setChatHistory((current) => [
-      ...current,
+    setRunState(result);
+    setChatHistory((h) => [
+      ...h,
       {
         id: `assistant_${requestId}`,
         role: "assistant",
-        content: result.result || result.message,
+        content: result.result || result.message || "Done.",
         timestamp: getTimeLabel(),
+        ok: result.ok,
       },
     ]);
 
     if (result.ok) {
-      if (executeActions) {
-        router.refresh();
-      }
+      if (executeActions) router.refresh();
       onFinalize?.();
     }
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }
+
+  function clearChat() {
+    setChatHistory([]);
+    setRunState(initialState);
+    setRequest("");
+  }
+
+  const canSend = runtimeReady && !running && request.trim().length > 0;
+
   const panel = (
-    <div className="flex h-full flex-col overflow-hidden border-l border-white/20 bg-white/65 backdrop-blur-xl">
-      <div className="flex items-center justify-between gap-3 border-b border-white/20 px-5 py-4">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
-            <Bot className="h-3.5 w-3.5" />
-            AI Chat
+    <div className="flex h-full flex-col bg-white">
+
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-100 px-4 py-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-stone-900 text-white">
+            <Bot className="h-4 w-4" />
           </div>
-          <h2 className="mt-2 text-lg font-semibold text-stone-900">
-            AI
-          </h2>
-          <p className="mt-1 text-xs text-stone-500">{pageContext.label}</p>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-stone-900 leading-none">AI Coworker</p>
+            <p className="mt-0.5 text-xs text-stone-400 truncate">{pageContext.label}</p>
+          </div>
+          {/* Status pill */}
+          <span
+            className={`ml-1 flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+              runtimeReady
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-amber-200 bg-amber-50 text-amber-700"
+            }`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${runtimeReady ? "bg-emerald-500" : "bg-amber-400"}`} />
+            {runtimeReady ? "Ready" : "Setup"}
+          </span>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-1 shrink-0">
+          {/* New chat */}
+          {chatHistory.length > 0 && (
+            <button
+              type="button"
+              onClick={clearChat}
+              title="New conversation"
+              className="rounded-lg p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
+
+          {/* Settings dropdown */}
           <div className="relative">
             <button
               type="button"
-              onClick={() => setChatSettingsOpen((open) => !open)}
-              className="rounded-xl border border-white/40 bg-white/80 p-2 text-stone-500 transition hover:bg-white hover:text-stone-800"
-              aria-label="Open AI cowork settings"
+              onClick={() => setSettingsOpen((o) => !o)}
+              title="Settings"
+              className="rounded-lg p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
             >
               <Settings className="h-4 w-4" />
             </button>
-            {chatSettingsOpen ? (
-              <div className="absolute right-0 top-12 z-20 w-72 rounded-[1.35rem] border border-stone-200 bg-white p-4 shadow-xl">
-                <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Cowork settings
-                </p>
-                <div className="mt-3 space-y-4">
-                  <label className="block">
-                    <span className="text-sm font-medium text-stone-800">
-                      Model route
-                    </span>
-                    <select
-                      value={modelMode}
-                      onChange={(event) =>
-                        setModelMode(event.target.value as ModelMode)
-                      }
-                      className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
-                    >
-                      <option value="auto">
-                        Auto route ({runtime.defaultModel})
-                      </option>
-                      <option value="simple">
-                        Simple ({runtime.simpleModel})
-                      </option>
-                      <option value="default">
-                        Default ({runtime.defaultModel})
-                      </option>
-                      <option value="heavy">
-                        Heavy ({runtime.heavyModel})
-                      </option>
-                    </select>
-                  </label>
-                  <label className="flex items-start gap-3 rounded-xl border border-stone-200 bg-stone-50 px-3 py-3">
+            {settingsOpen && (
+              <div className="absolute right-0 top-9 z-30 w-64 rounded-2xl border border-stone-200 bg-white p-4 shadow-xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Model</p>
+                <select
+                  value={modelMode}
+                  onChange={(e) => setModelMode(e.target.value as ModelMode)}
+                  className="mt-2 w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                >
+                  <option value="auto">Auto ({runtime.defaultModel})</option>
+                  <option value="simple">Simple ({runtime.simpleModel})</option>
+                  <option value="default">Default ({runtime.defaultModel})</option>
+                  <option value="heavy">Heavy ({runtime.heavyModel})</option>
+                </select>
+
+                {runtime.superpowerEnabled && (
+                  <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5">
                     <input
                       type="checkbox"
                       checked={superpowerArmed}
-                      disabled={!runtime.superpowerEnabled}
-                      onChange={(event) =>
-                        setSuperpowerArmed(event.target.checked)
-                      }
-                      className="mt-1 h-4 w-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
+                      onChange={(e) => setSuperpowerArmed(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
                     />
                     <span>
-                      <span className="block text-sm font-medium text-stone-900">
-                        Superpower
-                      </span>
-                      <span className="mt-1 block text-xs leading-5 text-stone-500">
-                        Guarded app-build mode.
-                      </span>
+                      <span className="block text-sm font-medium text-stone-900">Superpower</span>
+                      <span className="mt-0.5 block text-xs text-stone-500">Guarded app-build mode</span>
                     </span>
                   </label>
+                )}
+
+                <div className="mt-3 border-t border-stone-100 pt-3">
+                  <Link
+                    href="/admin/ai"
+                    onClick={() => setSettingsOpen(false)}
+                    className="flex items-center justify-between rounded-xl px-2 py-1.5 text-sm text-stone-600 transition hover:bg-stone-50 hover:text-stone-900"
+                  >
+                    Full AI workspace
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </Link>
+                  {!runtimeReady && (
+                    <Link
+                      href="/admin/settings?section=ai"
+                      onClick={() => setSettingsOpen(false)}
+                      className="mt-1 flex items-center justify-between rounded-xl px-2 py-1.5 text-sm text-amber-700 transition hover:bg-amber-50"
+                    >
+                      Fix AI settings
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
+
+          {/* Close */}
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-white/40 bg-white/70 p-2 text-stone-500 transition hover:bg-white hover:text-stone-800"
-            aria-label="Close AI chat"
+            title="Close"
+            className="rounded-lg p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="border-b border-white/20 px-5 py-4">
-        <div
-          className={`rounded-2xl border px-4 py-4 ${
-            runtimeReady
-              ? "border-emerald-200 bg-emerald-50/80"
-              : "border-amber-200 bg-amber-50/80"
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            {runtimeReady ? (
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-            ) : (
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-            )}
-            <div className="min-w-0 text-sm">
-              <p className="font-semibold text-stone-900">
-                {runtimeReady ? "Ready" : "Needs setup"}
-              </p>
-              <p className="mt-1 truncate text-stone-600">
-                {runtime.providerLabel} · {runtime.model}
-              </p>
-              {!runtimeReady && runtime.missingReason ? (
-                <p className="mt-2 text-amber-800">{runtime.missingReason}</p>
-              ) : null}
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link
-              href="/admin/ai"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/50 bg-white/80 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-white"
-            >
-              Full AI workspace
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
-            {!runtimeReady ? (
+      {/* ── Not ready banner ───────────────────────────────── */}
+      {!runtimeReady && (
+        <div className="shrink-0 border-b border-amber-100 bg-amber-50 px-4 py-3">
+          <div className="flex items-start gap-2 text-sm text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <div>
+              <p className="font-medium">{runtime.missingReason || "AI not configured"}</p>
               <Link
-                href="/admin/settings"
-                className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-stone-800"
+                href="/admin/settings?section=ai"
+                className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 underline underline-offset-2"
               >
-                <Settings className="h-4 w-4" />
-                Settings
+                Open AI settings →
               </Link>
-            ) : null}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-        {chatHistory.length === 0 ? (
-          <div className="rounded-[1.6rem] border border-dashed border-stone-200 bg-white/70 px-4 py-5 text-sm text-stone-500">
-            Ask about this page or tell AI what to do.
-          </div>
-        ) : null}
-
-        {chatHistory.map((entry) => (
-          <div
-            key={entry.id}
-            className={`rounded-[1.5rem] px-4 py-4 shadow-sm ${
-              entry.role === "user"
-                ? "ml-8 border border-stone-200 bg-stone-900 text-white"
-                : "mr-8 border border-white/40 bg-white/90 text-stone-800"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-current/70">
-                {entry.role === "user" ? "You" : "AI"}
-              </p>
-              <span className="text-[11px] text-current/60">{entry.timestamp}</span>
+      {/* ── Messages ───────────────────────────────────────── */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4"
+      >
+        {/* Empty state — suggestion chips */}
+        {chatHistory.length === 0 && !running && (
+          <div className="flex flex-col items-center justify-center h-full min-h-[12rem] gap-6 py-8 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-900 text-white shadow-lg">
+              <Bot className="h-7 w-7" />
             </div>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
-              {entry.content}
-            </p>
-          </div>
-        ))}
-
-        {thinkingSummary ? (
-          <div className="rounded-[1.5rem] border border-sky-200 bg-sky-50/80 px-4 py-4 text-sm text-sky-900">
-            <div className="flex items-center gap-2 font-semibold">
-              <Sparkles className="h-4 w-4" />
-              AI thinking
+            <div>
+              <p className="text-sm font-semibold text-stone-800">How can I help?</p>
+              <p className="mt-1 text-xs text-stone-400">{pageContext.label} · {runtime.defaultModel}</p>
             </div>
-            <p className="mt-2 leading-6">{thinkingSummary}</p>
-          </div>
-        ) : null}
-
-        {activeTasks.length > 0 ? (
-          <div className="rounded-[1.5rem] border border-teal-200 bg-teal-50/80 px-4 py-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-teal-900">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Active tasks
-            </div>
-            <div className="mt-3 space-y-2">
-              {activeTasks.map((task, index) => (
-                <div
-                  key={`${task}_${index}`}
-                  className={`rounded-xl px-3 py-2 text-sm ${
-                    index === 0
-                      ? "bg-teal-600 text-white"
-                      : "bg-white/80 text-teal-800"
-                  }`}
+            <div className="flex w-full flex-col gap-2">
+              {pageContext.prompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => {
+                    if (!runtimeReady) return;
+                    setRequest(prompt);
+                    setTimeout(() => handleSubmit(prompt), 0);
+                  }}
+                  disabled={!runtimeReady}
+                  className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-left text-sm text-stone-700 transition hover:border-stone-300 hover:bg-white hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {task}
-                </div>
+                  {prompt}
+                </button>
               ))}
             </div>
           </div>
-        ) : null}
+        )}
 
-        {!running && runState.message ? (
-          <div
-            className={`rounded-[1.5rem] border px-4 py-4 text-sm ${
-              runState.ok
-                ? "border-emerald-200 bg-emerald-50/80 text-emerald-800"
-                : "border-rose-200 bg-rose-50/80 text-rose-700"
-            }`}
-          >
-            {runState.message}
+        {/* Chat messages */}
+        {chatHistory.map((entry) =>
+          entry.role === "user" ? (
+            /* User bubble — right aligned, dark */
+            <div key={entry.id} className="flex justify-end">
+              <div className="max-w-[85%]">
+                <div className="rounded-2xl rounded-br-sm bg-stone-900 px-4 py-3 text-white shadow-sm">
+                  <p className="text-sm leading-6 whitespace-pre-wrap">{entry.content}</p>
+                </div>
+                <p className="mt-1 pr-1 text-right text-[10px] text-stone-400">{entry.timestamp}</p>
+              </div>
+            </div>
+          ) : (
+            /* AI bubble — left aligned, white card */
+            <div key={entry.id} className="flex items-start gap-2.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-600 mt-0.5">
+                <Bot className="h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div
+                  className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${
+                    entry.ok === false && entry.content
+                      ? "border-rose-200 bg-rose-50"
+                      : "border-stone-100 bg-white"
+                  }`}
+                >
+                  <div className={entry.ok === false ? "text-rose-700" : "text-stone-800"}>
+                    <RenderText text={entry.content} />
+                  </div>
+                </div>
+                <p className="mt-1 pl-1 text-[10px] text-stone-400">{entry.timestamp}</p>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Thinking dots */}
+        {showThinking && (
+          <div className="flex items-start gap-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-600 mt-0.5">
+              <Bot className="h-3.5 w-3.5" />
+            </div>
+            <div className="rounded-2xl rounded-tl-sm border border-stone-100 bg-white px-4 py-2 shadow-sm">
+              <ThinkingDots />
+            </div>
           </div>
-        ) : null}
+        )}
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-white/20 px-5 py-4">
-        <label className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3 text-sm text-stone-700">
-          <input
-            type="checkbox"
-            checked={executeActions}
-            onChange={(event) => setExecuteActions(event.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
-          />
-            <span>
-              <span className="block font-medium text-stone-900">
-                Let AI execute supported actions
-              </span>
-            <span className="mt-1 block leading-6 text-stone-500">One safe admin action.</span>
+      {/* ── Input area ─────────────────────────────────────── */}
+      <div className="shrink-0 border-t border-stone-100 bg-white px-4 py-3">
+
+        {/* Execute actions toggle */}
+        <label className="mb-2.5 flex cursor-pointer items-center gap-2 select-none">
+          <div
+            onClick={() => setExecuteActions((v) => !v)}
+            className={`relative h-4 w-7 rounded-full transition-colors ${executeActions ? "bg-teal-600" : "bg-stone-200"}`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${executeActions ? "translate-x-3" : ""}`}
+            />
+          </div>
+          <span className="flex items-center gap-1 text-xs text-stone-500">
+            <Zap className={`h-3 w-3 ${executeActions ? "text-teal-600" : "text-stone-400"}`} />
+            <span className={executeActions ? "text-teal-700 font-medium" : ""}>
+              {executeActions ? "Actions enabled" : "Actions off"}
             </span>
+          </span>
+          {superpowerArmed && (
+            <span className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-purple-600">
+              <Sparkles className="h-3 w-3" />
+              Superpower
+            </span>
+          )}
         </label>
 
-        <textarea
-          value={request}
-          onChange={(event) => setRequest(event.target.value)}
-          rows={4}
-          placeholder={`Ask about ${pageContext.label.toLowerCase()} or tell AI what to do next.`}
-          className="mt-4 w-full resize-none rounded-[1.5rem] border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
-        />
-
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <div className="space-y-1 text-xs leading-5 text-stone-500">
-            <p>
-              Route: {modelMode === "auto" ? `Auto (${runtime.defaultModel})` : modelMode}
-              {superpowerArmed ? " · Superpower armed" : ""}
-            </p>
-          </div>
+        {/* Input container */}
+        <div className={`flex items-end gap-2 rounded-2xl border bg-stone-50 px-3 py-2 transition-colors ${
+          canSend ? "border-stone-300" : "border-stone-200"
+        } focus-within:border-stone-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-stone-200`}>
+          <textarea
+            ref={textareaRef}
+            value={request}
+            onChange={(e) => setRequest(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={!runtimeReady || running}
+            rows={1}
+            placeholder={
+              !runtimeReady
+                ? "Set up AI in Settings first…"
+                : `Message AI — ${pageContext.label.toLowerCase()}`
+            }
+            className="flex-1 resize-none bg-transparent py-1 text-sm text-stone-900 placeholder:text-stone-400 outline-none disabled:cursor-not-allowed"
+            style={{ minHeight: "24px", maxHeight: "180px" }}
+          />
           <button
-            type="submit"
-            disabled={!runtimeReady || running || !request.trim()}
-            className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-300"
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={!canSend}
+            className={`mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all ${
+              canSend
+                ? "bg-stone-900 text-white hover:bg-stone-700 shadow-sm"
+                : "bg-stone-200 text-stone-400 cursor-not-allowed"
+            }`}
           >
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
-            {running ? "Working" : "Send"}
+            {running ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
+                <path d="M.5 1.163A1 1 0 0 1 1.97.28l12.868 6.837a1 1 0 0 1 0 1.766L1.969 15.72A1 1 0 0 1 .5 14.836V10.33a1 1 0 0 1 .816-.983L8.5 8 1.316 6.653A1 1 0 0 1 .5 5.67V1.163Z" />
+              </svg>
+            )}
           </button>
         </div>
-      </form>
+
+        <p className="mt-1.5 text-center text-[10px] text-stone-300">
+          Enter to send · Shift+Enter for new line
+        </p>
+      </div>
+
     </div>
   );
 
   return (
     <>
       {desktopOpen ? (
-        <aside className="hidden h-[calc(100vh-0px)] w-[25rem] shrink-0 xl:block">
+        <aside className="hidden h-[calc(100vh-0px)] w-[26rem] shrink-0 border-l border-stone-100 xl:block">
           {panel}
         </aside>
       ) : null}
@@ -585,10 +578,10 @@ export function GlobalAdminAiChat({
       {mobileOpen ? (
         <div className="xl:hidden">
           <div
-            className="fixed inset-0 z-40 bg-stone-950/40 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-stone-950/30 backdrop-blur-sm"
             onClick={onClose}
           />
-          <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-md">
+          <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-sm shadow-2xl">
             {panel}
           </aside>
         </div>
