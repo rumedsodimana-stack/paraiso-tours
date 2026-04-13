@@ -1,4 +1,8 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  ADMIN_SESSION_COOKIE,
+  verifyAdminSessionToken,
+} from "@/lib/admin-session";
 import {
   getLeads,
   getPackages,
@@ -32,6 +36,16 @@ function matchPartial(q: string, ...values: (string | number | null | undefined)
 }
 
 export async function GET(request: NextRequest) {
+  /* --- Auth check: require a valid admin session --- */
+  const sessionToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  const session = await verifyAdminSessionToken(sessionToken);
+  if (!session) {
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
   const q = request.nextUrl.searchParams.get("q")?.trim();
   if (!q || q.length < 1) {
     return Response.json({ suggestions: [] });

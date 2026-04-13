@@ -1,14 +1,51 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { createHash, timingSafeEqual } from "crypto";
+import { createHash, scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
 import { authLogger } from "./logger";
+
+const scryptAsync = promisify(scrypt);
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const SETTINGS_FILE = "settings.json";
 const IS_VERCEL = process.env.VERCEL === "1";
 
-function hashPassword(password: string): string {
+/* ------------------------------------------------------------------ */
+/*  Legacy SHA-256 hashing (read-only, for backward compatibility)    */
+/* ------------------------------------------------------------------ */
+
+function hashPasswordLegacy(password: string): string {
   return createHash("sha256").update(password + "paraiso-salt").digest("hex");
+}
+
+/**
+ * Check if a stored hash uses the legacy SHA-256 format.
+ * Scrypt hashes contain a ":" separator (salt:derived); SHA-256 hex does not.
+ */
+function isLegacyHash(hash: string): boolean {
+  return !hash.includes(":");
+}
+
+/* ------------------------------------------------------------------ */
+/*  Scrypt-based hashing (new standard)                               */
+/* ------------------------------------------------------------------ */
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const derived = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${salt}:${derived.toString("hex")}`;
+}
+
+export async function verifyPasswordHash(
+  password: string,
+  hash: string
+): Promise<boolean> {
+  const [salt, key] = hash.split(":");
+  if (!salt || !key) return false;
+  const derived = (await scryptAsync(password, salt, 64)) as Buffer;
+  const keyBuffer = Buffer.from(key, "hex");
+  if (derived.length !== keyBuffer.length) return false;
+  return timingSafeEqual(derived, keyBuffer);
 }
 
 export interface AdminSettings {
@@ -54,6 +91,14 @@ async function writeSettings(settings: AdminSettings): Promise<void> {
 
 /**
  * Verify admin password. Returns true if correct.
+ *
+ * Supports three modes:
+ * 1. ADMIN_PASSWORD env var (plain-text comparison via timingSafeEqual)
+ * 2. Stored hash — either legacy SHA-256 or new scrypt format
+ * 3. Hard-coded default fallback (admin123) — only if nothing else is configured
+ *
+ * On successful verification of a legacy SHA-256 hash, automatically
+ * re-hashes with scrypt so subsequent logins use the stronger algorithm.
  */
 export async function verifyAdminPassword(password: string): Promise<boolean> {
   const envPassword = process.env.ADMIN_PASSWORD?.trim();
@@ -70,18 +115,64 @@ export async function verifyAdminPassword(password: string): Promise<boolean> {
 
   const settings = await readSettings();
   if (settings.adminPasswordHash) {
-    const hash = hashPassword(password);
-    try {
-      const a = Buffer.from(hash, "utf-8");
-      const b = Buffer.from(settings.adminPasswordHash, "utf-8");
-      if (a.length !== b.length) return false;
-      return timingSafeEqual(a, b);
-    } catch {
-      return false;
+    if (isLegacyHash(settings.adminPasswordHash)) {
+      // Legacy SHA-256 verification
+      const legacyHash = hashPasswordLegacy(password);
+      try {
+        const a = Buffer.from(legacyHash, "utf-8");
+        const b = Buffer.from(settings.adminPasswordHash, "utf-8");
+        if (a.length !== b.length) return false;
+        const match = timingSafeEqual(a, b);
+        if (match) {
+          // Re-hash with scrypt for future logins
+          authLogger.info("Upgrading legacy SHA-256 hash to scrypt");
+          const upgraded = await hashPassword(password);
+          await writeSettings({
+            adminPasswordHash: upgraded,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        return match;
+      } catch {
+        return false;
+      }
     }
+
+    // New scrypt verification
+    return verifyPasswordHash(password, settings.adminPasswordHash);
   }
 
   return password === "admin123";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Password strength validation                                      */
+/* ------------------------------------------------------------------ */
+
+const COMMON_PASSWORDS = new Set([
+  "password", "12345678", "123456789", "1234567890", "qwerty123",
+  "password1", "admin123", "letmein1", "welcome1", "changeme",
+  "iloveyou", "sunshine1", "princess1", "football1", "monkey123",
+  "master123", "dragon123", "abc12345", "trustno1", "baseball1",
+  "passw0rd", "p@ssw0rd", "p@ssword", "password123", "admin1234",
+]);
+
+export function validatePasswordStrength(
+  password: string
+): { ok: boolean; error?: string } {
+  if (!password || password.length < 8) {
+    return { ok: false, error: "Password must be at least 8 characters" };
+  }
+  if (!/[a-zA-Z]/.test(password)) {
+    return { ok: false, error: "Password must contain at least one letter" };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { ok: false, error: "Password must contain at least one number" };
+  }
+  if (COMMON_PASSWORDS.has(password.toLowerCase())) {
+    return { ok: false, error: "This password is too common. Please choose a stronger one." };
+  }
+  return { ok: true };
 }
 
 /**
@@ -98,8 +189,9 @@ export async function changeAdminPassword(
     return { ok: false, error: "Current password is incorrect" };
   }
 
-  if (!newPassword || newPassword.length < 6) {
-    return { ok: false, error: "New password must be at least 6 characters" };
+  const strength = validatePasswordStrength(newPassword);
+  if (!strength.ok) {
+    return { ok: false, error: strength.error };
   }
 
   if (IS_VERCEL) {
@@ -110,7 +202,7 @@ export async function changeAdminPassword(
     };
   }
 
-  const hash = hashPassword(newPassword);
+  const hash = await hashPassword(newPassword);
   await writeSettings({ adminPasswordHash: hash, updatedAt: new Date().toISOString() });
   authLogger.info("Admin password changed successfully");
   return { ok: true };
