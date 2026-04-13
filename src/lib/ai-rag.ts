@@ -191,6 +191,15 @@ function scoreChunk(chunk: RagChunk, query: string, tagHints: string[]) {
     }
   }
 
+  // Recency bonus for learned/interaction content — recent items score higher
+  if (chunk.tags.includes("recent") && chunk.sourceType === "interaction") {
+    score += 3;
+  }
+  // Promoted items get a boost
+  if (chunk.sourceType === "learned") {
+    score += 2;
+  }
+
   return score;
 }
 
@@ -210,25 +219,42 @@ export async function buildRagContext(input: {
   const learnedDocs: RagDocument[] = settings.ai.selfLearningEnabled
     ? interactions
         .filter(
-          (interaction) => interaction.helpful || interaction.promotedToKnowledge
+          (interaction) =>
+            interaction.helpful ||
+            interaction.promotedToKnowledge ||
+            interaction.executedOk, // Auto-include all successful executions
         )
-        .map((interaction) => ({
-          id: `interaction_${interaction.id}`,
-          title: `Learned ${interaction.tool} note`,
-          content: [
-            `Request: ${interaction.requestText}`,
-            `Response: ${interaction.responseText}`,
-            interaction.feedbackNotes
-              ? `Feedback: ${interaction.feedbackNotes}`
-              : "",
-          ]
-            .filter(Boolean)
-            .join("\n"),
-          sourceType: interaction.promotedToKnowledge
-            ? "learned"
-            : "interaction",
-          tags: [interaction.tool, "learned"],
-        }))
+        .map((interaction, index) => {
+          const action = interaction.plannedAction as Record<string, unknown> | undefined;
+          const actionType = action?.type ?? "answer_only";
+          // Compact format — distill the interaction into a concise learned note
+          const content = actionType !== "answer_only"
+            ? [
+                `Staff asked: ${interaction.requestText.slice(0, 200)}`,
+                `Action: ${actionType}`,
+                `Result: ${interaction.executedOk ? "Success" : "Failed"}`,
+                interaction.feedbackNotes ? `Feedback: ${interaction.feedbackNotes}` : "",
+              ].filter(Boolean).join("\n")
+            : [
+                `Staff asked: ${interaction.requestText.slice(0, 200)}`,
+                `Answer: ${interaction.responseText.slice(0, 300)}`,
+                interaction.feedbackNotes ? `Feedback: ${interaction.feedbackNotes}` : "",
+              ].filter(Boolean).join("\n");
+
+          return {
+            id: `interaction_${interaction.id}`,
+            title: interaction.promotedToKnowledge
+              ? `Promoted: ${actionType}`
+              : interaction.executedOk
+                ? `Successful: ${actionType}`
+                : `Learned ${interaction.tool} note`,
+            content,
+            sourceType: interaction.promotedToKnowledge
+              ? "learned"
+              : "interaction",
+            tags: [interaction.tool, actionType, "learned"].concat(index < 10 ? ["recent"] : []) as string[],
+          };
+        })
     : [];
 
   const allDocs = [

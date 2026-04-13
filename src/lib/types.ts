@@ -287,11 +287,28 @@ export interface Invoice {
   paidAt?: string;
 }
 
+export type BusinessType =
+  | "adventure"
+  | "beach_resort"
+  | "cultural"
+  | "luxury"
+  | "budget"
+  | "eco"
+  | "corporate"
+  | "safari_wildlife"
+  | "multi_destination"
+  | "other";
+
 export interface Company {
   displayName?: string;
   companyName: string;
   tagline?: string;
   address?: string;
+  country?: string;
+  timezone?: string;
+  currency?: string; // default invoice/pricing currency, e.g. "USD"
+  website?: string;
+  businessType?: BusinessType;
   phone?: string;
   email?: string;
   logoUrl?: string;

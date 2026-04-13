@@ -470,7 +470,7 @@ export function JourneyPlanner({
     setMealSelectionId(plan.mealSelectionId);
     setMealRequest(plan.mealRequest);
     setDays(newDays);
-    setOpenSection(5);
+    setOpenSection(4);
   }
 
   async function handleAiDraft() {
@@ -671,9 +671,6 @@ export function JourneyPlanner({
         onToggle={() => setOpenSection(openSection === 2 ? 0 : 2)}
       >
         <div className="space-y-4">
-          <p className="text-sm text-stone-600">
-            Select one vehicle for the entire trip. Your driver stays with you throughout.
-          </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <OptionPill label="No transport" detail="I'll arrange my own" selected={transportSelectionId === "none"} onClick={() => setTransportSelectionId("none")} />
             {transportOptions.map((opt) => {
@@ -867,47 +864,54 @@ export function JourneyPlanner({
                     {day.destination && (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-2">
-                          Stay tonight
+                          Stay tonight (choose hotel)
                         </p>
-                        <div className="flex gap-2 mb-2">
-                          <button type="button"
-                            onClick={() => updateDay(day.id, { hotelMode: "pick" })}
-                            className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                              day.hotelMode === "pick"
-                                ? "border-[#12343b] bg-[#12343b] text-white"
-                                : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
-                            }`}>
-                            <BedDouble className="mr-1 inline h-3 w-3" />
-                            Choose hotel
-                          </button>
-                          <button type="button"
+                        <div className="space-y-1.5">
+                          {day.hotelChoices.map((h) => {
+                            const isSelected = day.hotelMode === "pick" && day.hotelId === h.id;
+                            return (
+                              <button
+                                key={h.id}
+                                type="button"
+                                onClick={() => updateDay(day.id, { hotelMode: "pick", hotelId: h.id })}
+                                className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${
+                                  isSelected
+                                    ? "border-[#12343b] bg-[#12343b] text-white"
+                                    : "border-stone-200 bg-white text-stone-800 hover:border-stone-400"
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold truncate">{h.name}</p>
+                                  <p className={`text-xs ${isSelected ? "text-stone-300" : "text-stone-500"}`}>
+                                    {h.pricePerNight} {h.currency}/night
+                                  </p>
+                                </div>
+                                {h.starRating ? (
+                                  <span className={`ml-2 shrink-0 text-xs tracking-tight ${isSelected ? "text-yellow-300" : "text-yellow-500"}`}>
+                                    {"★".repeat(h.starRating)}
+                                  </span>
+                                ) : null}
+                              </button>
+                            );
+                          })}
+                          {/* I'll book my own */}
+                          <button
+                            type="button"
                             onClick={() => updateDay(day.id, { hotelMode: "own", hotelId: "" })}
-                            className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                            className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${
                               day.hotelMode === "own"
                                 ? "border-[#12343b] bg-[#12343b] text-white"
-                                : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
-                            }`}>
-                            I&apos;ll book my own
+                                : "border-stone-200 bg-white text-stone-800 hover:border-stone-400"
+                            }`}
+                          >
+                            <div>
+                              <p className="text-sm font-semibold">I&apos;ll book my own</p>
+                              <p className={`text-xs ${day.hotelMode === "own" ? "text-stone-300" : "text-stone-500"}`}>
+                                No hotel included for this night
+                              </p>
+                            </div>
                           </button>
                         </div>
-                        {day.hotelMode === "pick" && day.hotelChoices.length > 0 && (
-                          <select
-                            value={day.hotelId}
-                            onChange={(e) => updateDay(day.id, { hotelId: e.target.value })}
-                            className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-[#12343b]"
-                          >
-                            {day.hotelChoices.map((h) => (
-                              <option key={h.id} value={h.id}>
-                                {h.name} · {h.pricePerNight} {h.currency}/night
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        {day.hotelMode === "own" && (
-                          <p className="rounded-lg bg-stone-50 border border-stone-200 px-3 py-2 text-xs text-stone-500">
-                            No hotel will be included for this night. You arrange your own accommodation.
-                          </p>
-                        )}
 
                         {/* Meal plan for this day */}
                         {day.hotelMode === "pick" && (
@@ -1009,61 +1013,40 @@ export function JourneyPlanner({
             </div>
           )}
 
+          {/* Additional notes */}
+          {days.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-2">Additional notes</p>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                placeholder="Any special requests, preferences, or notes for your trip..."
+                className="w-full rounded-xl border border-[#ddc8b0] bg-[#fffaf4] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/10"
+              />
+            </div>
+          )}
+
           {days.length > 0 && (
             <button type="button"
-              onClick={() => { if (!days.some((d) => d.destinationId)) { setError("Pick a destination for at least one day."); return; } setError(""); setOpenSection(5); }}
+              onClick={() => { if (!days.some((d) => d.destinationId)) { setError("Pick a destination for at least one day."); return; } setError(""); setOpenSection(4); }}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12343b] py-3 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31]">
-              Next: Transport & meals <ArrowRight className="h-4 w-4" />
+              Review &amp; confirm <ArrowRight className="h-4 w-4" />
             </button>
           )}
         </div>
       </SectionAccordion>
 
       {/* ================================================================ */}
-      {/*  SECTION 4 — Meals & Hotels                                      */}
+      {/*  SECTION 4 — Review & Confirm                                    */}
       {/* ================================================================ */}
       <SectionAccordion
         number={4}
-        title="Meals & Dietary Needs"
-        subtitle="Dietary requirements & preferences"
-        open={openSection === 4}
-        done={sectionDone(3)}
-        onToggle={() => setOpenSection(openSection === 4 ? 0 : 4)}
-      >
-        <div className="space-y-6">
-          <div>
-            <p className="text-sm font-semibold text-stone-900">Dietary requirements</p>
-            <p className="mt-1 text-xs text-stone-500">Meal plans are selected per day alongside your hotel. Use this for dietary notes or allergies.</p>
-            <textarea value={mealRequest} onChange={(e) => setMealRequest(e.target.value)} rows={2}
-              placeholder="Dietary requirements, allergies, preferences..."
-              className="mt-3 w-full rounded-xl border border-[#ddc8b0] bg-[#fffaf4] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/10" />
-          </div>
-
-          <div className="rounded-lg bg-stone-50 border border-stone-200 px-4 py-3">
-            <p className="text-sm font-semibold text-stone-900">Accommodation</p>
-            <p className="mt-1 text-xs text-stone-500">
-              Hotels are selected per day in the day planner above. Use &quot;I&apos;ll book my own&quot; on any day to skip our hotel.
-            </p>
-          </div>
-
-          <button type="button"
-            onClick={() => { setError(""); setOpenSection(5); }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12343b] py-3 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31]">
-            Next: Review & confirm <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      </SectionAccordion>
-
-      {/* ================================================================ */}
-      {/*  SECTION 5 — Review & Confirm                                    */}
-      {/* ================================================================ */}
-      <SectionAccordion
-        number={5}
         title="Review & Confirm"
         subtitle="Check your trip and send the request"
-        open={openSection === 5}
+        open={openSection === 4}
         done={false}
-        onToggle={() => setOpenSection(openSection === 5 ? 0 : 5)}
+        onToggle={() => setOpenSection(openSection === 4 ? 0 : 4)}
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Stats */}
@@ -1202,8 +1185,8 @@ export function JourneyPlanner({
             </p>
             <p className="text-lg font-bold text-[#12343b]">{currencyFormat(pricing.total, pricing.currency)}</p>
           </div>
-          {openSection !== 5 ? (
-            <button type="button" onClick={() => setOpenSection(5)}
+          {openSection !== 4 ? (
+            <button type="button" onClick={() => setOpenSection(4)}
               className="rounded-xl bg-[#12343b] px-5 py-2.5 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31]">
               Review
             </button>

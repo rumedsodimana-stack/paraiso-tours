@@ -85,13 +85,13 @@ export function AdminShell({
   }
 
   return (
-    <div className="flex min-h-screen print:block">
+    <div className="flex h-screen overflow-hidden print:block print:h-auto print:overflow-auto">
       <Sidebar brandName={brandName} logoUrl={logoUrl} />
-      <div className="ml-64 flex min-w-0 flex-1 print:ml-0">
-        <div className="flex min-w-0 flex-1 flex-col">
+      <div className="ml-64 flex min-w-0 flex-1 h-full overflow-hidden print:ml-0">
+        <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden">
           <Suspense
             fallback={
-              <header className="h-16 border-b border-white/20 bg-white/50" />
+              <header className="h-16 shrink-0 border-b border-white/20 bg-white/50" />
             }
           >
             <Header
@@ -101,7 +101,7 @@ export function AdminShell({
             />
           </Suspense>
           <main
-            className={`flex-1 overflow-auto p-6 transition-all duration-500 ${
+            className={`flex-1 overflow-y-auto p-6 transition-all duration-500 ${
               mainGlow
                 ? "ring-2 ring-sky-300/80 shadow-[0_0_38px_rgba(56,189,248,0.24)]"
                 : ""
@@ -110,16 +110,16 @@ export function AdminShell({
             {children}
           </main>
         </div>
-        {showGlobalAiChat ? (
-          <GlobalAdminAiChat
-            runtime={aiRuntime}
-            desktopOpen={!desktopAiCollapsed}
-            mobileOpen={mobileAiOpen}
-            onClose={handleCloseAiChat}
-            onFinalize={triggerMainGlow}
-          />
-        ) : null}
       </div>
+      {showGlobalAiChat ? (
+        <GlobalAdminAiChat
+          runtime={aiRuntime}
+          desktopOpen={!desktopAiCollapsed}
+          mobileOpen={mobileAiOpen}
+          onClose={handleCloseAiChat}
+          onFinalize={triggerMainGlow}
+        />
+      ) : null}
     </div>
   );
 }

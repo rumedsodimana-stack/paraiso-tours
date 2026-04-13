@@ -7,12 +7,9 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Bot,
-  CheckCircle2,
-  ChevronDown,
   Loader2,
   Plus,
   Settings,
-  Sparkles,
   X,
   Zap,
 } from "lucide-react";
@@ -176,9 +173,7 @@ export function GlobalAdminAiChat({
   const runtimeReady = runtime.enabled && runtime.configured;
 
   const [request, setRequest] = useState("");
-  const [executeActions, setExecuteActions] = useState(false);
   const [modelMode, setModelMode] = useState<ModelMode>("auto");
-  const [superpowerArmed, setSuperpowerArmed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [showThinking, setShowThinking] = useState(false);
@@ -233,8 +228,7 @@ export function GlobalAdminAiChat({
     formData.set("tool", "workspace_copilot");
     formData.set("workspaceRequest", contextualRequest);
     formData.set("modelMode", modelMode);
-    if (executeActions) formData.set("executeActions", "on");
-    if (superpowerArmed) formData.set("superpowerEnabled", "on");
+    formData.set("executeActions", "on");
 
     const resultPromise = runAiToolAction(initialState, formData);
 
@@ -257,7 +251,7 @@ export function GlobalAdminAiChat({
     ]);
 
     if (result.ok) {
-      if (executeActions) router.refresh();
+      router.refresh();
       onFinalize?.();
     }
   }
@@ -278,7 +272,7 @@ export function GlobalAdminAiChat({
   const canSend = runtimeReady && !running && request.trim().length > 0;
 
   const panel = (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col bg-white overflow-hidden">
 
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-100 px-4 py-3">
@@ -340,20 +334,10 @@ export function GlobalAdminAiChat({
                   <option value="heavy">Heavy ({runtime.heavyModel})</option>
                 </select>
 
-                {runtime.superpowerEnabled && (
-                  <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5">
-                    <input
-                      type="checkbox"
-                      checked={superpowerArmed}
-                      onChange={(e) => setSuperpowerArmed(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-stone-900">Superpower</span>
-                      <span className="mt-0.5 block text-xs text-stone-500">Guarded app-build mode</span>
-                    </span>
-                  </label>
-                )}
+                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5">
+                  <span className="block text-sm font-medium text-emerald-800">Full execution enabled</span>
+                  <span className="mt-0.5 block text-xs text-emerald-600">AI executes all actions immediately — no restrictions</span>
+                </div>
 
                 <div className="mt-3 border-t border-stone-100 pt-3">
                   <Link
@@ -496,29 +480,11 @@ export function GlobalAdminAiChat({
       {/* ── Input area ─────────────────────────────────────── */}
       <div className="shrink-0 border-t border-stone-100 bg-white px-4 py-3">
 
-        {/* Execute actions toggle */}
-        <label className="mb-2.5 flex cursor-pointer items-center gap-2 select-none">
-          <div
-            onClick={() => setExecuteActions((v) => !v)}
-            className={`relative h-4 w-7 rounded-full transition-colors ${executeActions ? "bg-teal-600" : "bg-stone-200"}`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${executeActions ? "translate-x-3" : ""}`}
-            />
-          </div>
-          <span className="flex items-center gap-1 text-xs text-stone-500">
-            <Zap className={`h-3 w-3 ${executeActions ? "text-teal-600" : "text-stone-400"}`} />
-            <span className={executeActions ? "text-teal-700 font-medium" : ""}>
-              {executeActions ? "Actions enabled" : "Actions off"}
-            </span>
-          </span>
-          {superpowerArmed && (
-            <span className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-purple-600">
-              <Sparkles className="h-3 w-3" />
-              Superpower
-            </span>
-          )}
-        </label>
+        {/* Always-on execution indicator */}
+        <div className="mb-2.5 flex items-center gap-1.5">
+          <Zap className="h-3 w-3 text-teal-600" />
+          <span className="text-xs font-medium text-teal-700">Actions always on — AI executes immediately</span>
+        </div>
 
         {/* Input container */}
         <div className={`flex items-end gap-2 rounded-2xl border bg-stone-50 px-3 py-2 transition-colors ${
@@ -567,25 +533,26 @@ export function GlobalAdminAiChat({
     </div>
   );
 
+  const isOpen = desktopOpen || mobileOpen;
+
   return (
     <>
-      {desktopOpen ? (
-        <aside className="hidden h-[calc(100vh-0px)] w-[26rem] shrink-0 border-l border-stone-100 xl:block">
-          {panel}
-        </aside>
-      ) : null}
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-stone-950/25 backdrop-blur-sm transition-opacity duration-300 ${
+          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={onClose}
+      />
 
-      {mobileOpen ? (
-        <div className="xl:hidden">
-          <div
-            className="fixed inset-0 z-40 bg-stone-950/30 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-sm shadow-2xl">
-            {panel}
-          </aside>
-        </div>
-      ) : null}
+      {/* Drawer — slides in from the right */}
+      <aside
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-[26rem] flex-col shadow-2xl transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {panel}
+      </aside>
     </>
   );
 }
