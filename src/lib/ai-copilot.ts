@@ -7,6 +7,9 @@ import {
   getInvoices,
   getLeads,
   getPayments,
+  getHotels,
+  createPlannerActivity,
+  createHotelMealPlan,
 } from "@/lib/db";
 import type { Invoice, Lead, LeadStatus, Payment } from "@/lib/types";
 import { createInvoiceFromLead, updateInvoiceStatus } from "@/app/actions/invoices";
@@ -30,7 +33,11 @@ export type WorkspaceCopilotAction =
       guestPaidOnline?: boolean;
     }
   | { type: "mark_invoice_paid"; invoiceQuery?: string }
-  | { type: "mark_payment_received"; paymentQuery?: string };
+  | { type: "mark_payment_received"; paymentQuery?: string }
+  | { type: "create_activity"; destinationId?: string; title?: string; summary?: string; durationLabel?: string; energy?: string; estimatedPrice?: number }
+  | { type: "create_meal_plan"; hotelQuery?: string; label?: string; pricePerPerson?: number; currency?: string }
+  | { type: "start_booking_agent"; bookingQuery?: string }
+  | { type: "send_supplier_email"; supplierQuery?: string; subject?: string; body?: string };
 
 export interface WorkspaceCopilotPlan {
   response: string;
@@ -469,6 +476,74 @@ export async function executeWorkspaceCopilotAction(
       ok: true,
       message: `Payment ${resolution.item.reference ?? resolution.item.id} marked received.`,
     };
+  }
+
+  if (action.type === "create_activity") {
+    if (!action.destinationId || !action.title || !action.summary) {
+      return { ok: false, message: "Destination ID, title, and summary are required to create an activity." };
+    }
+    const activity = await createPlannerActivity({
+      destinationId: action.destinationId,
+      title: action.title,
+      summary: action.summary,
+      durationLabel: action.durationLabel || "2 hours",
+      energy: (action.energy as "easy" | "moderate" | "active") || "easy",
+      estimatedPrice: action.estimatedPrice || 0,
+      tags: [],
+    });
+    revalidatePath("/admin/activities");
+    revalidatePath("/admin/destinations");
+    return { ok: true, message: `Activity "${action.title}" created for ${action.destinationId}.`, details: `Activity ID: ${activity.id}` };
+  }
+
+  if (action.type === "create_meal_plan") {
+    if (!action.label) return { ok: false, message: "Meal plan label is required." };
+    const hotels = await getHotels();
+    const query = action.hotelQuery?.toLowerCase() || "";
+    const hotel = hotels.find((h) => h.type === "hotel" && (h.name.toLowerCase().includes(query) || h.id === query));
+    if (!hotel) return { ok: false, message: `No hotel found matching "${action.hotelQuery}".` };
+    const mp = await createHotelMealPlan({
+      hotelId: hotel.id,
+      label: action.label,
+      pricePerPerson: action.pricePerPerson || 0,
+      priceType: "per_person",
+      currency: action.currency || hotel.currency || "USD",
+    });
+    revalidatePath(`/admin/hotels/${hotel.id}`);
+    revalidatePath("/admin/destinations");
+    return { ok: true, message: `Meal plan "${action.label}" created for ${hotel.name}.`, details: `Meal plan ID: ${mp.id}` };
+  }
+
+  if (action.type === "start_booking_agent") {
+    const resolution = await resolveLead(action.bookingQuery);
+    if ("error" in resolution) return { ok: false, message: resolution.error ?? "No matching booking found." };
+    if ("ambiguous" in resolution) return { ok: false, message: `Booking match is ambiguous: ${describeCandidates(resolution.ambiguous, (l) => `${l.reference ?? l.id} (${l.name})`)}` };
+    try {
+      const { startBookingProcessorAction } = await import("@/app/actions/agents");
+      const { threadId } = await startBookingProcessorAction(resolution.item.id);
+      revalidatePath("/admin/agents");
+      return { ok: true, message: `Booking processor agent started for ${resolution.item.reference ?? resolution.item.name}.`, details: `Thread ID: ${threadId}` };
+    } catch (err) {
+      return { ok: false, message: `Agent failed to start: ${err instanceof Error ? err.message : String(err)}` };
+    }
+  }
+
+  if (action.type === "send_supplier_email") {
+    if (!action.subject || !action.body) return { ok: false, message: "Email subject and body are required." };
+    const hotels = await getHotels();
+    const query = action.supplierQuery?.toLowerCase() || "";
+    const supplier = hotels.find((h) => h.name.toLowerCase().includes(query) || h.id === query);
+    if (!supplier) return { ok: false, message: `No supplier found matching "${action.supplierQuery}".` };
+    if (!supplier.email) return { ok: false, message: `${supplier.name} has no email configured.` };
+    try {
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || "onboarding@resend.dev";
+      await resend.emails.send({ from: fromEmail, to: [supplier.email], subject: action.subject, text: action.body });
+      return { ok: true, message: `Email sent to ${supplier.name} (${supplier.email}).` };
+    } catch (err) {
+      return { ok: false, message: `Email failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
   }
 
   return {

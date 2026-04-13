@@ -252,13 +252,6 @@ export default async function BookingDetailPage({
           <AuditTimeline title="Booking Activity" logs={auditLogs} />
         </div>
 
-        <BookingCopilotPanel
-          leadId={lead.id}
-          leadName={lead.name}
-          leadReference={lead.reference}
-          runtimeReady={aiRuntime.enabled && aiRuntime.configured}
-          missingReason={aiRuntime.missingReason}
-        />
       </div>
     </div>
   );
