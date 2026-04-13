@@ -362,31 +362,36 @@ export function AiSettingsSection({
               defaultValue={settings.ai.baseUrl}
               placeholder="https://generativelanguage.googleapis.com/v1beta"
             />
-            <InputField
-              label="Default model"
+            <SelectField
+              label="Primary model"
               name="aiModel"
-              defaultValue={settings.ai.model}
-              placeholder="gemini-2.5-flash"
+              defaultValue={settings.ai.model || "gemini-2.5-flash"}
+              options={[
+                { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (fast, cost-effective)" },
+                { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (advanced reasoning)" },
+              ]}
             />
             <InputField
               label="Simple model"
               name="aiSimpleModel"
-              defaultValue={settings.ai.simpleModel}
-              placeholder="gemini-2.5-flash-lite"
-              hint="lightweight tasks"
+              defaultValue={settings.ai.simpleModel || "gemini-2.5-flash"}
+              placeholder="gemini-2.5-flash"
+              hint="Used for quick tasks"
             />
             <InputField
               label="Default route model"
               name="aiDefaultModel"
-              defaultValue={settings.ai.defaultModel}
+              defaultValue={settings.ai.defaultModel || "gemini-2.5-flash"}
               placeholder="gemini-2.5-flash"
             />
-            <InputField
+            <SelectField
               label="Heavy model"
               name="aiHeavyModel"
-              defaultValue={settings.ai.heavyModel}
-              placeholder="gemini-2.5-pro"
-              hint="complex reasoning"
+              defaultValue={settings.ai.heavyModel || "gemini-2.5-pro"}
+              options={[
+                { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+                { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+              ]}
             />
             <InputField
               label="Temperature"
