@@ -117,6 +117,7 @@ export interface HotelSupplier {
   name: string;
   type: "hotel" | "transport" | "meal" | "supplier";
   location?: string;
+  destinationId?: string;
   /** Email for reservations & communications (used when emailing suppliers) */
   email?: string;
   contact?: string;
@@ -126,6 +127,8 @@ export interface HotelSupplier {
   maxConcurrentBookings?: number;
   /** Star rating (1-5) for hotels, set when adding supplier */
   starRating?: number;
+  /** Passenger capacity for transport suppliers */
+  capacity?: number;
   notes?: string;
   /** Banking details for supplier payments */
   bankName?: string;
@@ -382,7 +385,10 @@ export type AuditEntityType =
   | "payment"
   | "supplier"
   | "employee"
-  | "system";
+  | "activity"
+  | "meal_plan"
+  | "system"
+  | "agent";
 
 export interface AuditLog {
   id: string;
@@ -435,4 +441,30 @@ export interface AiInteraction {
   estimatedCostUsd?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PlannerActivityRecord {
+  id: string;
+  destinationId: string;
+  title: string;
+  summary: string;
+  durationLabel: string;
+  energy: "easy" | "moderate" | "active";
+  bestFor?: string;
+  estimatedPrice: number;
+  tags: string[];
+  active: boolean;
+  createdAt: string;
+}
+
+export interface HotelMealPlan {
+  id: string;
+  hotelId: string;
+  label: string;
+  pricePerPerson: number;
+  priceType: string;
+  currency: string;
+  description?: string;
+  active: boolean;
+  createdAt: string;
 }

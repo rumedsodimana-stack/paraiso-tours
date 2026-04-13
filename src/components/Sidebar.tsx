@@ -23,6 +23,7 @@ import {
   ChevronRight,
   ListTodo,
   Bot,
+  CarFront,
 } from "lucide-react";
 
 const navBeforeFinance = [
@@ -44,7 +45,9 @@ const financeSubItems = [
 const navAfterFinance = [
   { href: "/admin/payables", label: "Payables", icon: Landmark },
   { href: "/admin/payments", label: "Payments", icon: Banknote },
-  { href: "/admin/hotels", label: "Hotels & Suppliers", icon: MapPin },
+  { href: "/admin/destinations", label: "Destinations", icon: MapPin },
+  { href: "/admin/agents", label: "AI Agents", icon: Bot },
+  { href: "/admin/hotels?type=transport", label: "Transport", icon: CarFront },
 ];
 
 const financePaths = ["/admin/finance", "/admin/payroll", "/admin/employees"];

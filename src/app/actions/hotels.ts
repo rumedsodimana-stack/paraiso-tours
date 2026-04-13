@@ -41,6 +41,7 @@ export async function createHotelAction(formData: FormData) {
   const defaultPricePerNight = parseOptionalNum(formData.get("defaultPricePerNight") as string);
   const maxConcurrentBookings = parseOptionalNum(formData.get("maxConcurrentBookings") as string);
   const starRating = parseOptionalNum(formData.get("starRating") as string);
+  const capacity = parseOptionalNum(formData.get("capacity") as string);
   const currency = (formData.get("currency") as string) || "USD";
   const notes = (formData.get("notes") as string)?.trim() || undefined;
   const bankName = (formData.get("bankName") as string)?.trim() || undefined;
@@ -62,6 +63,7 @@ export async function createHotelAction(formData: FormData) {
     defaultPricePerNight,
     maxConcurrentBookings,
     starRating: type === "hotel" && starRating ? starRating : undefined,
+    capacity: type === "transport" ? capacity : undefined,
     currency,
     notes,
     bankName,
@@ -100,6 +102,7 @@ export async function updateHotelAction(id: string, formData: FormData) {
   const defaultPricePerNight = parseOptionalNum(formData.get("defaultPricePerNight") as string);
   const maxConcurrentBookings = parseOptionalNum(formData.get("maxConcurrentBookings") as string);
   const starRating = parseOptionalNum(formData.get("starRating") as string);
+  const capacity = parseOptionalNum(formData.get("capacity") as string);
   const currency = (formData.get("currency") as string) || "USD";
   const notes = (formData.get("notes") as string)?.trim() || undefined;
   const bankName = (formData.get("bankName") as string)?.trim() || undefined;

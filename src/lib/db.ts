@@ -17,6 +17,8 @@ import type {
   Employee,
   PayrollRun,
   Todo,
+  PlannerActivityRecord,
+  HotelMealPlan,
 } from "./types";
 import { mockPackages } from "./mock-data";
 
@@ -1393,4 +1395,144 @@ export async function getClientBookings(email: string): Promise<{
         new Date(b.tour.startDate).getTime() - new Date(a.tour.startDate).getTime()
     ),
   };
+}
+
+// ---- Planner Activities ----
+
+export async function getPlannerActivityRecords(): Promise<PlannerActivityRecord[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPlannerActivityRecords();
+    } catch {
+      // fall through
+    }
+  }
+  return [];
+}
+
+export async function getPlannerActivityRecordsByDestination(
+  destinationId: string
+): Promise<PlannerActivityRecord[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getPlannerActivityRecordsByDestination(destinationId);
+    } catch {
+      // fall through
+    }
+  }
+  return [];
+}
+
+export async function createPlannerActivity(
+  input: Omit<PlannerActivityRecord, "id" | "createdAt" | "active">
+): Promise<PlannerActivityRecord> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createPlannerActivity(input);
+    } catch {
+      // fall through
+    }
+  }
+  const id = `act_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  return { ...input, id, active: true, createdAt: new Date().toISOString() };
+}
+
+export async function updatePlannerActivity(
+  id: string,
+  input: Partial<Omit<PlannerActivityRecord, "id" | "createdAt">>
+): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updatePlannerActivity(id, input);
+    } catch {
+      // fall through
+    }
+  }
+  return false;
+}
+
+export async function deletePlannerActivity(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deletePlannerActivity(id);
+    } catch {
+      // fall through
+    }
+  }
+  return false;
+}
+
+// ---- Hotel Meal Plans ----
+
+export async function getHotelMealPlans(
+  hotelId: string
+): Promise<HotelMealPlan[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getHotelMealPlans(hotelId);
+    } catch {
+      // fall through
+    }
+  }
+  return [];
+}
+
+export async function getAllMealPlans(): Promise<HotelMealPlan[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getAllMealPlans();
+    } catch {
+      // fall through
+    }
+  }
+  return [];
+}
+
+export async function createHotelMealPlan(
+  input: Omit<HotelMealPlan, "id" | "createdAt" | "active">
+): Promise<HotelMealPlan> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createHotelMealPlan(input);
+    } catch {
+      // fall through
+    }
+  }
+  const id = `mp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  return { ...input, id, active: true, createdAt: new Date().toISOString() };
+}
+
+export async function updateHotelMealPlan(
+  id: string,
+  input: Partial<Omit<HotelMealPlan, "id" | "createdAt">>
+): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateHotelMealPlan(id, input);
+    } catch {
+      // fall through
+    }
+  }
+  return false;
+}
+
+export async function deleteHotelMealPlan(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deleteHotelMealPlan(id);
+    } catch {
+      // fall through
+    }
+  }
+  return false;
 }

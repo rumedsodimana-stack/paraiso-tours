@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
-import { AdminReleaseNotice } from "@/components/AdminReleaseNotice";
+
 import { GlobalAdminAiChat } from "@/components/GlobalAdminAiChat";
 
 interface RuntimeSummary {
@@ -100,7 +100,6 @@ export function AdminShell({
               showAiToggle={showGlobalAiChat}
             />
           </Suspense>
-          <AdminReleaseNotice />
           <main
             className={`flex-1 overflow-auto p-6 transition-all duration-500 ${
               mainGlow

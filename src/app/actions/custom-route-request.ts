@@ -131,20 +131,28 @@ export async function createCustomRouteRequestAction(
     estimatedTotal: input.estimatedTotal,
   });
 
-  const lead = await createLead({
-    name,
-    email,
-    phone: phone || "",
-    source: "Client Route Builder",
-    status: "new",
-    destination: routeLabel,
-    travelDate: travelDate || undefined,
-    pax: Math.max(1, Number(input.pax) || 1),
-    notes,
-    totalPrice: Number.isFinite(input.estimatedTotal)
-      ? input.estimatedTotal
-      : undefined,
-  });
+  let lead;
+  try {
+    lead = await createLead({
+      name,
+      email,
+      phone: phone || "",
+      source: "Client Route Builder",
+      status: "new",
+      destination: routeLabel,
+      travelDate: travelDate || undefined,
+      pax: Math.max(1, Number(input.pax) || 1),
+      notes,
+      totalPrice: Number.isFinite(input.estimatedTotal)
+        ? input.estimatedTotal
+        : undefined,
+    });
+  } catch (err) {
+    debugLog("createLead failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return { error: "Failed to save your request. Please try again." };
+  }
 
   await recordAuditEvent({
     entityType: "lead",
@@ -204,6 +212,16 @@ export async function createCustomRouteRequestAction(
       });
     });
   }
+
+  // Auto-trigger booking processor agent
+  import("@/app/actions/agents").then(({ startBookingProcessorAction }) => {
+    startBookingProcessorAction(lead.id).catch((err) => {
+      debugLog("Booking processor agent failed to start", {
+        error: err instanceof Error ? err.message : String(err),
+        leadId: lead.id,
+      });
+    });
+  });
 
   return {
     success: true,

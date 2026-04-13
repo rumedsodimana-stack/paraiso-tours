@@ -18,6 +18,8 @@ import type {
   ItineraryDay,
   Payment,
   PackageOption,
+  PlannerActivityRecord,
+  HotelMealPlan,
 } from "./types";
 
 function generateId(prefix: string): string {
@@ -141,6 +143,7 @@ function toHotel(row: Record<string, unknown>): HotelSupplier {
     name: String(row.name),
     type: row.type as HotelSupplier["type"],
     location: (row.location as string | null) ?? undefined,
+    destinationId: (row.destination_id as string | null) ?? undefined,
     email: (row.email as string | null) ?? undefined,
     contact: (row.contact as string | null) ?? undefined,
     defaultPricePerNight:
@@ -154,6 +157,8 @@ function toHotel(row: Record<string, unknown>): HotelSupplier {
         : Number(row.max_concurrent_bookings),
     starRating:
       row.star_rating == null ? undefined : Number(row.star_rating),
+    capacity:
+      row.capacity == null ? undefined : Number(row.capacity),
     notes: (row.notes as string | null) ?? undefined,
     bankName: (row.bank_name as string | null) ?? undefined,
     bankBranch: (row.bank_branch as string | null) ?? undefined,
@@ -337,6 +342,36 @@ function toAiInteraction(row: Record<string, unknown>): AiInteraction {
         : Number(row.estimated_cost_usd),
     createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
     updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+function toPlannerActivity(row: Record<string, unknown>): PlannerActivityRecord {
+  return {
+    id: String(row.id),
+    destinationId: String(row.destination_id),
+    title: String(row.title),
+    summary: String(row.summary),
+    durationLabel: String(row.duration_label),
+    energy: (row.energy as "easy" | "moderate" | "active") ?? "easy",
+    bestFor: (row.best_for as string | null) ?? undefined,
+    estimatedPrice: Number(row.estimated_price ?? 0),
+    tags: Array.isArray(row.tags) ? row.tags as string[] : [],
+    active: row.active !== false,
+    createdAt: String(row.created_at ?? new Date().toISOString()),
+  };
+}
+
+function toHotelMealPlan(row: Record<string, unknown>): HotelMealPlan {
+  return {
+    id: String(row.id),
+    hotelId: String(row.hotel_id),
+    label: String(row.label),
+    pricePerPerson: Number(row.price_per_person ?? 0),
+    priceType: String(row.price_type ?? "per_person"),
+    currency: String(row.currency ?? "USD"),
+    description: (row.description as string | null) ?? undefined,
+    active: row.active !== false,
+    createdAt: String(row.created_at ?? new Date().toISOString()),
   };
 }
 
@@ -1645,4 +1680,170 @@ export async function getClientBookings(email: string): Promise<{
       b.tour.startDate.localeCompare(a.tour.startDate)
     ),
   };
+}
+
+// ---- Planner Activities ----
+
+export async function getPlannerActivityRecords(): Promise<PlannerActivityRecord[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("planner_activities")
+    .select("*")
+    .eq("active", true)
+    .order("destination_id")
+    .order("title");
+  if (error || !data) return [];
+  return data.map(toPlannerActivity);
+}
+
+export async function getPlannerActivityRecordsByDestination(
+  destinationId: string
+): Promise<PlannerActivityRecord[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("planner_activities")
+    .select("*")
+    .eq("destination_id", destinationId)
+    .eq("active", true)
+    .order("title");
+  if (error || !data) return [];
+  return data.map(toPlannerActivity);
+}
+
+export async function createPlannerActivity(
+  input: Omit<PlannerActivityRecord, "id" | "createdAt" | "active">
+): Promise<PlannerActivityRecord> {
+  const id = generateId("act");
+  const record: PlannerActivityRecord = {
+    ...input,
+    id,
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+  if (supabase) {
+    await supabase.from("planner_activities").insert({
+      id,
+      destination_id: input.destinationId,
+      title: input.title,
+      summary: input.summary,
+      duration_label: input.durationLabel,
+      energy: input.energy,
+      best_for: input.bestFor ?? null,
+      estimated_price: input.estimatedPrice,
+      tags: input.tags,
+    });
+  }
+  return record;
+}
+
+export async function updatePlannerActivity(
+  id: string,
+  input: Partial<Omit<PlannerActivityRecord, "id" | "createdAt">>
+): Promise<boolean> {
+  if (!supabase) return false;
+  const row: Record<string, unknown> = {};
+  if (input.destinationId !== undefined) row.destination_id = input.destinationId;
+  if (input.title !== undefined) row.title = input.title;
+  if (input.summary !== undefined) row.summary = input.summary;
+  if (input.durationLabel !== undefined) row.duration_label = input.durationLabel;
+  if (input.energy !== undefined) row.energy = input.energy;
+  if (input.bestFor !== undefined) row.best_for = input.bestFor;
+  if (input.estimatedPrice !== undefined) row.estimated_price = input.estimatedPrice;
+  if (input.tags !== undefined) row.tags = input.tags;
+  if (input.active !== undefined) row.active = input.active;
+  const { error } = await supabase
+    .from("planner_activities")
+    .update(row)
+    .eq("id", id);
+  return !error;
+}
+
+export async function deletePlannerActivity(id: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("planner_activities")
+    .update({ active: false })
+    .eq("id", id);
+  return !error;
+}
+
+// ---- Hotel Meal Plans ----
+
+export async function getHotelMealPlans(
+  hotelId: string
+): Promise<HotelMealPlan[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("hotel_meal_plans")
+    .select("*")
+    .eq("hotel_id", hotelId)
+    .eq("active", true)
+    .order("price_per_person");
+  if (error || !data) return [];
+  return data.map(toHotelMealPlan);
+}
+
+export async function getAllMealPlans(): Promise<HotelMealPlan[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("hotel_meal_plans")
+    .select("*")
+    .eq("active", true)
+    .order("hotel_id")
+    .order("price_per_person");
+  if (error || !data) return [];
+  return data.map(toHotelMealPlan);
+}
+
+export async function createHotelMealPlan(
+  input: Omit<HotelMealPlan, "id" | "createdAt" | "active">
+): Promise<HotelMealPlan> {
+  const id = generateId("mp");
+  const record: HotelMealPlan = {
+    ...input,
+    id,
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+  if (supabase) {
+    await supabase.from("hotel_meal_plans").insert({
+      id,
+      hotel_id: input.hotelId,
+      label: input.label,
+      price_per_person: input.pricePerPerson,
+      price_type: input.priceType,
+      currency: input.currency,
+      description: input.description ?? null,
+    });
+  }
+  return record;
+}
+
+export async function updateHotelMealPlan(
+  id: string,
+  input: Partial<Omit<HotelMealPlan, "id" | "createdAt">>
+): Promise<boolean> {
+  if (!supabase) return false;
+  const row: Record<string, unknown> = {};
+  if (input.hotelId !== undefined) row.hotel_id = input.hotelId;
+  if (input.label !== undefined) row.label = input.label;
+  if (input.pricePerPerson !== undefined) row.price_per_person = input.pricePerPerson;
+  if (input.priceType !== undefined) row.price_type = input.priceType;
+  if (input.currency !== undefined) row.currency = input.currency;
+  if (input.description !== undefined) row.description = input.description;
+  if (input.active !== undefined) row.active = input.active;
+  const { error } = await supabase
+    .from("hotel_meal_plans")
+    .update(row)
+    .eq("id", id);
+  return !error;
+}
+
+export async function deleteHotelMealPlan(id: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("hotel_meal_plans")
+    .update({ active: false })
+    .eq("id", id);
+  return !error;
 }

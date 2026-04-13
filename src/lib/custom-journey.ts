@@ -147,7 +147,7 @@ export function getCustomJourneyTransportOptions(
       price: supplier.defaultPricePerNight ?? 0,
       priceType: "per_vehicle_per_day",
       currency: supplier.currency || fallbackCurrency,
-      capacity: guessTransportCapacity(supplier.name),
+      capacity: supplier.capacity ?? guessTransportCapacity(supplier.name),
       source: "supplier",
       supplierId: supplier.id,
     }));

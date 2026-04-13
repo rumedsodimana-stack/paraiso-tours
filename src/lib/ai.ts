@@ -11,7 +11,9 @@ export type AiFeature =
   | "package_writer"
   | "journey_assistant"
   | "workspace_copilot"
-  | "client_concierge";
+  | "client_concierge"
+  | "booking_processor"
+  | "admin_assistant";
 
 export interface AiTextRequest {
   feature: AiFeature;
@@ -74,6 +76,10 @@ function isFeatureEnabled(
       return settings.ai.workspaceCopilotEnabled;
     case "client_concierge":
       return settings.ai.clientConciergeEnabled;
+    case "booking_processor":
+    case "admin_assistant":
+      // Agent features piggyback on the booking_brief toggle
+      return settings.ai.bookingBriefEnabled;
     default:
       return false;
   }

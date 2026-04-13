@@ -369,3 +369,36 @@ CREATE INDEX IF NOT EXISTS idx_leads_archived_at
   ON leads(archived_at);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity
   ON audit_logs(entity_type, entity_id, created_at DESC);
+
+-- Planner Activities (admin-managed, replaces hardcoded route-planner activities)
+CREATE TABLE IF NOT EXISTS planner_activities (
+  id TEXT PRIMARY KEY,
+  destination_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  duration_label TEXT NOT NULL,
+  energy TEXT NOT NULL DEFAULT 'easy',
+  best_for TEXT,
+  estimated_price NUMERIC NOT NULL DEFAULT 0,
+  tags JSONB NOT NULL DEFAULT '[]',
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS hotel_meal_plans (
+  id TEXT PRIMARY KEY,
+  hotel_id TEXT NOT NULL REFERENCES hotels(id),
+  label TEXT NOT NULL,
+  price_per_person NUMERIC NOT NULL DEFAULT 0,
+  price_type TEXT NOT NULL DEFAULT 'per_person',
+  currency TEXT NOT NULL DEFAULT 'USD',
+  description TEXT,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_planner_activities_destination ON planner_activities(destination_id, active);
+CREATE INDEX IF NOT EXISTS idx_hotel_meal_plans_hotel ON hotel_meal_plans(hotel_id, active);
+
+ALTER TABLE hotels ADD COLUMN IF NOT EXISTS destination_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_hotels_destination ON hotels(destination_id);

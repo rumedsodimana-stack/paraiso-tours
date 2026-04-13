@@ -180,6 +180,26 @@ export function HotelForm({
             Used by scheduling to flag overlapping tours that exceed this supplier&apos;s capacity.
           </p>
         </div>
+        {type === "transport" && (
+          <div>
+            <label htmlFor="capacity" className="block text-sm font-medium text-stone-700">
+              Passenger capacity
+            </label>
+            <input
+              id="capacity"
+              name="capacity"
+              type="number"
+              min={1}
+              step={1}
+              defaultValue={hotel?.capacity}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              placeholder="e.g. 3, 6, 18"
+            />
+            <p className="mt-1 text-xs text-stone-500">
+              Max passengers this vehicle can carry. Used to filter recommendations in the trip builder.
+            </p>
+          </div>
+        )}
         <div>
           <label htmlFor="currency" className="block text-sm font-medium text-stone-700">
             Currency

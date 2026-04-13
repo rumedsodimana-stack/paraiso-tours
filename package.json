@@ -12,6 +12,10 @@
     "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@langchain/core": "^1.1.39",
+    "@langchain/langgraph": "^1.2.8",
+    "@langchain/langgraph-checkpoint": "^1.0.1",
+    "@langchain/langgraph-checkpoint-postgres": "^1.0.1",
     "@prisma/client": "^7.5.0",
     "@supabase/supabase-js": "^2.99.1",
     "jspdf": "^4.2.1",
@@ -31,6 +35,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "pg": "^8.20.0",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"
