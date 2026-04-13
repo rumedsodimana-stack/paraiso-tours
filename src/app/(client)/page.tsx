@@ -57,7 +57,7 @@ export default async function ClientPortalPage() {
             src={homeHeroScene.imageUrl}
             alt="Sri Lanka travel panorama"
             fill
-            unoptimized
+
             className="object-cover"
             sizes="100vw"
           />
@@ -158,7 +158,7 @@ export default async function ClientPortalPage() {
                         src={story.imageUrl}
                         alt={story.title}
                         fill
-                        unoptimized
+            
                         className="object-cover transition duration-500 group-hover:scale-105"
                         sizes="100vw"
                       />
@@ -244,7 +244,7 @@ export default async function ClientPortalPage() {
                       src={visual.imageUrl}
                       alt={pkg.name}
                       fill
-                      unoptimized
+          
                       className="object-cover transition duration-700 group-hover:scale-105"
                       sizes="100vw"
                     />
@@ -347,7 +347,7 @@ export default async function ClientPortalPage() {
                   src={scene.imageUrl}
                   alt={scene.title}
                   fill
-                  unoptimized
+      
                   className="object-cover transition duration-500 group-hover:scale-105"
                   sizes="100vw"
                 />

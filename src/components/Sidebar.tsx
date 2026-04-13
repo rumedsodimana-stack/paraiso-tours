@@ -84,7 +84,7 @@ export function Sidebar({
               src={logoUrl}
               alt={brandName}
               fill
-              unoptimized
+
               className="object-cover"
               sizes="100vw"
             />

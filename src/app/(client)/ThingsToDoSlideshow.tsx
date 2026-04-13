@@ -41,7 +41,7 @@ export function ThingsToDoSlideshow() {
               src={activeScene.imageUrl}
               alt={activeScene.title}
               fill
-              unoptimized
+
               className="object-cover"
               sizes="100vw"
             />
@@ -129,7 +129,7 @@ export function ThingsToDoSlideshow() {
                   src={scene.imageUrl}
                   alt={scene.title}
                   fill
-                  unoptimized
+    
                   className="object-cover transition duration-500 group-hover:scale-105"
                   sizes="100vw"
                 />

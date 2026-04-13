@@ -80,7 +80,7 @@ export default async function ClientPackagesPage({
             src={homeHeroScene.imageUrl}
             alt="Sri Lanka route planning"
             fill
-            unoptimized
+
             className="object-cover"
             sizes="100vw"
           />
@@ -156,7 +156,7 @@ export default async function ClientPackagesPage({
                 src={scene.imageUrl}
                 alt={scene.title}
                 fill
-                unoptimized
+    
                 className="object-cover"
                 sizes="100vw"
               />
@@ -192,7 +192,7 @@ export default async function ClientPackagesPage({
                   src={visual.imageUrl}
                   alt={pkg.name}
                   fill
-                  unoptimized
+      
                   className="object-cover transition duration-700 group-hover:scale-105"
                   sizes="100vw"
                 />

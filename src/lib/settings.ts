@@ -176,6 +176,26 @@ export function validatePasswordStrength(
 }
 
 /**
+ * Check whether the current password setup is still the hard-coded default.
+ *
+ * Returns true when:
+ * - No ADMIN_PASSWORD env var is set, AND
+ * - No custom hash has been stored in settings.json (i.e. still falling back
+ *   to the hard-coded "admin123" comparison in verifyAdminPassword).
+ */
+export async function isDefaultPassword(): Promise<boolean> {
+  // If an env var overrides the password, the default is not in use.
+  if (process.env.ADMIN_PASSWORD?.trim()) return false;
+
+  const settings = await readSettings();
+  // A stored hash means the admin has changed the password at some point.
+  if (settings.adminPasswordHash) return false;
+
+  // No env var and no stored hash → still using the hard-coded "admin123".
+  return true;
+}
+
+/**
  * Change admin password. Requires current password verification.
  * On Vercel: cannot persist to disk; returns error instructing to use env var.
  */

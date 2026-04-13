@@ -54,7 +54,7 @@ export default async function PackageDetailPage({
             src={visual.imageUrl}
             alt={pkg.name}
             fill
-            unoptimized
+
             className="object-cover"
             sizes="100vw"
           />

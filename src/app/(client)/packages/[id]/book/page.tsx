@@ -46,7 +46,7 @@ export default async function ClientBookPackagePage({
               src={visual.imageUrl}
               alt={pkg.name}
               fill
-              unoptimized
+
               className="absolute inset-0 object-cover"
               sizes="100vw"
             />

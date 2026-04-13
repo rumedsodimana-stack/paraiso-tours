@@ -16,17 +16,31 @@ export async function generateMetadata(): Promise<Metadata> {
   const settings = await getAppSettings();
   const brandName = getDisplayCompanyName(settings);
 
+  const description =
+    settings.company.tagline ||
+    `Curated Sri Lanka tours — coast, culture, and tea country`;
+
   return {
     title: `${brandName} | Travel Operations`,
-    description:
-      settings.company.tagline ||
-      `Booking management, tour packages, and operations for ${brandName}`,
+    description,
     icons: settings.company.logoUrl
       ? {
           icon: [{ url: settings.company.logoUrl }],
           apple: [{ url: settings.company.logoUrl }],
         }
       : undefined,
+    openGraph: {
+      title: brandName,
+      description: "Curated Sri Lanka tours — coast, culture, and tea country",
+      type: "website",
+      locale: "en_US",
+      siteName: brandName,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: brandName,
+      description: "Curated Sri Lanka tours — coast, culture, and tea country",
+    },
   };
 }
 

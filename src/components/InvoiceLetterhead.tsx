@@ -28,7 +28,7 @@ export function InvoiceLetterhead({
               src={logoUrl}
               alt={companyName}
               fill
-              unoptimized
+
               className="object-cover"
               sizes="56px"
             />

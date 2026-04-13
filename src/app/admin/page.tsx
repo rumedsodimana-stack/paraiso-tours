@@ -12,6 +12,7 @@ import {
 import { getLeads, getTours } from "@/lib/db";
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { supabase } from "@/lib/supabase";
+import { isDefaultPassword } from "@/lib/settings";
 import { WorldClockWidget } from "@/components/WorldClockWidget";
 import { ExchangeRatesWidget } from "@/components/ExchangeRatesWidget";
 import type { Lead } from "@/lib/types";
@@ -90,10 +91,11 @@ function RecentLeadsCard({ recentLeads }: { recentLeads: Lead[] }) {
 }
 
 export default async function DashboardPage() {
-  const [leads, tours, settings] = await Promise.all([
+  const [leads, tours, settings, usingDefaultPw] = await Promise.all([
     getLeads(),
     getTours(),
     getAppSettings(),
+    isDefaultPassword(),
   ]);
   const brandName = getDisplayCompanyName(settings);
 
@@ -163,6 +165,22 @@ export default async function DashboardPage() {
                 SUPABASE_SERVICE_ROLE_KEY
               </code>{" "}
               in Vercel to enable persistent storage.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {usingDefaultPw && (
+        <div className="flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
+          <div>
+            <p className="font-semibold">You&apos;re using the default password</p>
+            <p className="mt-0.5 text-rose-800">
+              Change it in{" "}
+              <Link href="/admin/settings" className="font-medium underline hover:text-rose-900">
+                Settings &gt; Security
+              </Link>
+              .
             </p>
           </div>
         </div>

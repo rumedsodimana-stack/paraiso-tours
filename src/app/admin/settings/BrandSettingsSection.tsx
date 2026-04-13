@@ -163,7 +163,7 @@ export function BrandSettingsSection({
                         src={settings.company.logoUrl}
                         alt={displayName}
                         fill
-                        unoptimized
+
                         className="object-cover"
                         sizes="64px"
                       />

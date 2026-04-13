@@ -77,7 +77,7 @@ export default async function ClientLayout({
                       src={settings.company.logoUrl}
                       alt={brandName}
                       fill
-                      unoptimized
+
                       className="rounded-2xl object-cover"
                       sizes="100vw"
                     />

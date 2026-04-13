@@ -66,7 +66,7 @@ export function ClientHeader({
                 src={logoUrl}
                 alt={brandName}
                 fill
-                unoptimized
+
                 className="object-cover"
                 sizes="100vw"
               />
