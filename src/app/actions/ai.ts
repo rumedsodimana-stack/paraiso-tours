@@ -21,7 +21,6 @@ import {
 } from "@/lib/ai-copilot";
 import {
   buildBookingBriefPrompts,
-  buildCoworkerCodePlanPrompts,
   buildJourneyAssistantPrompts,
   buildPackageWriterPrompts,
   buildWorkspaceCopilotPrompts,
@@ -29,6 +28,9 @@ import {
 import { getAppSettings } from "@/lib/app-config";
 import {
   createAiInteraction,
+  updateAiInteraction,
+  getAiInteractions,
+  createAiKnowledgeDocument,
   getInvoiceByLeadId,
   getLead,
   getHotels,
@@ -54,25 +56,6 @@ function getModelMode(formData: FormData): AiModelMode {
     : "auto";
 }
 
-function isCodeChangeRequest(request: string) {
-  const normalized = request.toLowerCase();
-  return [
-    "add menu",
-    "add sidebar",
-    "edit code",
-    "change code",
-    "update code",
-    "refactor",
-    "build feature",
-    "add feature",
-    "change component",
-    "update component",
-    "create page",
-    "edit file",
-    "update file",
-    "write code",
-  ].some((term) => normalized.includes(term));
-}
 
 async function persistInteraction(input: {
   tool: string;
@@ -110,6 +93,73 @@ async function persistInteraction(input: {
   });
   await maybeRaiseAiBudgetAlert();
   return interaction;
+}
+
+/** Auto-learn: mark interaction helpful and optionally promote to knowledge base */
+async function autoLearnFromExecution(interactionId: string, action: WorkspaceCopilotPlan["action"], executionOk: boolean) {
+  if (!executionOk || action.type === "answer_only") return;
+
+  // Auto-mark successful executions as helpful
+  await updateAiInteraction(interactionId, { helpful: true });
+
+  // Auto-promote: check if this action pattern has succeeded 3+ times
+  try {
+    const recent = await getAiInteractions(100);
+    const sameTypeSuccesses = recent.filter(
+      (i) => i.executedOk && i.helpful && i.plannedAction && (i.plannedAction as Record<string, unknown>).type === action.type,
+    );
+
+    // If 3+ successes of this type and none promoted yet, auto-promote a summary
+    if (sameTypeSuccesses.length >= 3) {
+      const alreadyPromoted = sameTypeSuccesses.some((i) => i.promotedToKnowledge);
+      if (!alreadyPromoted) {
+        const examples = sameTypeSuccesses.slice(0, 3).map((i) => `- ${i.requestText}`).join("\n");
+        await createAiKnowledgeDocument({
+          title: `Learned pattern: ${action.type}`,
+          content: [
+            `The AI copilot has successfully executed "${action.type}" multiple times.`,
+            `Example requests:`,
+            examples,
+            `This action pattern is well-understood and should be executed confidently.`,
+          ].join("\n"),
+          sourceType: "learned",
+          sourceRef: interactionId,
+          tags: [action.type, "auto-promoted", "learned"],
+          active: true,
+        });
+        // Mark the latest as promoted
+        await updateAiInteraction(interactionId, { promotedToKnowledge: true });
+      }
+    }
+  } catch {
+    // Non-critical — don't break the response if auto-learn fails
+  }
+}
+
+/** Build recent interaction memory for copilot context */
+async function buildRecentMemory(): Promise<string> {
+  try {
+    const recent = await getAiInteractions(20);
+    const relevant = recent
+      .filter((i) => i.tool === "workspace_copilot" && (i.helpful || i.executedOk))
+      .slice(0, 8);
+
+    if (relevant.length === 0) return "";
+
+    const lines = relevant.map((i) => {
+      const action = i.plannedAction as Record<string, unknown> | undefined;
+      const actionType = action?.type ?? "answer_only";
+      const status = i.executedOk ? "done" : "answered";
+      return `- [${status}] ${i.requestText.slice(0, 120)} → ${actionType}`;
+    });
+
+    return [
+      "Recent AI memory (what you did recently — use this to maintain continuity):",
+      ...lines,
+    ].join("\n");
+  } catch {
+    return "";
+  }
 }
 
 function describePlannedAction(plan: WorkspaceCopilotPlan["action"]) {
@@ -410,16 +460,16 @@ export async function runAiToolAction(
       const modelMode = getModelMode(formData);
       const request = String(formData.get("workspaceRequest") ?? "").trim();
       const executeRequested = formData.get("executeActions") === "on";
-      const superpowerArmed = formData.get("superpowerEnabled") === "on";
 
       if (!request) {
         return { ok: false, message: "Enter the copilot request first." };
       }
 
-      const [settings, hotels, packages] = await Promise.all([
+      const [settings, hotels, packages, recentMemory] = await Promise.all([
         getAppSettings(),
         getHotels(),
         getPackages(),
+        buildRecentMemory(),
       ]);
       const domainKnowledge = buildSriLankaKnowledgeContext({
         query: request,
@@ -436,94 +486,13 @@ export async function runAiToolAction(
         query: request,
       });
 
-      if (isCodeChangeRequest(request)) {
-        if (!settings.ai.superpowerEnabled || !superpowerArmed) {
-          const message =
-            "Superpower is off. The AI coworker can explain or plan app changes, but it will not enter code-change mode until you explicitly arm Superpower in the chat settings.";
-          const interaction = await persistInteraction({
-            tool,
-            requestText: request,
-            responseText: message,
-            executedOk: false,
-            promotedToKnowledge: false,
-            superpowerUsed: false,
-            modelMode,
-          });
-          return {
-            ok: true,
-            message: "AI coworker stayed in protected mode.",
-            result: message,
-            title: "AI Coworker",
-            tool,
-            interactionId: interaction.id,
-          };
-        }
-
-        const prompts = buildCoworkerCodePlanPrompts({
-          request,
-          architectureKnowledge: buildAppArchitectureKnowledgeContext(),
-          usageKnowledge: buildAppUsageKnowledgeContext(),
-          capabilitiesKnowledge: buildWorkspaceCopilotCapabilitiesContext(),
-          dataKnowledge: [dataKnowledge, ragContext].filter(Boolean).join("\n\n"),
-          domainKnowledge,
-        });
-        const response = await generateAiText({
-          feature: "workspace_copilot",
-          title: prompts.title,
-          systemPrompt: prompts.systemPrompt,
-          userPrompt: prompts.userPrompt,
-          modelMode: modelMode === "auto" ? "heavy" : modelMode,
-          usePromptCache: true,
-        });
-
-        await recordAuditEvent({
-          entityType: "system",
-          entityId: "ai_workspace_copilot",
-          action: "ai_coworker_superpower_requested",
-          summary: "AI coworker prepared a guarded app-build handoff",
-          actor: "Admin AI Workspace",
-          details: [
-            "Mode: Superpower",
-            `Model: ${response.model}`,
-            `Provider: ${response.providerLabel}`,
-          ],
-        });
-
-        const interaction = await persistInteraction({
-          tool,
-          requestText: request,
-          responseText: response.text,
-          executedOk: false,
-          promotedToKnowledge: false,
-          providerLabel: response.providerLabel,
-          model: response.model,
-          modelMode: response.modelMode,
-          superpowerUsed: true,
-          inputTokens: response.usage?.inputTokens,
-          outputTokens: response.usage?.outputTokens,
-          cacheCreationInputTokens: response.usage?.cacheCreationInputTokens,
-          cacheReadInputTokens: response.usage?.cacheReadInputTokens,
-          estimatedCostUsd: response.estimatedCostUsd,
-        });
-
-        return {
-          ok: true,
-          message:
-            "AI coworker prepared a guarded app-build handoff. No files were edited inside the app runtime.",
-          result: response.text,
-          title: "AI Coworker",
-          tool,
-          interactionId: interaction.id,
-        };
-      }
-
       const prompts = buildWorkspaceCopilotPrompts({
         request,
         executeRequested,
         architectureKnowledge: buildAppArchitectureKnowledgeContext(),
         usageKnowledge: buildAppUsageKnowledgeContext(),
         capabilitiesKnowledge: buildWorkspaceCopilotCapabilitiesContext(),
-        dataKnowledge: [dataKnowledge, ragContext].filter(Boolean).join("\n\n"),
+        dataKnowledge: [dataKnowledge, ragContext, recentMemory].filter(Boolean).join("\n\n"),
         domainKnowledge,
       });
       const { data: rawPlan, response } =
@@ -607,6 +576,10 @@ export async function runAiToolAction(
         cacheReadInputTokens: response.usage?.cacheReadInputTokens,
         estimatedCostUsd: response.estimatedCostUsd,
       });
+
+      // Self-learning: auto-mark helpful + auto-promote patterns
+      await autoLearnFromExecution(interaction.id, plan.action, execution.ok);
+
       return {
         ok: execution.ok,
         message: execution.message,
