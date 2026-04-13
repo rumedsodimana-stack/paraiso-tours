@@ -19,6 +19,7 @@ import type {
   Todo,
   PlannerActivityRecord,
   HotelMealPlan,
+  Quotation,
 } from "./types";
 import { mockPackages } from "./mock-data";
 
@@ -50,6 +51,7 @@ let memoryStore: {
   auditLogs: AuditLog[];
   aiKnowledgeDocuments: AiKnowledgeDocument[];
   aiInteractions: AiInteraction[];
+  quotations: Quotation[];
 } | null = null;
 function getMemoryStore() {
   if (!memoryStore) {
@@ -66,6 +68,7 @@ function getMemoryStore() {
       auditLogs: [],
       aiKnowledgeDocuments: [],
       aiInteractions: [],
+      quotations: [],
     };
   }
   return memoryStore;
@@ -101,6 +104,7 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
     if (file === "audit.json") return store.auditLogs as T;
     if (file === "ai-knowledge.json") return store.aiKnowledgeDocuments as T;
     if (file === "ai-interactions.json") return store.aiInteractions as T;
+    if (file === "quotations.json") return store.quotations as T;
     return fallback;
   }
   await ensureDataDir();
@@ -130,6 +134,8 @@ async function writeJson<T>(file: string, data: T): Promise<void> {
       store.aiKnowledgeDocuments = data as AiKnowledgeDocument[];
     else if (file === "ai-interactions.json")
       store.aiInteractions = data as AiInteraction[];
+    else if (file === "quotations.json")
+      store.quotations = data as Quotation[];
     return;
   }
   await ensureDataDir();
@@ -162,6 +168,7 @@ async function maybeSeed() {
   await writeJson("audit.json", []);
   await writeJson("ai-knowledge.json", []);
   await writeJson("ai-interactions.json", []);
+  await writeJson("quotations.json", []);
   await writeFile(flagPath, "seeded", "utf-8");
 }
 
@@ -417,7 +424,8 @@ export async function createPackage(data: Omit<TourPackage, "id" | "createdAt">)
   }
   const packages = await getPackages();
   const id = `pkg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  const pkg: TourPackage = { ...data, id, createdAt: new Date().toISOString() };
+  const ref = data.reference ?? `PKG-${new Date().toISOString().slice(0,10).replace(/-/g,"")}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+  const pkg: TourPackage = { ...data, id, reference: ref, createdAt: new Date().toISOString() };
   packages.push(pkg);
   await writeJson("packages.json", packages);
   return pkg;
@@ -514,7 +522,8 @@ export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
   const tours = await getTours();
   const id = `tour_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const now = new Date().toISOString();
-  const tour: Tour = { ...data, id, createdAt: now, updatedAt: now };
+  const confId = data.confirmationId ?? `TCF-${now.slice(0,10).replace(/-/g,"")}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+  const tour: Tour = { ...data, id, confirmationId: confId, createdAt: now, updatedAt: now };
   tours.push(tour);
   await writeJson("tours.json", tours);
   return tour;
@@ -1535,4 +1544,106 @@ export async function deleteHotelMealPlan(id: string): Promise<boolean> {
     }
   }
   return false;
+}
+
+// --- QUOTATIONS ---
+
+function generateQuotationReference(): string {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `QUO-${date}-${random}`;
+}
+
+export async function getQuotations(): Promise<Quotation[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getQuotations();
+    } catch {
+      // fall through
+    }
+  }
+  const quotations = await readJson<Quotation[]>("quotations.json", []);
+  return quotations.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+
+export async function getQuotation(id: string): Promise<Quotation | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getQuotation(id);
+    } catch {
+      // fall through
+    }
+  }
+  const quotations = await readJson<Quotation[]>("quotations.json", []);
+  return quotations.find((q) => q.id === id) ?? null;
+}
+
+export async function createQuotation(
+  data: Omit<Quotation, "id" | "reference" | "createdAt" | "updatedAt">
+): Promise<Quotation> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createQuotation(data);
+    } catch {
+      // fall through
+    }
+  }
+  const quotations = await readJson<Quotation[]>("quotations.json", []);
+  const now = new Date().toISOString();
+  const id = `quo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const quotation: Quotation = {
+    ...data,
+    id,
+    reference: generateQuotationReference(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  quotations.unshift(quotation);
+  await writeJson("quotations.json", quotations);
+  return quotation;
+}
+
+export async function updateQuotation(
+  id: string,
+  data: Partial<Omit<Quotation, "id" | "reference" | "createdAt">>
+): Promise<Quotation | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateQuotation(id, data);
+    } catch {
+      // fall through
+    }
+  }
+  const quotations = await readJson<Quotation[]>("quotations.json", []);
+  const idx = quotations.findIndex((q) => q.id === id);
+  if (idx === -1) return null;
+  quotations[idx] = {
+    ...quotations[idx],
+    ...data,
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJson("quotations.json", quotations);
+  return quotations[idx];
+}
+
+export async function deleteQuotation(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deleteQuotation(id);
+    } catch {
+      // fall through
+    }
+  }
+  const quotations = await readJson<Quotation[]>("quotations.json", []);
+  const filtered = quotations.filter((q) => q.id !== id);
+  if (filtered.length === quotations.length) return false;
+  await writeJson("quotations.json", filtered);
+  return true;
 }

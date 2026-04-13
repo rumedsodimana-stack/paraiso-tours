@@ -274,6 +274,11 @@ export default async function DashboardPage() {
                       <p className="text-sm text-slate-500">
                         {tour.packageName}
                       </p>
+                      {tour.confirmationId && (
+                        <p className="font-mono text-[11px] font-semibold text-teal-600">
+                          {tour.confirmationId}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">

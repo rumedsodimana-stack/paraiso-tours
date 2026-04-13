@@ -56,9 +56,16 @@ export default async function PackageDetailPage({
 
       <div className="overflow-hidden rounded-2xl border border-white/30 bg-white/50 shadow-lg backdrop-blur-xl">
         <div className="border-b border-white/20 bg-amber-500/10 px-6 py-6 backdrop-blur-sm">
-          <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50">
-            {pkg.name}
-          </h1>
+          <div className="flex flex-wrap items-start gap-3">
+            <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50">
+              {pkg.name}
+            </h1>
+            {pkg.reference && (
+              <span className="mt-1 rounded-lg bg-amber-50 px-2.5 py-1 font-mono text-xs font-bold tracking-wider text-amber-700 ring-1 ring-amber-200">
+                {pkg.reference}
+              </span>
+            )}
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-stone-600 dark:text-stone-400">
             <span className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />

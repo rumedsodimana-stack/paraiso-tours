@@ -116,8 +116,19 @@ export default async function TourDetailPage({
               <MapPin className="h-4 w-4" />
               {pkg?.destination ?? "—"}
             </span>
+            {tour.confirmationId && (
+              <span
+                className="rounded-lg bg-teal-50 px-2.5 py-1 font-mono text-xs font-bold tracking-wider text-teal-700 ring-1 ring-teal-200"
+                title="Tour Confirmation ID"
+              >
+                {tour.confirmationId}
+              </span>
+            )}
             {lead?.reference && (
-              <span className="font-mono font-semibold text-teal-700">
+              <span
+                className="rounded-lg bg-stone-50 px-2.5 py-1 font-mono text-xs font-semibold tracking-wider text-stone-600 ring-1 ring-stone-200"
+                title="Booking Reference"
+              >
                 {lead.reference}
               </span>
             )}

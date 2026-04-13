@@ -105,9 +105,16 @@ function PackageCard({
       </div>
       <Link href={`/admin/packages/${pkg.id}`} className="flex flex-1 flex-col">
         <div className="border-b border-white/20 bg-amber-500/10 px-6 py-4 backdrop-blur-sm">
-          <h3 className="font-semibold text-stone-900 group-hover:text-teal-700 dark:text-stone-50 dark:group-hover:text-teal-400">
-            {pkg.name}
-          </h3>
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-semibold text-stone-900 group-hover:text-teal-700 dark:text-stone-50 dark:group-hover:text-teal-400">
+              {pkg.name}
+            </h3>
+            {pkg.reference && (
+              <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-amber-700 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:ring-amber-700">
+                {pkg.reference}
+              </span>
+            )}
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-stone-600 dark:text-stone-400">
             <span className="flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5" />

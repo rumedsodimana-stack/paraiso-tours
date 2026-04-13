@@ -158,9 +158,16 @@ function TourCard({ tour }: { tour: Tour }) {
       className="flex flex-col gap-4 rounded-2xl border border-white/20 bg-white/40 p-4 shadow-lg shadow-stone-900/5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-stone-900/40 transition hover:bg-white/50 dark:hover:bg-stone-800/50"
     >
       <div>
-        <h4 className="font-semibold text-stone-900 dark:text-stone-50">
-          {tour.packageName}
-        </h4>
+        <div className="flex items-center gap-2">
+          <h4 className="font-semibold text-stone-900 dark:text-stone-50">
+            {tour.packageName}
+          </h4>
+          {tour.confirmationId && (
+            <span className="rounded bg-teal-50 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-teal-700 ring-1 ring-teal-200 dark:bg-teal-900/40 dark:text-teal-300 dark:ring-teal-700">
+              {tour.confirmationId}
+            </span>
+          )}
+        </div>
         <p className="text-sm text-stone-600 dark:text-stone-400">
           {tour.clientName}
         </p>

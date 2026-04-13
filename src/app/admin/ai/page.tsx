@@ -1,32 +1,64 @@
 import { getAiRuntimeStatus } from "@/lib/ai";
 import { getAiInteractions, getAiKnowledgeDocuments, getLeads, getPackages } from "@/lib/db";
-import { AiStudio } from "./AiStudio";
+import { AiCowork } from "./AiCowork";
 
 export const dynamic = "force-dynamic";
 
-type AiTool =
-  | "booking_brief"
-  | "package_writer"
-  | "journey_assistant"
-  | "workspace_copilot";
+export interface ConnectorStatus {
+  id: string;
+  label: string;
+  description: string;
+  connected: boolean;
+  category: "ai" | "messaging" | "data" | "webhook";
+}
 
-export default async function AdminAiPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{
-    tool?: string;
-    leadId?: string;
-    packageId?: string;
-  }>;
-}) {
-  const resolved = searchParams ? await searchParams : {};
-  const requestedTool: AiTool =
-    resolved?.tool === "package_writer" ||
-    resolved?.tool === "journey_assistant" ||
-    resolved?.tool === "workspace_copilot"
-      ? resolved.tool
-      : "booking_brief";
+function getConnectors(runtime: { configured: boolean; enabled: boolean; providerLabel: string }): ConnectorStatus[] {
+  return [
+    {
+      id: "ai",
+      label: runtime.providerLabel || "AI Provider",
+      description: "Powers AI responses and actions",
+      connected: runtime.configured && runtime.enabled,
+      category: "ai",
+    },
+    {
+      id: "email",
+      label: "Email (Resend)",
+      description: "Send invoices & confirmations",
+      connected: !!(process.env.RESEND_API_KEY?.trim()),
+      category: "messaging",
+    },
+    {
+      id: "whatsapp",
+      label: "WhatsApp",
+      description: "Client messaging via Meta API",
+      connected: !!(
+        process.env.WHATSAPP_ACCESS_TOKEN?.trim() &&
+        process.env.WHATSAPP_PHONE_NUMBER_ID?.trim()
+      ),
+      category: "messaging",
+    },
+    {
+      id: "whatsapp_webhook",
+      label: "WA Webhook",
+      description: "Inbound WhatsApp messages",
+      connected: !!(process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN?.trim()),
+      category: "webhook",
+    },
+    {
+      id: "database",
+      label: "Supabase DB",
+      description: "Primary data store",
+      connected: !!(
+        process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+      ),
+      category: "data",
+    },
+  ];
+}
 
+export default async function AdminAiPage() {
   const [runtime, leads, packages, knowledgeDocuments, interactions] = await Promise.all([
     getAiRuntimeStatus(),
     getLeads(),
@@ -34,6 +66,8 @@ export default async function AdminAiPage({
     getAiKnowledgeDocuments(),
     getAiInteractions(12),
   ]);
+
+  const connectors = getConnectors(runtime);
 
   const bookingOptions = [...leads]
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
@@ -58,15 +92,13 @@ export default async function AdminAiPage({
     }));
 
   return (
-    <AiStudio
+    <AiCowork
       runtime={runtime}
       bookings={bookingOptions}
       packages={packageOptions}
       knowledgeDocuments={knowledgeDocuments.slice(0, 12)}
       interactions={interactions}
-      initialTool={requestedTool}
-      initialLeadId={resolved?.leadId}
-      initialPackageId={resolved?.packageId}
+      connectors={connectors}
     />
   );
 }

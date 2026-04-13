@@ -56,6 +56,7 @@ export interface Lead {
 
 export interface TourPackage {
   id: string;
+  reference?: string; // e.g. PKG-20260312-A3B7 — client-facing package ID
   name: string;
   duration: string;
   destination: string;
@@ -151,6 +152,7 @@ export type TourStatus =
 
 export interface Tour {
   id: string;
+  confirmationId?: string; // e.g. TCF-20260312-A3B7 — client-facing confirmation number
   packageId: string;
   packageName: string;
   leadId: string;
@@ -171,16 +173,61 @@ export interface Tour {
   updatedAt?: string;
 }
 
+export interface QuotationLineItem {
+  id: string;
+  label: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  notes?: string;
+}
+
+export type QuotationStatus = "draft" | "sent" | "accepted" | "rejected";
+
 export interface Quotation {
   id: string;
-  leadId: string;
-  clientName: string;
-  packageId: string;
-  packageName: string;
-  amount: number;
+  reference: string; // QUO-YYYYMMDDHHMMSS-XXXX
+
+  // Corporate / company client
+  companyName?: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string;
+
+  // Trip details
+  travelDate?: string; // YYYY-MM-DD
+  duration?: string;   // e.g. "8 Nights / 9 Days"
+  pax: number;
+  destination?: string;
+
+  // Quotation content
+  title?: string;
+  itinerary: ItineraryDay[];
+  inclusions?: string[];
+  exclusions?: string[];
+  termsAndConditions?: string;
+  notes?: string;
+  validUntil?: string; // YYYY-MM-DD
+
+  // Pricing
+  lineItems: QuotationLineItem[];
+  subtotal: number;
+  discountAmount?: number;
+  totalAmount: number;
   currency: string;
-  status: "draft" | "sent" | "accepted" | "declined";
+
+  // Status
+  status: QuotationStatus;
+  sentAt?: string;
+  acceptedAt?: string;
+  rejectedAt?: string;
+
+  // Links — set when quotation is accepted and converted to a tour
+  leadId?: string;
+  tourId?: string;
+
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Payment {

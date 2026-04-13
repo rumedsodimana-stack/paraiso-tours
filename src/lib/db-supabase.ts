@@ -20,6 +20,8 @@ import type {
   PackageOption,
   PlannerActivityRecord,
   HotelMealPlan,
+  Quotation,
+  QuotationLineItem,
 } from "./types";
 
 function generateId(prefix: string): string {
@@ -81,6 +83,7 @@ function toLead(row: Record<string, unknown>): Lead {
 function toPackage(row: Record<string, unknown>): TourPackage {
   return {
     id: String(row.id),
+    reference: (row.reference as string | null) ?? undefined,
     name: String(row.name),
     duration: String(row.duration),
     destination: String(row.destination),
@@ -111,6 +114,7 @@ function toPackage(row: Record<string, unknown>): TourPackage {
 function toTour(row: Record<string, unknown>): Tour {
   return {
     id: String(row.id),
+    confirmationId: (row.confirmation_id as string | null) ?? undefined,
     packageId: String(row.package_id),
     packageName: String(row.package_name),
     leadId: String(row.lead_id),
@@ -380,6 +384,7 @@ function packageToRow(
 ): Record<string, unknown> {
   return {
     id: data.id ?? generateId("pkg"),
+    reference: data.reference ?? generatePackageReference(),
     name: data.name,
     duration: data.duration,
     destination: data.destination,
@@ -690,6 +695,7 @@ export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
   const now = new Date().toISOString();
   const row = {
     id: generateId("tour"),
+    confirmation_id: data.confirmationId ?? generateTourConfirmationId(),
     package_id: data.packageId,
     package_name: data.packageName,
     lead_id: data.leadId,
@@ -728,6 +734,7 @@ export async function updateTour(
   const update: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
+  if (data.confirmationId !== undefined) update.confirmation_id = data.confirmationId;
   if (data.packageId !== undefined) update.package_id = data.packageId;
   if (data.packageName !== undefined) update.package_name = data.packageName;
   if (data.leadId !== undefined) update.lead_id = data.leadId;
@@ -1845,5 +1852,174 @@ export async function deleteHotelMealPlan(id: string): Promise<boolean> {
     .from("hotel_meal_plans")
     .update({ active: false })
     .eq("id", id);
+  return !error;
+}
+
+// --- QUOTATIONS ---
+
+function generateTourConfirmationId(): string {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `TCF-${date}-${random}`;
+}
+
+function generatePackageReference(): string {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `PKG-${date}-${random}`;
+}
+
+function generateQuotationReference(): string {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `QUO-${date}-${random}`;
+}
+
+function toQuotation(row: Record<string, unknown>): Quotation {
+  return {
+    id: String(row.id),
+    reference: String(row.reference),
+    companyName: (row.company_name as string | null) ?? undefined,
+    contactName: String(row.contact_name),
+    contactEmail: String(row.contact_email),
+    contactPhone: (row.contact_phone as string | null) ?? undefined,
+    travelDate: (row.travel_date as string | null) ?? undefined,
+    duration: (row.duration as string | null) ?? undefined,
+    pax: Number(row.pax),
+    destination: (row.destination as string | null) ?? undefined,
+    title: (row.title as string | null) ?? undefined,
+    itinerary: asArray<Quotation["itinerary"][number]>(row.itinerary),
+    inclusions: asArray<string>(row.inclusions),
+    exclusions: asArray<string>(row.exclusions),
+    termsAndConditions: (row.terms_and_conditions as string | null) ?? undefined,
+    notes: (row.notes as string | null) ?? undefined,
+    validUntil: (row.valid_until as string | null) ?? undefined,
+    lineItems: asArray<QuotationLineItem>(row.line_items),
+    subtotal: Number(row.subtotal),
+    discountAmount: row.discount_amount == null ? undefined : Number(row.discount_amount),
+    totalAmount: Number(row.total_amount),
+    currency: String(row.currency),
+    status: row.status as Quotation["status"],
+    sentAt: (row.sent_at as string | null) ?? undefined,
+    acceptedAt: (row.accepted_at as string | null) ?? undefined,
+    rejectedAt: (row.rejected_at as string | null) ?? undefined,
+    leadId: (row.lead_id as string | null) ?? undefined,
+    tourId: (row.tour_id as string | null) ?? undefined,
+    createdAt: toTimestamp(row.created_at) ?? new Date().toISOString(),
+    updatedAt: toTimestamp(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+export async function getQuotations(): Promise<Quotation[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("quotations")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return data.map((row) => toQuotation(row as Record<string, unknown>));
+}
+
+export async function getQuotation(id: string): Promise<Quotation | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("quotations")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toQuotation(data as Record<string, unknown>);
+}
+
+export async function createQuotation(
+  data: Omit<Quotation, "id" | "reference" | "createdAt" | "updatedAt">
+): Promise<Quotation> {
+  const id = generateId("quo");
+  const reference = generateQuotationReference();
+  const row = {
+    id,
+    reference,
+    company_name: data.companyName ?? null,
+    contact_name: data.contactName,
+    contact_email: data.contactEmail,
+    contact_phone: data.contactPhone ?? null,
+    travel_date: data.travelDate ?? null,
+    duration: data.duration ?? null,
+    pax: data.pax,
+    destination: data.destination ?? null,
+    title: data.title ?? null,
+    itinerary: data.itinerary,
+    inclusions: data.inclusions ?? [],
+    exclusions: data.exclusions ?? [],
+    terms_and_conditions: data.termsAndConditions ?? null,
+    notes: data.notes ?? null,
+    valid_until: data.validUntil ?? null,
+    line_items: data.lineItems,
+    subtotal: data.subtotal,
+    discount_amount: data.discountAmount ?? null,
+    total_amount: data.totalAmount,
+    currency: data.currency,
+    status: data.status,
+    sent_at: data.sentAt ?? null,
+    accepted_at: data.acceptedAt ?? null,
+    rejected_at: data.rejectedAt ?? null,
+    lead_id: data.leadId ?? null,
+    tour_id: data.tourId ?? null,
+  };
+  if (!supabase) throw new Error("Supabase not available");
+  const { data: inserted, error } = await supabase
+    .from("quotations")
+    .insert(row)
+    .select()
+    .single();
+  if (error || !inserted) throw new Error(error?.message ?? "Insert failed");
+  return toQuotation(inserted as Record<string, unknown>);
+}
+
+export async function updateQuotation(
+  id: string,
+  data: Partial<Omit<Quotation, "id" | "reference" | "createdAt">>
+): Promise<Quotation | null> {
+  if (!supabase) return null;
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (data.companyName !== undefined) row.company_name = data.companyName;
+  if (data.contactName !== undefined) row.contact_name = data.contactName;
+  if (data.contactEmail !== undefined) row.contact_email = data.contactEmail;
+  if (data.contactPhone !== undefined) row.contact_phone = data.contactPhone;
+  if (data.travelDate !== undefined) row.travel_date = data.travelDate;
+  if (data.duration !== undefined) row.duration = data.duration;
+  if (data.pax !== undefined) row.pax = data.pax;
+  if (data.destination !== undefined) row.destination = data.destination;
+  if (data.title !== undefined) row.title = data.title;
+  if (data.itinerary !== undefined) row.itinerary = data.itinerary;
+  if (data.inclusions !== undefined) row.inclusions = data.inclusions;
+  if (data.exclusions !== undefined) row.exclusions = data.exclusions;
+  if (data.termsAndConditions !== undefined) row.terms_and_conditions = data.termsAndConditions;
+  if (data.notes !== undefined) row.notes = data.notes;
+  if (data.validUntil !== undefined) row.valid_until = data.validUntil;
+  if (data.lineItems !== undefined) row.line_items = data.lineItems;
+  if (data.subtotal !== undefined) row.subtotal = data.subtotal;
+  if (data.discountAmount !== undefined) row.discount_amount = data.discountAmount;
+  if (data.totalAmount !== undefined) row.total_amount = data.totalAmount;
+  if (data.currency !== undefined) row.currency = data.currency;
+  if (data.status !== undefined) row.status = data.status;
+  if (data.sentAt !== undefined) row.sent_at = data.sentAt;
+  if (data.acceptedAt !== undefined) row.accepted_at = data.acceptedAt;
+  if (data.rejectedAt !== undefined) row.rejected_at = data.rejectedAt;
+  if (data.leadId !== undefined) row.lead_id = data.leadId;
+  if (data.tourId !== undefined) row.tour_id = data.tourId;
+  const { data: updated, error } = await supabase
+    .from("quotations")
+    .update(row)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error || !updated) return null;
+  return toQuotation(updated as Record<string, unknown>);
+}
+
+export async function deleteQuotation(id: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.from("quotations").delete().eq("id", id);
   return !error;
 }

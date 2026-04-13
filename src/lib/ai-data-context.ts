@@ -5,6 +5,7 @@ import {
   getLeads,
   getPackages,
   getPayments,
+  getQuotations,
   getTodos,
   getTours,
 } from "./db";
@@ -14,6 +15,7 @@ import type {
   Invoice,
   Lead,
   Payment,
+  Quotation,
   Todo,
   Tour,
   TourPackage,
@@ -74,19 +76,23 @@ function formatLead(lead: Lead) {
 }
 
 function formatPackage(pkg: TourPackage) {
-  return `${pkg.name} | ${pkg.destination} | ${pkg.duration} | ${formatMoney(
+  return `${pkg.reference ?? pkg.id} | ${pkg.name} | ${pkg.destination} | ${pkg.duration} | ${formatMoney(
     pkg.price,
     pkg.currency
   )} | ${pkg.published === false ? "unpublished" : "published"}`;
 }
 
 function formatTour(tour: Tour) {
-  return `${tour.id} | ${tour.clientName} | ${tour.packageName} | ${
+  return `${tour.confirmationId ?? tour.id} | ${tour.clientName} | ${tour.packageName} | ${
     tour.status
   } | ${tour.startDate} to ${tour.endDate} | ${formatMoney(
     tour.totalValue,
     tour.currency
   )}`;
+}
+
+function formatQuotation(q: Quotation) {
+  return `${q.reference} | ${q.companyName ?? q.contactName} | ${q.status} | ${formatMoney(q.totalAmount, q.currency)} | pax ${q.pax} | ${q.travelDate ?? "no date"}`;
 }
 
 function formatInvoice(invoice: Invoice) {
@@ -138,6 +144,7 @@ export async function buildAppDataContext(input: {
     hotels,
     todos,
     employees,
+    quotations,
   ] = await Promise.all([
     getLeads(),
     getPackages(),
@@ -147,6 +154,7 @@ export async function buildAppDataContext(input: {
     getHotels(),
     getTodos(),
     getEmployees(),
+    getQuotations(),
   ]);
 
   const activeTours = tours.filter((tour) => tour.status !== "cancelled");
@@ -190,6 +198,7 @@ export async function buildAppDataContext(input: {
           matchQuery(
             query,
             pkg.id,
+            pkg.reference,
             pkg.name,
             pkg.destination,
             pkg.region,
@@ -206,6 +215,7 @@ export async function buildAppDataContext(input: {
           matchQuery(
             query,
             tour.id,
+            tour.confirmationId,
             tour.clientName,
             tour.packageName,
             tour.status,
@@ -247,6 +257,25 @@ export async function buildAppDataContext(input: {
             payment.description,
             payment.status,
             payment.type
+          ),
+        limit
+      )
+    : [];
+  const matchedQuotations = query
+    ? takeMatches(
+        query,
+        quotations,
+        (q) =>
+          matchQuery(
+            query,
+            q.id,
+            q.reference,
+            q.companyName,
+            q.contactName,
+            q.contactEmail,
+            q.status,
+            q.destination,
+            q.title
           ),
         limit
       )
@@ -313,6 +342,9 @@ export async function buildAppDataContext(input: {
     `- Suppliers: ${hotels.length} total (${formatCountMap(
       countBy(hotels.map((hotel) => hotel.type))
     )})`,
+    `- Quotations: ${quotations.length} total (${formatCountMap(
+      countBy(quotations.map((q) => q.status))
+    )})`,
     `- Todos: ${todos.length} total (${todos.filter((todo) => !todo.completed).length} open)`,
     `- Employees: ${employees.length} total (${formatCountMap(
       countBy(employees.map((employee) => employee.status))
@@ -336,6 +368,9 @@ export async function buildAppDataContext(input: {
       : "",
     matchedTours.length
       ? `- Matching tours: ${matchedTours.map(formatTour).join(" || ")}`
+      : "",
+    matchedQuotations.length
+      ? `- Matching quotations: ${matchedQuotations.map(formatQuotation).join(" || ")}`
       : "",
     matchedInvoices.length
       ? `- Matching invoices: ${matchedInvoices.map(formatInvoice).join(" || ")}`

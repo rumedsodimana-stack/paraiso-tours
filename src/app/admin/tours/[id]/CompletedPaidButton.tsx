@@ -50,10 +50,10 @@ export function CompletedPaidButton({ tourId, tourStatus }: CompletedPaidButtonP
           type="button"
           onClick={handleClick}
           disabled={pending}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-7 py-3.5 text-base font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
         >
           <CheckCircle2 className="h-5 w-5" />
-          {pending ? "Processing…" : "Completed / Paid"}
+          {pending ? "Processing…" : "Completed / Payment Received"}
         </button>
       </div>
       {error && (

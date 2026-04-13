@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS leads (
 
 CREATE TABLE IF NOT EXISTS packages (
   id TEXT PRIMARY KEY,
+  reference TEXT UNIQUE,
   name TEXT NOT NULL,
   duration TEXT NOT NULL,
   destination TEXT NOT NULL,
@@ -54,6 +55,7 @@ CREATE TABLE IF NOT EXISTS packages (
 
 CREATE TABLE IF NOT EXISTS tours (
   id TEXT PRIMARY KEY,
+  confirmation_id TEXT UNIQUE,
   package_id TEXT NOT NULL REFERENCES packages(id),
   package_name TEXT NOT NULL,
   lead_id TEXT NOT NULL REFERENCES leads(id),
@@ -397,8 +399,49 @@ CREATE TABLE IF NOT EXISTS hotel_meal_plans (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Corporate / custom tour quotations
+CREATE TABLE IF NOT EXISTS quotations (
+  id TEXT PRIMARY KEY,
+  reference TEXT NOT NULL UNIQUE,
+  company_name TEXT,
+  contact_name TEXT NOT NULL,
+  contact_email TEXT NOT NULL,
+  contact_phone TEXT,
+  travel_date TEXT,
+  duration TEXT,
+  pax INTEGER NOT NULL DEFAULT 1,
+  destination TEXT,
+  title TEXT,
+  itinerary JSONB NOT NULL DEFAULT '[]',
+  inclusions JSONB NOT NULL DEFAULT '[]',
+  exclusions JSONB NOT NULL DEFAULT '[]',
+  terms_and_conditions TEXT,
+  notes TEXT,
+  valid_until TEXT,
+  line_items JSONB NOT NULL DEFAULT '[]',
+  subtotal NUMERIC NOT NULL DEFAULT 0,
+  discount_amount NUMERIC,
+  total_amount NUMERIC NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  status TEXT NOT NULL DEFAULT 'draft',
+  sent_at TIMESTAMPTZ,
+  accepted_at TIMESTAMPTZ,
+  rejected_at TIMESTAMPTZ,
+  lead_id TEXT REFERENCES leads(id),
+  tour_id TEXT REFERENCES tours(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_quotations_status ON quotations(status);
+CREATE INDEX IF NOT EXISTS idx_quotations_created_at ON quotations(created_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_planner_activities_destination ON planner_activities(destination_id, active);
 CREATE INDEX IF NOT EXISTS idx_hotel_meal_plans_hotel ON hotel_meal_plans(hotel_id, active);
 
 ALTER TABLE hotels ADD COLUMN IF NOT EXISTS destination_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_hotels_destination ON hotels(destination_id);
+
+-- Reference ID columns (added for client-facing ID system)
+ALTER TABLE tours ADD COLUMN IF NOT EXISTS confirmation_id TEXT UNIQUE;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS reference TEXT UNIQUE;
