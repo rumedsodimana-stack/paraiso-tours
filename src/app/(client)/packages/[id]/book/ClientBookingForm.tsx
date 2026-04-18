@@ -162,11 +162,9 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
         perNightAccommodation.every(({ nightIndex }) => accommodationByNight[nightIndex]);
 
   const canSubmit =
-    transportOptions.length > 0 &&
-    mealOptions.length > 0 &&
-    hasAccommodation &&
-    transportId &&
-    mealId;
+    Boolean(hasAccommodation) &&
+    (transportOptions.length === 0 || Boolean(transportId)) &&
+    (mealOptions.length === 0 || Boolean(mealId));
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -203,19 +201,22 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
 
   const hasAnyAccommodation = legacyAccommodation ? legacyAccommodationOptions.length > 0 : perNightAccommodation.length > 0;
 
-  if (
-    !hasAnyAccommodation ||
-    transportOptions.length === 0 ||
-    mealOptions.length === 0
-  ) {
+  if (!hasAnyAccommodation) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
         <p className="text-amber-800">
-          This package does not have options configured yet. Please contact us for a quote.
+          This package does not have accommodation configured yet. Please contact us for a quote.
         </p>
       </div>
     );
   }
+
+  // Compute step numbers based on which sections are shown
+  let _sn = 1;
+  const transportSectionNum = transportOptions.length > 0 ? _sn++ : 0;
+  const accommodationSectionNum = _sn++;
+  const mealSectionNum = mealOptions.length > 0 ? _sn++ : 0;
+  const paxSectionNum = _sn++;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -243,10 +244,11 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
       </div>
 
       <div className="space-y-6">
+        {transportOptions.length > 0 && (
         <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-stone-900">
             <Car className="h-5 w-5 text-[#12343b]" />
-            1. Choose transportation
+            {transportSectionNum}. Choose transportation
           </h3>
           <div className="grid gap-2 sm:grid-cols-2">
             {transportOptions.map((opt) => (
@@ -274,11 +276,12 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
             ))}
           </div>
         </section>
+        )}
 
         <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-stone-900">
             <Building2 className="h-5 w-5 text-[#12343b]" />
-            2. Choose accommodation
+            {accommodationSectionNum}. Choose accommodation
           </h3>
           {legacyAccommodation ? (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -362,10 +365,11 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
           )}
         </section>
 
+        {mealOptions.length > 0 && (
         <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-stone-900">
             <UtensilsCrossed className="h-5 w-5 text-[#12343b]" />
-            3. Choose meal plan
+            {mealSectionNum}. Choose meal plan
           </h3>
           <div className="grid gap-2 sm:grid-cols-2">
             {mealOptions.map((opt) => (
@@ -394,9 +398,10 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
           </div>
         </section>
 
+        )}
         <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
           <label className="block text-lg font-semibold text-stone-900">
-            4. Number of travellers
+            {paxSectionNum}. Number of travellers
           </label>
           <input
             type="number"

@@ -30,7 +30,7 @@ function getPriceTypeForSupplierType(
   return supplierType === "transport"
     ? "per_vehicle_per_day"
     : supplierType === "meal"
-      ? "per_person_per_day"
+      ? "per_person_per_night"
       : "per_room_per_night";
 }
 
@@ -58,7 +58,7 @@ function buildOptionFromMealPlan(mp: MealPlanEntry, existing?: PackageOption): P
     supplierId: mp.hotelId,
     price: mp.pricePerPerson,
     costPrice: mp.pricePerPerson,
-    priceType: "per_person_per_day",
+    priceType: "per_person_per_night",
     isDefault: existing?.isDefault ?? false,
   };
 }

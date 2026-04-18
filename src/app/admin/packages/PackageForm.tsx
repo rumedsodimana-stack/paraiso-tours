@@ -214,19 +214,26 @@ export function PackageForm({
   // ── Step 3: Days ──
   const [days, setDays] = useState<AdminDay[]>(() => {
     if (pkg?.itinerary?.length) {
-      return pkg.itinerary.map((d, i) => ({
-        id: `day_${i + 1}`,
-        day: i + 1,
-        title: d.title,
-        description: d.description,
-        accommodation: d.accommodation ?? "",
-        accommodationOptions: d.accommodationOptions ?? [],
-        mealPlanOptions: d.mealPlanOptions ?? [],
-        destinationId: null,
-        hotelMode: "pick" as HotelMode,
-        selectedActivityIds: [],
-        notes: "",
-      }));
+      const hotelLookup: Record<string, HotelSupplier> = Object.fromEntries(
+        hotels.map((h) => [h.id, h])
+      );
+      return pkg.itinerary.map((d, i) => {
+        const firstSupplierId = d.accommodationOptions?.[0]?.supplierId;
+        const hotel = firstSupplierId ? hotelLookup[firstSupplierId] : undefined;
+        return {
+          id: `day_${i + 1}`,
+          day: i + 1,
+          title: d.title,
+          description: d.description,
+          accommodation: d.accommodation ?? "",
+          accommodationOptions: d.accommodationOptions ?? [],
+          mealPlanOptions: d.mealPlanOptions ?? [],
+          destinationId: hotel?.destinationId ?? null,
+          hotelMode: (d.accommodation === "Own arrangement" ? "own" : "pick") as HotelMode,
+          selectedActivityIds: [],
+          notes: "",
+        };
+      });
     }
     return [];
   });
@@ -451,7 +458,7 @@ export function PackageForm({
         supplierId: mp.hotelId,
         price: mp.pricePerPerson,
         costPrice: mp.pricePerPerson,
-        priceType: "per_person_per_day",
+        priceType: "per_person_per_night",
         isDefault: isFirst,
       };
       updateDay(dayIdx, {
