@@ -39,6 +39,7 @@ export async function markPaymentReceived(paymentId: string): Promise<{ success?
 
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${paymentId}`);
+  revalidatePath("/admin/receivable");
   revalidatePath("/admin/invoices");
   if (payment.invoiceId) revalidatePath(`/admin/invoices/${payment.invoiceId}`);
   return { success: true };

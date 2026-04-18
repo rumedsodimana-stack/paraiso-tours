@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { scheduleTourFromLeadAction } from "@/app/actions/tours";
 
 interface ApproveScheduleButtonProps {
@@ -50,12 +50,12 @@ export function ApproveScheduleButton({ leadId, hasTravelDate, travelDate }: App
       <div className="flex flex-wrap items-center gap-3">
         {!hasTravelDate && (
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-stone-700">Travel date (required)</span>
+            <span className="text-sm font-medium text-[#5e7279]">Travel date (required)</span>
             <input
               type="date"
               value={manualDate}
               onChange={(e) => setManualDate(e.target.value)}
-              className="rounded-xl border border-stone-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
             />
           </label>
         )}
@@ -63,13 +63,13 @@ export function ApproveScheduleButton({ leadId, hasTravelDate, travelDate }: App
           type="button"
           onClick={handleApproveSchedule}
           disabled={pending || (!hasTravelDate && !manualDate.trim())}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-5 py-2.5 text-sm font-bold text-[#f6ead6] transition hover:bg-[#0f2b31] disabled:opacity-50"
         >
-          <Calendar className="h-4 w-4" />
-          {pending ? "Scheduling…" : "Approve & Schedule tour"}
+          <CheckCircle2 className="h-4 w-4" />
+          {pending ? "Scheduling…" : "Approve & Schedule Tour"}
         </button>
       </div>
-      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {error && <p className="text-sm text-[#7c3a24]">{error}</p>}
     </div>
   );
 }

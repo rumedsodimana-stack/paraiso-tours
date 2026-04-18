@@ -117,7 +117,7 @@ type QueryResolution<T> =
   | { error: string };
 
 const leadStatuses: LeadStatus[] = [
-  "new", "contacted", "quoted", "negotiating", "won", "lost",
+  "new", "hold", "cancelled", "won",
 ];
 
 const tourStatuses: TourStatus[] = [

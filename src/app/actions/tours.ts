@@ -26,7 +26,7 @@ import {
 import { recordAuditEvent } from "@/lib/audit";
 import { createInvoiceFromLead } from "@/app/actions/invoices";
 import { getLeadBookingFinancials } from "@/lib/booking-pricing";
-import { getSuppliersForSchedule } from "@/lib/booking-breakdown";
+import { getSuppliersForSchedule, getBookingBreakdownBySupplier } from "@/lib/booking-breakdown";
 import { assessTourAvailability } from "@/lib/tour-availability";
 import { debugLog } from "@/lib/debug";
 import {
@@ -519,6 +519,49 @@ export async function scheduleTourFromLeadAction(
       ],
     });
 
+    // Create outgoing payable records per supplier (group by supplierId, sum costAmounts)
+    const breakdown = getBookingBreakdownBySupplier(lead, pkg, suppliers);
+    if (breakdown && breakdown.supplierItems.length > 0) {
+      const bySupplier = new Map<string, { name: string; amount: number; currency: string }>();
+      for (const item of breakdown.supplierItems) {
+        if (item.supplierId.startsWith("custom_")) continue;
+        const cost = item.costAmount ?? item.amount;
+        const existing = bySupplier.get(item.supplierId);
+        if (existing) {
+          existing.amount += cost;
+        } else {
+          bySupplier.set(item.supplierId, {
+            name: item.supplierName,
+            amount: cost,
+            currency: item.currency,
+          });
+        }
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      for (const [supplierId, info] of bySupplier) {
+        try {
+          await createPayment({
+            type: "outgoing",
+            amount: info.amount,
+            currency: info.currency,
+            description: `Supplier payable – ${info.name} – ${pkg.name} (${reference})`,
+            supplierId,
+            supplierName: info.name,
+            tourId: tour.id,
+            leadId: lead.id,
+            status: "pending",
+            date: today,
+          });
+        } catch (err) {
+          debugLog("Supplier payable creation failed", {
+            error: err instanceof Error ? err.message : String(err),
+            supplierId,
+            tourId: tour.id,
+          });
+        }
+      }
+    }
+
     rollback = null;
 
     try {
@@ -626,6 +669,8 @@ export async function scheduleTourFromLeadAction(
 
     revalidatePath("/admin/calendar");
     revalidatePath("/admin/payments");
+    revalidatePath("/admin/receivable");
+    revalidatePath("/admin/payables");
     revalidatePath("/admin/todos");
     revalidatePath("/admin/bookings");
     revalidatePath(`/admin/tours/${tour.id}`);

@@ -21,7 +21,7 @@ export const leadSchema = z.object({
   email: z.string().email("Valid email is required").max(320),
   phone: z.string().max(50).optional(),
   source: z.string().max(100).optional(),
-  status: z.enum(["new", "contacted", "quoted", "won", "lost"]).optional(),
+  status: z.enum(["new", "hold", "cancelled", "won"]).optional(),
   destination: z.string().max(300).optional(),
   travelDate: z.string().optional(),
   pax: z.number().int().min(1).max(500).optional(),

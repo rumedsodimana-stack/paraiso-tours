@@ -10,9 +10,8 @@ export default async function NewTourPage() {
   const bookableLeads = leads.filter(
     (l) =>
       l.status === "won" ||
-      l.status === "quoted" ||
-      l.status === "negotiating" ||
-      (l.source === "Client Portal" && l.packageId && l.status === "new")
+      l.status === "hold" ||
+      l.status === "new"
   );
 
   return (

@@ -7,6 +7,8 @@ import { recordAuditEvent } from "@/lib/audit";
 import { createPackageSnapshot } from "@/lib/package-snapshot";
 import type { LeadStatus } from "@/lib/types";
 import { leadSchema, zodErrorMessage } from "@/lib/validation";
+import { sendBookingStatusChangeEmail } from "@/lib/email";
+import { debugLog } from "@/lib/debug";
 
 export async function createLeadAction(formData: FormData) {
   try {
@@ -203,6 +205,8 @@ export async function updateLeadAction(id: string, formData: FormData) {
 }
 
 export async function updateLeadStatusAction(id: string, status: LeadStatus) {
+  const lead = await getLead(id);
+  if (!lead) return { error: "Lead not found" };
   const updated = await updateLead(id, { status });
   if (!updated) return { error: "Lead not found" };
 
@@ -213,6 +217,26 @@ export async function updateLeadStatusAction(id: string, status: LeadStatus) {
     summary: `Booking status changed to ${status}`,
     details: [`Client: ${updated.name}`],
   });
+
+  if ((status === "hold" || status === "cancelled") && updated.email?.trim()) {
+    const pkgName = lead.packageSnapshot?.name ?? updated.packageId ?? "your tour";
+    const ref = updated.reference ?? updated.id;
+    try {
+      await sendBookingStatusChangeEmail({
+        clientName: updated.name,
+        clientEmail: updated.email,
+        packageName: pkgName,
+        reference: ref,
+        status,
+      });
+    } catch (err) {
+      debugLog("Booking status change email failed", {
+        error: err instanceof Error ? err.message : String(err),
+        leadId: id,
+        status,
+      });
+    }
+  }
 
   revalidatePath("/admin/bookings");
   revalidatePath("/");

@@ -22,6 +22,7 @@ import {
   Package,
   PieChart,
   Settings,
+  TrendingDown,
   UserCircle,
   UserCog,
   Users,
@@ -95,7 +96,8 @@ const CATALOG: NavItem[] = [
 const FINANCE_ITEMS: NavItem[] = [
   { href: "/admin/finance", label: "Overview", icon: PieChart },
   { href: "/admin/invoices", label: "Invoices", icon: FileText },
-  { href: "/admin/payments", label: "Payments", icon: Banknote },
+  { href: "/admin/receivable", label: "Receivable", icon: TrendingDown },
+  { href: "/admin/payments", label: "Payment History", icon: Banknote },
   { href: "/admin/payables", label: "Payables", icon: Landmark },
   { href: "/admin/payroll", label: "Payroll", icon: Wallet },
   { href: "/admin/employees", label: "Employees", icon: UserCog },
@@ -109,6 +111,7 @@ const INTELLIGENCE: NavItem[] = [
 const financePaths = [
   "/admin/finance",
   "/admin/invoices",
+  "/admin/receivable",
   "/admin/payments",
   "/admin/payables",
   "/admin/payroll",

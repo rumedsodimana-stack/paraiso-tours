@@ -1,4 +1,4 @@
-export type LeadStatus = "new" | "contacted" | "quoted" | "negotiating" | "won" | "lost";
+export type LeadStatus = "new" | "hold" | "cancelled" | "won";
 
 export interface PackageSnapshot {
   packageId?: string;

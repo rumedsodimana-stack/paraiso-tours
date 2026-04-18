@@ -21,21 +21,21 @@ import {
   deleteLeadAction,
 } from "@/app/actions/leads";
 
-const statusColors: Record<LeadStatus, string> = {
-  new:         "bg-[#f3e8ce] text-[#7a5a17]",
-  contacted:   "bg-[#d6e2e5] text-[#294b55]",
-  quoted:      "bg-[#dce8dc] text-[#375a3f]",
-  negotiating: "bg-[#eed9cf] text-[#7c3a24]",
-  won:         "bg-[#12343b] text-[#f6ead6]",
-  lost:        "bg-[#e2e3dd] text-[#545a54]",
+const statusColors: Record<string, string> = {
+  new:       "bg-[#f3e8ce] text-[#7a5a17]",
+  hold:      "bg-[#d6e2e5] text-[#294b55]",
+  cancelled: "bg-[#eed9cf] text-[#7c3a24]",
+  won:       "bg-[#12343b] text-[#f6ead6]",
 };
 
-const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New", contacted: "Contacted", quoted: "Quoted",
-  negotiating: "Negotiating", won: "Won", lost: "Lost",
+const STATUS_LABELS: Record<string, string> = {
+  new: "New",
+  hold: "On Hold",
+  cancelled: "Cancelled",
+  won: "Scheduled",
 };
 
-const STATUSES: LeadStatus[] = ["new", "contacted", "quoted", "negotiating", "won", "lost"];
+const STATUSES: LeadStatus[] = ["new", "hold", "cancelled"];
 
 export function LeadsTable({
   initialLeads,
@@ -203,15 +203,21 @@ export function LeadsTable({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <select
-                        value={lead.status}
-                        onChange={(e) => handleStatusChange(lead.id, e.target.value as LeadStatus)}
-                        className={`cursor-pointer appearance-none rounded-full border-0 px-3 py-1 text-xs font-semibold pr-6 focus:ring-2 focus:ring-[#12343b]/30 ${statusColors[lead.status]}`}
-                      >
-                        {STATUSES.map((s) => (
-                          <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                        ))}
-                      </select>
+                      {lead.status === "won" ? (
+                        <span className="rounded-full px-3 py-1 text-xs font-semibold bg-[#12343b] text-[#f6ead6]">
+                          Scheduled
+                        </span>
+                      ) : (
+                        <select
+                          value={lead.status}
+                          onChange={(e) => handleStatusChange(lead.id, e.target.value as LeadStatus)}
+                          className={`cursor-pointer appearance-none rounded-full border-0 px-3 py-1 text-xs font-semibold pr-6 focus:ring-2 focus:ring-[#12343b]/30 ${statusColors[lead.status] ?? "bg-[#e2e3dd] text-[#545a54]"}`}
+                        >
+                          {STATUSES.map((s) => (
+                            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1 text-sm text-[#5e7279]">

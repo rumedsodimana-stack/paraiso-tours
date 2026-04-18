@@ -28,6 +28,19 @@ import { CustomRouteBreakdown } from "../CustomRouteBreakdown";
 
 export const dynamic = "force-dynamic";
 
+const statusBadge: Record<string, string> = {
+  new: "bg-[#f3e8ce] text-[#7a5a17]",
+  hold: "bg-[#f3e8ce] text-[#7a5a17]",
+  cancelled: "bg-[#eed9cf] text-[#7c3a24]",
+  won: "bg-[#12343b] text-[#f6ead6]",
+};
+const statusLabel: Record<string, string> = {
+  new: "New",
+  hold: "On Hold",
+  cancelled: "Cancelled",
+  won: "Scheduled",
+};
+
 export default async function BookingDetailPage({
   params,
 }: {
@@ -60,8 +73,8 @@ export default async function BookingDetailPage({
   if (!lead) {
     return (
       <div className="space-y-6">
-        <p className="text-stone-600">Booking not found</p>
-        <Link href="/admin/bookings" className="text-teal-600 hover:text-teal-700 font-medium">
+        <p className="text-[#5e7279]">Booking not found</p>
+        <Link href="/admin/bookings" className="text-[#12343b] font-medium hover:underline">
           Back to bookings
         </Link>
       </div>
@@ -82,12 +95,15 @@ export default async function BookingDetailPage({
     return "—";
   };
 
+  const currentStatus = lead.status ?? "new";
+  const isScheduled = currentStatus === "won";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <Link
           href="/admin/bookings"
-          className="flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
         >
           <ArrowLeft className="h-5 w-5" />
           Back to bookings
@@ -95,16 +111,12 @@ export default async function BookingDetailPage({
         <div className="flex items-center gap-3">
           <Link
             href={`/admin/ai?tool=booking_brief&leadId=${lead.id}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-white"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd]"
           >
             <Bot className="h-4 w-4" />
             AI brief
           </Link>
-          <InvoiceButton
-            leadId={lead.id}
-            invoice={existingInvoice}
-            canCreate={!!pkg}
-          />
+          <InvoiceButton leadId={lead.id} invoice={existingInvoice} canCreate={!!pkg} />
           {pkg && (
             <EmailSuppliersButton
               lead={lead}
@@ -120,31 +132,34 @@ export default async function BookingDetailPage({
 
       <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-2xl border border-white/30 bg-white/50 shadow-lg backdrop-blur-xl">
-            <div className="border-b border-white/20 bg-amber-500/10 px-6 py-6 backdrop-blur-sm">
-              <h1 className="text-2xl font-bold text-stone-900">
-                {lead.name}
-              </h1>
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-stone-600">
-                {lead.reference && (
-                  <span className="font-mono font-semibold text-teal-700">
-                    {lead.reference}
-                  </span>
-                )}
-                <span className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  {lead.travelDate || "TBD"}
+          <div className="paraiso-card overflow-hidden rounded-2xl">
+            <div className="border-b border-[#e0e4dd] bg-[#f4ecdd] px-6 py-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h1 className="text-2xl font-bold text-[#11272b]">{lead.name}</h1>
+                  <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-[#5e7279]">
+                    {lead.reference && (
+                      <span className="font-mono font-semibold text-[#12343b]">{lead.reference}</span>
+                    )}
+                    <span className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      {lead.travelDate || "TBD"}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      {lead.pax ?? "-"} pax
+                    </span>
+                    {pkg && (
+                      <span className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        {pkg.name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusBadge[currentStatus] ?? "bg-[#e2e3dd] text-[#545a54]"}`}>
+                  {statusLabel[currentStatus] ?? currentStatus}
                 </span>
-                <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  {lead.pax ?? "-"} pax
-                </span>
-                {pkg && (
-                  <span className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    {pkg.name}
-                  </span>
-                )}
               </div>
             </div>
 
@@ -152,8 +167,8 @@ export default async function BookingDetailPage({
               {pkg ? (
                 <>
                   <section>
-                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-stone-500">
-                      Itinerary summary
+                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#8a9ba1]">
+                      Itinerary
                     </h2>
                     <div className="space-y-3">
                       {pkg.itinerary?.map((day) => {
@@ -161,19 +176,15 @@ export default async function BookingDetailPage({
                         return (
                           <div
                             key={day.day}
-                            className="flex gap-4 rounded-xl border border-white/20 bg-white/30 px-4 py-3 backdrop-blur-sm"
+                            className="flex gap-4 rounded-xl border border-[#e0e4dd] bg-[#faf6ef] px-4 py-3"
                           >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eef4f4] text-sm font-bold text-[#12343b]">
                               {day.day}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <h3 className="font-medium text-stone-900">
-                                {day.title}
-                              </h3>
-                              <p className="text-sm text-stone-600">
-                                {day.description}
-                              </p>
-                              <p className="mt-1.5 flex items-center gap-2 text-xs font-medium text-teal-700">
+                              <h3 className="font-medium text-[#11272b]">{day.title}</h3>
+                              <p className="text-sm text-[#5e7279]">{day.description}</p>
+                              <p className="mt-1.5 flex items-center gap-2 text-xs font-medium text-[#12343b]">
                                 <Building2 className="h-3.5 w-3.5" />
                                 {selectedHotel !== "—"
                                   ? `Hotel: ${selectedHotel}`
@@ -192,19 +203,19 @@ export default async function BookingDetailPage({
 
                   {(lead.selectedTransportOptionId || lead.selectedMealOptionId) && (
                     <section>
-                      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-stone-500">
+                      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#8a9ba1]">
                         Selected options
                       </h2>
-                      <div className="space-y-1 rounded-xl border border-teal-200 bg-teal-50/50 px-4 py-3 text-sm">
+                      <div className="space-y-1 rounded-xl border border-[#d6e2e5] bg-[#eef4f4] px-4 py-3 text-sm">
                         {lead.selectedTransportOptionId && (
                           <p className="flex items-center gap-2">
-                            <Car className="h-4 w-4 text-teal-600" />
+                            <Car className="h-4 w-4 text-[#12343b]" />
                             Transport: {pkg.transportOptions?.find((o) => o.id === lead.selectedTransportOptionId)?.label ?? "—"}
                           </p>
                         )}
                         {lead.selectedMealOptionId && (
                           <p className="flex items-center gap-2">
-                            <UtensilsCrossed className="h-4 w-4 text-teal-600" />
+                            <UtensilsCrossed className="h-4 w-4 text-[#12343b]" />
                             Meal: {pkg.mealOptions?.find((o) => o.id === lead.selectedMealOptionId)?.label ?? "—"}
                           </p>
                         )}
@@ -212,11 +223,11 @@ export default async function BookingDetailPage({
                     </section>
                   )}
 
-                  {financials && (lead.selectedAccommodationOptionId || (lead.selectedAccommodationByNight && Object.keys(lead.selectedAccommodationByNight).length > 0) || lead.selectedTransportOptionId || lead.selectedMealOptionId) && (
+                  {financials && (
                     <section>
-                      <div className="rounded-xl border border-teal-200 bg-teal-50/50 px-4 py-3">
-                        <p className="flex items-center gap-2 text-lg font-semibold text-teal-800">
-                          <DollarSign className="h-5 w-5" />
+                      <div className="rounded-xl border border-[#d6e2e5] bg-[#eef4f4] px-4 py-3">
+                        <p className="flex items-center gap-2 text-lg font-semibold text-[#11272b]">
+                          <DollarSign className="h-5 w-5 text-[#12343b]" />
                           Total: {financials.totalPrice.toLocaleString()} {pkg.currency}
                         </p>
                       </div>
@@ -224,37 +235,54 @@ export default async function BookingDetailPage({
                     </section>
                   )}
 
-                  <section className="flex flex-wrap items-center gap-3 pt-2">
-                    <Link
-                      href={`/admin/bookings/${lead.id}/edit`}
-                      className="rounded-xl border border-teal-600 bg-teal-50 px-4 py-2.5 text-sm font-medium text-teal-700 transition hover:bg-teal-100"
-                    >
-                      Edit booking
-                    </Link>
-                    <ApproveScheduleButton
-                      leadId={lead.id}
-                      hasTravelDate={!!lead.travelDate}
-                    />
-                  </section>
+                  {!isScheduled && (
+                    <section className="flex flex-wrap items-center gap-3 border-t border-[#e0e4dd] pt-5">
+                      <Link
+                        href={`/admin/bookings/${lead.id}/edit`}
+                        className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd]"
+                      >
+                        Edit booking
+                      </Link>
+                      <ApproveScheduleButton
+                        leadId={lead.id}
+                        hasTravelDate={!!lead.travelDate}
+                      />
+                    </section>
+                  )}
+
+                  {isScheduled && (
+                    <section className="rounded-xl border border-[#dce8dc] bg-[#dce8dc]/30 px-4 py-3 flex items-center gap-3">
+                      <Calendar className="h-5 w-5 text-[#375a3f] shrink-0" />
+                      <div>
+                        <p className="font-semibold text-[#375a3f]">Tour scheduled</p>
+                        <p className="text-xs text-[#5e7279]">
+                          View details in{" "}
+                          <Link href="/admin/calendar" className="underline hover:no-underline">
+                            Scheduled Tours
+                          </Link>
+                        </p>
+                      </div>
+                    </section>
+                  )}
                 </>
               ) : (
                 customRoute ? (
                   <div className="space-y-5">
                     <CustomRouteBreakdown lead={lead} route={customRoute} />
-                    <section className="flex flex-wrap items-center gap-3 pt-2">
+                    <section className="flex flex-wrap items-center gap-3 border-t border-[#e0e4dd] pt-5">
                       <Link
                         href={`/admin/bookings/${lead.id}/edit`}
-                        className="rounded-xl border border-teal-600 bg-teal-50 px-4 py-2.5 text-sm font-medium text-teal-700 transition hover:bg-teal-100"
+                        className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd]"
                       >
                         Edit booking
                       </Link>
-                      <p className="text-sm text-stone-500">
+                      <p className="text-sm text-[#8a9ba1]">
                         Finalize package and booking selections before confirming this journey.
                       </p>
                     </section>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800">
+                  <div className="rounded-xl border border-[#f3e8ce] bg-[#f9f2e3] px-4 py-4 text-[#7a5a17]">
                     <p className="font-medium">No package selected</p>
                     <p className="mt-1 text-sm">
                       This booking doesn&apos;t have a package yet.{" "}
@@ -271,7 +299,6 @@ export default async function BookingDetailPage({
 
           <AuditTimeline title="Booking Activity" logs={auditLogs} />
         </div>
-
       </div>
     </div>
   );

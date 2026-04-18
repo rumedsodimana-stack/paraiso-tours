@@ -606,6 +606,98 @@ export async function sendSupplierReservationEmail(
   }
 }
 
+export interface BookingStatusChangeParams {
+  clientName: string;
+  clientEmail: string;
+  packageName: string;
+  reference: string;
+  status: "hold" | "cancelled";
+  notes?: string;
+}
+
+/**
+ * Send guest notification when booking status changes to hold or cancelled.
+ */
+export async function sendBookingStatusChangeEmail(
+  params: BookingStatusChangeParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) {
+    return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  }
+
+  const { clientName, clientEmail, packageName, reference, status, notes } = params;
+  const email = clientEmail?.trim();
+  if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
+
+  const bookingLink = `${getBaseUrl()}/booking/${encodeURIComponent(reference)}?email=${encodeURIComponent(email)}`;
+
+  const isHold = status === "hold";
+  const titleColor = isHold ? "#c9922f" : "#7c3a24";
+  const statusLabel = isHold ? "On Hold" : "Cancelled";
+  const headingText = isHold
+    ? "Your booking has been placed on hold"
+    : "Your booking has been cancelled";
+  const bodyText = isHold
+    ? "Your booking is temporarily on hold while we confirm availability. Our team will be in touch shortly."
+    : "Unfortunately, your booking has been cancelled. Please contact us if you have any questions or would like to make a new booking.";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
+  <div style="border-left: 4px solid ${titleColor}; padding-left: 24px; margin-bottom: 28px;">
+    <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: ${titleColor}; font-weight: 600;">Booking update</p>
+    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">${escapeHtml(branding.companyName)}</p>
+  </div>
+
+  <p style="margin: 0 0 20px 0;">Hello ${escapeHtml(clientName)},</p>
+
+  <p style="margin: 0 0 20px 0;">${bodyText}</p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Booking details</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b; width: 42%;">Reference</td><td style="padding: 12px 18px; font-family: monospace; font-weight: 600;">${escapeHtml(reference)}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Package</td><td style="padding: 12px 18px;">${escapeHtml(packageName)}</td></tr>
+    <tr><td style="padding: 12px 18px; color: #64748b;">Status</td><td style="padding: 12px 18px; font-weight: 600; color: ${titleColor};">${statusLabel}</td></tr>
+    ${notes ? `<tr><td style="padding: 12px 18px; color: #64748b;">Note</td><td style="padding: 12px 18px;">${escapeHtml(notes)}</td></tr>` : ""}
+  </table>
+
+  <p style="margin: 0 0 24px 0;">
+    <a href="${bookingLink}" style="color: #0d9488; font-weight: 600;">View your booking online</a>
+  </p>
+
+  <p style="margin: 0 0 8px 0;">${escapeHtml(getQuestionsLine(branding))}</p>
+
+  <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 28px;">
+    <tr><td style="font-size: 15px; font-weight: 700; color: #0d9488;">${escapeHtml(branding.companyName)}</td></tr>
+    <tr><td style="font-size: 13px; color: #64748b;">${escapeHtml(branding.tagline || branding.companyName)}</td></tr>
+    <tr><td style="font-size: 12px; color: #94a3b8;">${escapeHtml(branding.email)}</td></tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  try {
+    const { error } = await withEmailRetry(() => resend!.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject: `${headingText} – ${escapeHtml(reference)}`,
+      html,
+    }));
+
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg };
+  }
+}
+
 export interface PaymentReceiptParams {
   clientEmail: string;
   clientName: string;
