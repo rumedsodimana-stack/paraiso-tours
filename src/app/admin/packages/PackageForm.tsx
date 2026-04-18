@@ -18,6 +18,7 @@ import {
   Star,
   Trash2,
   TriangleAlert,
+  UtensilsCrossed,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -600,12 +601,12 @@ export function PackageForm({
             </div>
           </SectionCard>
 
-          {/* Step 2 — Itinerary */}
+          {/* Step 2 — Itinerary + Meal Plans */}
           <SectionCard
             icon={Map}
             step="Step 2"
-            title="Day-by-Day Itinerary"
-            description="Build the route first. Hotel options are only shown for actual overnight stays."
+            title="Itinerary & Meal Plans"
+            description="Map the route day by day, assign hotels per night, then set the meal plans available from those hotels."
           >
             <div className="flex items-center justify-between">
               <p className="text-sm text-[#5e7279]">
@@ -696,18 +697,20 @@ export function PackageForm({
                 );
               })}
             </div>
-          </SectionCard>
 
-          {/* Step 3 — Options & Pricing */}
-          <SectionCard
-            icon={Package}
-            step="Step 3"
-            title="Transport, Meals & Add-ons"
-            description="Link supplier-backed options. Their saved rates are copied as your starting point."
-          >
-            <div className="grid gap-4 xl:grid-cols-2">
+            {/* Meal plans — hotel-tied, lives here alongside accommodation */}
+            <div className="border-t border-[#e0e4dd] pt-5">
+              <div className="mb-3 flex items-center gap-2">
+                <UtensilsCrossed className="h-4 w-4 text-[#8a9ba1]" />
+                <div>
+                  <p className="text-sm font-semibold text-[#11272b]">Meal Plans</p>
+                  <p className="text-xs text-[#8a9ba1]">
+                    BB, HB, FB etc. come from the hotel — add the plans available at the hotels in this package.
+                  </p>
+                </div>
+              </div>
               <OptionsEditor
-                title="Meal plans"
+                title="Meal plan options"
                 options={mealOptions}
                 onChange={setMealOptions}
                 hotels={hotels}
@@ -716,6 +719,17 @@ export function PackageForm({
                 packageCurrency={currency}
                 mealPlans={enrichedMealPlans.length > 0 ? enrichedMealPlans : undefined}
               />
+            </div>
+          </SectionCard>
+
+          {/* Step 3 — Transport & Add-ons */}
+          <SectionCard
+            icon={Package}
+            step="Step 3"
+            title="Transport & Add-ons"
+            description="Link transport suppliers and any custom add-ons. Saved supplier rates are copied as your starting point."
+          >
+            <div className="grid gap-4 xl:grid-cols-2">
               <OptionsEditor
                 title="Transport"
                 options={transportOptions}
@@ -725,14 +739,12 @@ export function PackageForm({
                 supplierType="transport"
                 packageCurrency={currency}
               />
-              <div className="xl:col-span-2">
-                <OptionsEditor
-                  title="Custom add-ons"
-                  options={customOptions}
-                  onChange={setCustomOptions}
-                  packageCurrency={currency}
-                />
-              </div>
+              <OptionsEditor
+                title="Custom add-ons"
+                options={customOptions}
+                onChange={setCustomOptions}
+                packageCurrency={currency}
+              />
             </div>
           </SectionCard>
 
