@@ -698,6 +698,158 @@ export async function sendBookingStatusChangeEmail(
   }
 }
 
+export interface QuotationEmailParams {
+  contactName: string;
+  contactEmail: string;
+  companyName?: string;
+  title?: string;
+  reference: string;
+  destination?: string;
+  travelDate?: string;
+  duration?: string;
+  pax: number;
+  lineItems: { label: string; quantity: number; unitPrice: number; total: number }[];
+  subtotal: number;
+  discountAmount?: number;
+  totalAmount: number;
+  currency: string;
+  inclusions?: string[];
+  exclusions?: string[];
+  termsAndConditions?: string;
+  validUntil?: string;
+  itinerary?: { day: number; title: string; description: string; accommodation?: string }[];
+  quotationId: string;
+}
+
+/**
+ * Send a quotation to the client with full itinerary, pricing, and a link to view online.
+ */
+export async function sendQuotationEmail(
+  params: QuotationEmailParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) {
+    return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  }
+
+  const {
+    contactName, contactEmail, companyName, title, reference, destination,
+    travelDate, duration, pax, lineItems, subtotal, discountAmount, totalAmount,
+    currency, inclusions, exclusions, termsAndConditions, validUntil, itinerary,
+    quotationId,
+  } = params;
+
+  const email = contactEmail?.trim();
+  if (!email) return { ok: false, error: "No contact email" };
+  const branding = await getEmailBranding();
+  const viewUrl = `${getBaseUrl()}/quotation/${encodeURIComponent(quotationId)}`;
+
+  const travelDateFmt = travelDate
+    ? new Date(travelDate + "T12:00:00").toLocaleDateString("en-GB", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric",
+      })
+    : null;
+
+  const validUntilFmt = validUntil
+    ? new Date(validUntil + "T12:00:00").toLocaleDateString("en-GB", {
+        year: "numeric", month: "long", day: "numeric",
+      })
+    : null;
+
+  const lineItemRows = lineItems.map((li) => `
+    <tr>
+      <td style="padding: 10px 18px; color: #334155;">${escapeHtml(li.quantity !== 1 ? `${li.label} \u00d7 ${li.quantity}` : li.label)}</td>
+      <td style="padding: 10px 18px; text-align: right; color: #334155;">${li.total.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${escapeHtml(currency)}</td>
+    </tr>`).join("");
+
+  const itineraryRows = (itinerary ?? []).map((day) => `
+    <tr>
+      <td valign="top" style="padding: 10px 18px; width: 32px; font-weight: 700; color: #0d9488; white-space: nowrap;">Day ${day.day}</td>
+      <td style="padding: 10px 18px;">
+        <p style="margin: 0 0 4px 0; font-weight: 600; color: #0f172a;">${escapeHtml(day.title)}</p>
+        ${day.description ? `<p style="margin: 0 0 4px 0; font-size: 13px; color: #64748b;">${escapeHtml(day.description)}</p>` : ""}
+        ${day.accommodation ? `<p style="margin: 0; font-size: 12px; color: #94a3b8;">\uD83C\uDFE8 ${escapeHtml(day.accommodation)}</p>` : ""}
+      </td>
+    </tr>`).join("");
+
+  const inclusionsList = (inclusions ?? []).map((inc) =>
+    `<li style="margin-bottom: 4px; color: #334155;">${escapeHtml(inc)}</li>`
+  ).join("");
+
+  const exclusionsList = (exclusions ?? []).map((exc) =>
+    `<li style="margin-bottom: 4px; color: #334155;">${escapeHtml(exc)}</li>`
+  ).join("");
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 620px; margin: 0 auto; padding: 32px; background: #fafaf9;">
+  <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
+    <p style="margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Tour Quotation</p>
+    <p style="margin: 0; font-size: 20px; font-weight: 700; color: #0f172a;">${escapeHtml(title || (destination ? destination + " Tour" : "Custom Tour"))}</p>
+    <p style="margin: 4px 0 0 0; font-size: 12px; font-family: monospace; color: #94a3b8;">${escapeHtml(reference)}</p>
+  </div>
+  <p style="margin: 0 0 20px 0;">Dear ${escapeHtml(contactName)}${companyName ? ` / ${escapeHtml(companyName)}` : ""},</p>
+  <p style="margin: 0 0 20px 0;">Thank you for your enquiry. Please find your personalised tour quotation below.${validUntilFmt ? ` This quotation is valid until <strong>${validUntilFmt}</strong>.` : ""}</p>
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Trip summary</td></tr>
+    ${destination ? `<tr><td style="padding: 10px 18px; color: #64748b; width: 42%;">Destination</td><td style="padding: 10px 18px; font-weight: 500;">${escapeHtml(destination)}</td></tr>` : ""}
+    ${travelDateFmt ? `<tr><td style="padding: 10px 18px; color: #64748b;">Travel date</td><td style="padding: 10px 18px;">${travelDateFmt}</td></tr>` : ""}
+    ${duration ? `<tr><td style="padding: 10px 18px; color: #64748b;">Duration</td><td style="padding: 10px 18px;">${escapeHtml(duration)}</td></tr>` : ""}
+    <tr><td style="padding: 10px 18px; color: #64748b;">Travellers</td><td style="padding: 10px 18px;">${pax} ${pax === 1 ? "person" : "people"}</td></tr>
+  </table>
+  ${itinerary && itinerary.length > 0 ? `<h3 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">Day-by-Day Itinerary</h3>
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">${itineraryRows}</table>` : ""}
+  <h3 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">Pricing</h3>
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Line items</td></tr>
+    ${lineItemRows}
+    <tr style="border-top: 1px solid #e2e8f0;"><td style="padding: 10px 18px; color: #64748b;">Subtotal</td><td style="padding: 10px 18px; text-align: right; color: #334155;">${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${escapeHtml(currency)}</td></tr>
+    ${discountAmount ? `<tr><td style="padding: 10px 18px; color: #64748b;">Discount</td><td style="padding: 10px 18px; text-align: right; color: #dc2626;">\u2212${discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${escapeHtml(currency)}</td></tr>` : ""}
+    <tr style="border-top: 2px solid #0d9488; background: #f0fdfb;"><td style="padding: 14px 18px; font-weight: 700; color: #0f172a; font-size: 15px;">Total</td><td style="padding: 14px 18px; text-align: right; font-weight: 700; color: #0f172a; font-size: 15px;">${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${escapeHtml(currency)}</td></tr>
+  </table>
+  ${inclusionsList || exclusionsList ? `<table style="width: 100%; border-collapse: collapse; margin-bottom: 28px;" cellspacing="0" cellpadding="0"><tr valign="top">
+    ${inclusionsList ? `<td style="width: 50%; padding-right: 10px;"><h3 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Included</h3><ul style="margin: 0; padding: 0 0 0 18px; font-size: 13px;">${inclusionsList}</ul></td>` : ""}
+    ${exclusionsList ? `<td style="width: 50%; padding-left: 10px;"><h3 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Not included</h3><ul style="margin: 0; padding: 0 0 0 18px; font-size: 13px; color: #64748b;">${exclusionsList}</ul></td>` : ""}
+  </tr></table>` : ""}
+  ${termsAndConditions ? `<h3 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Terms &amp; Conditions</h3><p style="margin: 0 0 24px 0; font-size: 13px; color: #64748b; white-space: pre-line;">${escapeHtml(termsAndConditions)}</p>` : ""}
+  <div style="margin: 28px 0; text-align: center;">
+    <a href="${viewUrl}" style="display: inline-block; padding: 14px 32px; background: #0d9488; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; border-radius: 8px;">View Quotation Online</a>
+  </div>
+  <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;">To accept this quotation or ask any questions, simply reply to this email.</p>
+  <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 32px;">
+    <tr><td style="font-size: 15px; font-weight: 700; color: #0d9488;">${escapeHtml(branding.companyName)}</td></tr>
+    <tr><td style="font-size: 13px; color: #64748b;">${escapeHtml(branding.tagline || branding.companyName)}</td></tr>
+    <tr><td style="font-size: 12px; color: #94a3b8;">${escapeHtml(branding.email)}</td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  try {
+    const subject = title
+      ? `Your quotation: ${title} \u2014 ${reference}`
+      : destination
+        ? `Your ${destination} tour quotation \u2014 ${reference}`
+        : `Tour quotation \u2014 ${reference} \u2014 ${branding.companyName}`;
+
+    const { error } = await withEmailRetry(() => resend!.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject,
+      html,
+    }));
+
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg };
+  }
+}
+
 export interface PaymentReceiptParams {
   clientEmail: string;
   clientName: string;

@@ -439,7 +439,8 @@ function Section({
           <ChevronDown className="h-4 w-4 text-stone-400" />
         )}
       </button>
-      {open && <div className="border-t border-stone-100 px-5 pb-5 pt-4">{children}</div>}
+      {/* Always render children so uncontrolled inputs (inclusions, terms) stay in DOM when collapsed */}
+      <div className={`border-t border-stone-100 px-5 pb-5 pt-4${open ? "" : " hidden"}`}>{children}</div>
     </div>
   );
 }

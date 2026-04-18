@@ -31,8 +31,11 @@ export function QuotationStatusActions({ quotationId, status, travelDate, tourId
   const [showAcceptDialog, setShowAcceptDialog] = useState(false);
   const [acceptDate, setAcceptDate] = useState(travelDate ?? "");
 
-  function run(fn: () => Promise<{ success?: boolean; tourId?: string; error?: string } | undefined>) {
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
+
+  function run(fn: () => Promise<{ success?: boolean; tourId?: string; error?: string; emailSent?: boolean; emailError?: string } | undefined>) {
     setError(null);
+    setEmailWarning(null);
     startTransition(async () => {
       const result = await fn();
       if (result?.error) {
@@ -40,6 +43,9 @@ export function QuotationStatusActions({ quotationId, status, travelDate, tourId
       } else if (result?.tourId) {
         router.push(`/admin/tours/${result.tourId}?scheduled=1`);
       } else {
+        if (result?.emailError) {
+          setEmailWarning(`Quotation marked as sent, but the email could not be delivered: ${result.emailError}`);
+        }
         router.refresh();
       }
     });
@@ -78,6 +84,11 @@ export function QuotationStatusActions({ quotationId, status, travelDate, tourId
       {error && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </p>
+      )}
+      {emailWarning && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          {emailWarning}
         </p>
       )}
 

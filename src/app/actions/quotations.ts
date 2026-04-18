@@ -15,6 +15,7 @@ import {
   getInvoices,
 } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
+import { sendQuotationEmail } from "@/lib/email";
 import type { Quotation, QuotationLineItem, ItineraryDay } from "@/lib/types";
 
 function generateInvoiceNumber(): string {
@@ -115,7 +116,7 @@ export async function createQuotationAction(formData: FormData) {
     });
 
     await recordAuditEvent({
-      entityType: "lead",
+      entityType: "quotation",
       entityId: quotation.id,
       action: "created",
       summary: `Quotation ${quotation.reference} created for ${contactName}${quotation.companyName ? ` (${quotation.companyName})` : ""}`,
@@ -189,16 +190,40 @@ export async function markQuotationSentAction(id: string) {
     sentAt: new Date().toISOString(),
   });
 
+  // Send the quotation email — non-blocking: log but don't fail the action
+  const emailResult = await sendQuotationEmail({
+    contactName: quotation.contactName,
+    contactEmail: quotation.contactEmail,
+    companyName: quotation.companyName,
+    title: quotation.title,
+    reference: quotation.reference,
+    destination: quotation.destination,
+    travelDate: quotation.travelDate,
+    duration: quotation.duration,
+    pax: quotation.pax,
+    lineItems: quotation.lineItems,
+    subtotal: quotation.subtotal,
+    discountAmount: quotation.discountAmount,
+    totalAmount: quotation.totalAmount,
+    currency: quotation.currency,
+    inclusions: quotation.inclusions,
+    exclusions: quotation.exclusions,
+    termsAndConditions: quotation.termsAndConditions,
+    validUntil: quotation.validUntil,
+    itinerary: quotation.itinerary,
+    quotationId: quotation.id,
+  });
+
   await recordAuditEvent({
-    entityType: "lead",
+    entityType: "quotation",
     entityId: id,
     action: "status_changed",
-    summary: `Quotation ${quotation.reference} marked as sent to ${quotation.contactEmail}`,
+    summary: `Quotation ${quotation.reference} sent to ${quotation.contactEmail}${emailResult.ok ? " (email delivered)" : emailResult.error ? ` (email failed: ${emailResult.error})` : ""}`,
   });
 
   revalidatePath("/admin/quotations");
   revalidatePath(`/admin/quotations/${id}`);
-  return { success: true };
+  return { success: true, emailSent: emailResult.ok, emailError: emailResult.error };
 }
 
 export async function markQuotationRejectedAction(id: string) {

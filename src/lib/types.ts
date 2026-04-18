@@ -445,6 +445,7 @@ export interface Todo {
 
 export type AuditEntityType =
   | "lead"
+  | "quotation"
   | "package"
   | "tour"
   | "invoice"
