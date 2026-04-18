@@ -9,6 +9,10 @@ import {
   UtensilsCrossed,
   Calendar,
   Users,
+  Clock,
+  Mail,
+  Phone,
+  MessageSquare,
 } from "lucide-react";
 import { getAiRuntimeStatus } from "@/lib/ai";
 import { getLead, getPackage, getHotels, getInvoiceByLeadId } from "@/lib/db";
@@ -40,6 +44,12 @@ const statusLabel: Record<string, string> = {
   cancelled: "Cancelled",
   won: "Scheduled",
 };
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 export default async function BookingDetailPage({
   params,
@@ -131,33 +141,56 @@ export default async function BookingDetailPage({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+        {/* ── Left column ── */}
         <div className="space-y-6">
           <div className="paraiso-card overflow-hidden rounded-2xl">
+            {/* Header */}
             <div className="border-b border-[#e0e4dd] bg-[#f4ecdd] px-6 py-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0 flex-1">
                   <h1 className="text-2xl font-bold text-[#11272b]">{lead.name}</h1>
-                  <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-[#5e7279]">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-[#5e7279]">
                     {lead.reference && (
                       <span className="font-mono font-semibold text-[#12343b]">{lead.reference}</span>
                     )}
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5">
                       <Calendar className="h-4 w-4" />
                       {lead.travelDate || "TBD"}
                     </span>
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5">
                       <Users className="h-4 w-4" />
                       {lead.pax ?? "-"} pax
                     </span>
                     {pkg && (
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-1.5">
                         <MapPin className="h-4 w-4" />
                         {pkg.name}
                       </span>
                     )}
                   </div>
+                  {/* Guest contact row */}
+                  <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-[#5e7279]">
+                    {lead.email && (
+                      <span className="flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5 text-[#8a9ba1]" />
+                        {lead.email}
+                      </span>
+                    )}
+                    {lead.phone && (
+                      <span className="flex items-center gap-1.5">
+                        <Phone className="h-3.5 w-3.5 text-[#8a9ba1]" />
+                        {lead.phone}
+                      </span>
+                    )}
+                  </div>
+                  {lead.notes && (
+                    <p className="mt-2 flex items-start gap-1.5 text-sm text-[#5e7279]">
+                      <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8a9ba1]" />
+                      <span className="italic">{lead.notes}</span>
+                    </p>
+                  )}
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusBadge[currentStatus] ?? "bg-[#e2e3dd] text-[#545a54]"}`}>
+                <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusBadge[currentStatus] ?? "bg-[#e2e3dd] text-[#545a54]"}`}>
                   {statusLabel[currentStatus] ?? currentStatus}
                 </span>
               </div>
@@ -166,33 +199,48 @@ export default async function BookingDetailPage({
             <div className="space-y-6 p-6">
               {pkg ? (
                 <>
+                  {/* Itinerary */}
                   <section>
                     <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#8a9ba1]">
-                      Itinerary
+                      Full Itinerary
                     </h2>
                     <div className="space-y-3">
                       {pkg.itinerary?.map((day) => {
                         const selectedHotel = getSelectedHotelForDay(day.day - 1);
+                        const dayDate = lead.travelDate
+                          ? addDays(lead.travelDate, day.day - 1)
+                          : null;
                         return (
                           <div
                             key={day.day}
-                            className="flex gap-4 rounded-xl border border-[#e0e4dd] bg-[#faf6ef] px-4 py-3"
+                            className="flex gap-4 rounded-xl border border-[#e0e4dd] bg-[#faf6ef] px-4 py-4"
                           >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eef4f4] text-sm font-bold text-[#12343b]">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eef4f4] text-sm font-bold text-[#12343b]">
                               {day.day}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <h3 className="font-medium text-[#11272b]">{day.title}</h3>
-                              <p className="text-sm text-[#5e7279]">{day.description}</p>
-                              <p className="mt-1.5 flex items-center gap-2 text-xs font-medium text-[#12343b]">
+                              {dayDate && (
+                                <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-[#8a9ba1]">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  {new Date(dayDate).toLocaleDateString("en-GB", {
+                                    weekday: "long",
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </div>
+                              )}
+                              <h3 className="font-semibold text-[#11272b]">{day.title}</h3>
+                              <p className="mt-1 text-sm text-[#5e7279]">{day.description}</p>
+                              <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#12343b]">
                                 <Building2 className="h-3.5 w-3.5" />
                                 {selectedHotel !== "—"
-                                  ? `Hotel: ${selectedHotel}`
+                                  ? `Accommodation: ${selectedHotel}`
                                   : (day.accommodationOptions?.length ?? 0) > 0
                                     ? `Hotel choices: ${day.accommodationOptions!.map((o) => o.label).join(", ")}`
                                     : day.accommodation
-                                      ? `Hotel: ${day.accommodation}`
-                                      : "—"}
+                                      ? `Accommodation: ${day.accommodation}`
+                                      : "No accommodation"}
                               </p>
                             </div>
                           </div>
@@ -201,28 +249,66 @@ export default async function BookingDetailPage({
                     </div>
                   </section>
 
+                  {/* Inclusions */}
+                  {(pkg.inclusions?.length ?? 0) > 0 && (
+                    <section>
+                      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#8a9ba1]">
+                        Inclusions
+                      </h2>
+                      <ul className="space-y-1">
+                        {pkg.inclusions!.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-[#11272b]">
+                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#c9922f]" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+
+                  {/* Exclusions */}
+                  {(pkg.exclusions?.length ?? 0) > 0 && (
+                    <section>
+                      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#8a9ba1]">
+                        Exclusions
+                      </h2>
+                      <ul className="space-y-1">
+                        {pkg.exclusions!.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-[#5e7279]">
+                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#c0b8ae]" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+
+                  {/* Selected transport / meal */}
                   {(lead.selectedTransportOptionId || lead.selectedMealOptionId) && (
                     <section>
                       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#8a9ba1]">
                         Selected options
                       </h2>
-                      <div className="space-y-1 rounded-xl border border-[#d6e2e5] bg-[#eef4f4] px-4 py-3 text-sm">
+                      <div className="space-y-2 rounded-xl border border-[#d6e2e5] bg-[#eef4f4] px-4 py-3 text-sm">
                         {lead.selectedTransportOptionId && (
                           <p className="flex items-center gap-2">
                             <Car className="h-4 w-4 text-[#12343b]" />
-                            Transport: {pkg.transportOptions?.find((o) => o.id === lead.selectedTransportOptionId)?.label ?? "—"}
+                            <span className="font-medium text-[#11272b]">Transport:</span>{" "}
+                            {pkg.transportOptions?.find((o) => o.id === lead.selectedTransportOptionId)?.label ?? "—"}
                           </p>
                         )}
                         {lead.selectedMealOptionId && (
                           <p className="flex items-center gap-2">
                             <UtensilsCrossed className="h-4 w-4 text-[#12343b]" />
-                            Meal: {pkg.mealOptions?.find((o) => o.id === lead.selectedMealOptionId)?.label ?? "—"}
+                            <span className="font-medium text-[#11272b]">Meal plan:</span>{" "}
+                            {pkg.mealOptions?.find((o) => o.id === lead.selectedMealOptionId)?.label ?? "—"}
                           </p>
                         )}
                       </div>
                     </section>
                   )}
 
+                  {/* Financials */}
                   {financials && (
                     <section>
                       <div className="rounded-xl border border-[#d6e2e5] bg-[#eef4f4] px-4 py-3">
@@ -235,6 +321,7 @@ export default async function BookingDetailPage({
                     </section>
                   )}
 
+                  {/* Actions */}
                   {!isScheduled && (
                     <section className="flex flex-wrap items-center gap-3 border-t border-[#e0e4dd] pt-5">
                       <Link
@@ -314,6 +401,17 @@ export default async function BookingDetailPage({
           </div>
 
           <AuditTimeline title="Booking Activity" logs={auditLogs} />
+        </div>
+
+        {/* ── Right column — AI Copilot ── */}
+        <div className="space-y-6">
+          <BookingCopilotPanel
+            leadId={lead.id}
+            leadName={lead.name}
+            leadReference={lead.reference}
+            runtimeReady={aiRuntime.configured}
+            missingReason={aiRuntime.missingReason}
+          />
         </div>
       </div>
     </div>
