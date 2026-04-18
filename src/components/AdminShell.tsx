@@ -36,9 +36,7 @@ export function AdminShell({
   const pathname = usePathname();
   const isAuthSurface = pathname === "/admin/login";
   const showGlobalAiChat = !isAuthSurface && pathname !== "/admin/ai";
-  const [desktopAiCollapsed, setDesktopAiCollapsed] = useState(
-    pathname === "/admin/settings" || pathname === "/admin/user-guide"
-  );
+  const [desktopAiCollapsed, setDesktopAiCollapsed] = useState(true);
   const [mobileAiOpen, setMobileAiOpen] = useState(false);
   const [mainGlow, setMainGlow] = useState(false);
   const glowTimeoutRef = useRef<number | null>(null);
