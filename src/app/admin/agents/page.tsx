@@ -12,62 +12,62 @@ export default async function AgentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-stone-900">AI Agents</h1>
-        <p className="mt-1 text-sm text-stone-600">
+        <h1 className="text-2xl font-bold text-[#11272b]">AI Agents</h1>
+        <p className="mt-1 text-sm text-[#5e7279]">
           Automated booking processing with human-in-the-loop approval
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <Clock className="h-5 w-5 text-amber-600" />
-          <p className="mt-2 text-2xl font-bold text-stone-900">{awaiting.length}</p>
-          <p className="text-xs text-stone-600">Awaiting approval</p>
+        <div className="paraiso-card rounded-2xl p-4">
+          <Clock className="h-5 w-5 text-[#c9922f]" />
+          <p className="mt-2 text-2xl font-bold text-[#11272b]">{awaiting.length}</p>
+          <p className="text-xs text-[#5e7279]">Awaiting approval</p>
         </div>
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-          <Bot className="h-5 w-5 text-blue-600" />
-          <p className="mt-2 text-2xl font-bold text-stone-900">{running.length}</p>
-          <p className="text-xs text-stone-600">Running</p>
+        <div className="paraiso-card rounded-2xl p-4">
+          <Bot className="h-5 w-5 text-[#12343b]" />
+          <p className="mt-2 text-2xl font-bold text-[#11272b]">{running.length}</p>
+          <p className="text-xs text-[#5e7279]">Running</p>
         </div>
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
-          <p className="mt-2 text-2xl font-bold text-stone-900">{completed.length}</p>
-          <p className="text-xs text-stone-600">Completed</p>
+        <div className="paraiso-card rounded-2xl p-4">
+          <CheckCircle2 className="h-5 w-5 text-[#375a3f]" />
+          <p className="mt-2 text-2xl font-bold text-[#11272b]">{completed.length}</p>
+          <p className="text-xs text-[#5e7279]">Completed</p>
         </div>
-        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-          <XCircle className="h-5 w-5 text-stone-400" />
-          <p className="mt-2 text-2xl font-bold text-stone-900">{rejected.length}</p>
-          <p className="text-xs text-stone-600">Rejected</p>
+        <div className="paraiso-card rounded-2xl p-4">
+          <XCircle className="h-5 w-5 text-[#8a9ba1]" />
+          <p className="mt-2 text-2xl font-bold text-[#11272b]">{rejected.length}</p>
+          <p className="text-xs text-[#5e7279]">Rejected</p>
         </div>
       </div>
 
       {/* Approval Queue */}
       {awaiting.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-stone-900">Needs Your Approval</h2>
+          <h2 className="text-lg font-semibold text-[#11272b]">Needs Your Approval</h2>
           <div className="mt-3 space-y-3">
             {awaiting.map((thread) => (
               <Link
                 key={thread.id}
                 href={`/admin/agents/${thread.id}`}
-                className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-white p-4 transition hover:shadow-md"
+                className="paraiso-card flex items-center gap-4 rounded-2xl p-4 transition hover:bg-[#f4ecdd]"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
-                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f3e8ce]">
+                  <AlertCircle className="h-5 w-5 text-[#c9922f]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-stone-900">
+                  <p className="font-semibold text-[#11272b]">
                     {thread.summary || "Booking processing"}
                   </p>
-                  <p className="text-xs text-stone-500">
+                  <p className="text-xs text-[#8a9ba1]">
                     {thread.agentType === "booking_processor"
                       ? "Booking Processor"
                       : "Assistant"}{" "}
                     · {new Date(thread.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <ArrowRight className="h-4 w-4 text-stone-400" />
+                <ArrowRight className="h-4 w-4 text-[#8a9ba1]" />
               </Link>
             ))}
           </div>
@@ -76,9 +76,9 @@ export default async function AgentsPage() {
 
       {/* Recent */}
       <div>
-        <h2 className="text-lg font-semibold text-stone-900">Recent Activity</h2>
+        <h2 className="text-lg font-semibold text-[#11272b]">Recent Activity</h2>
         {threads.length === 0 ? (
-          <p className="mt-3 rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-6 text-center text-sm text-stone-500">
+          <p className="mt-3 rounded-2xl border border-dashed border-[#ddd3c4] bg-[#faf6ef] p-6 text-center text-sm text-[#8a9ba1]">
             No agent activity yet. Agents will appear here when bookings are processed
             automatically.
           </p>
@@ -88,25 +88,25 @@ export default async function AgentsPage() {
               <Link
                 key={thread.id}
                 href={`/admin/agents/${thread.id}`}
-                className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 transition hover:bg-stone-50"
+                className="paraiso-card flex items-center gap-3 rounded-xl px-4 py-3 transition hover:bg-[#faf6ef]"
               >
                 <span
                   className={`flex h-2 w-2 rounded-full ${
                     thread.status === "awaiting_approval"
-                      ? "bg-amber-500"
+                      ? "bg-[#c9922f]"
                       : thread.status === "completed"
-                        ? "bg-green-500"
+                        ? "bg-[#375a3f]"
                         : thread.status === "running"
-                          ? "bg-blue-500"
+                          ? "bg-[#12343b]"
                           : thread.status === "failed"
-                            ? "bg-red-500"
-                            : "bg-stone-400"
+                            ? "bg-[#7c3a24]"
+                            : "bg-[#8a9ba1]"
                   }`}
                 />
-                <span className="flex-1 text-sm text-stone-700">
+                <span className="flex-1 text-sm text-[#5e7279]">
                   {thread.summary || thread.agentType}
                 </span>
-                <span className="text-xs text-stone-400">
+                <span className="text-xs text-[#8a9ba1]">
                   {new Date(thread.updatedAt).toLocaleDateString()}
                 </span>
               </Link>

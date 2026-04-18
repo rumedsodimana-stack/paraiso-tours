@@ -117,7 +117,7 @@ function RenderText({ text }: { text: string }) {
           if (raw.startsWith("**")) {
             parts.push(<strong key={ki++} className="font-semibold">{raw.slice(2, -2)}</strong>);
           } else {
-            parts.push(<code key={ki++} className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[12px] text-stone-700">{raw.slice(1, -1)}</code>);
+            parts.push(<code key={ki++} className="rounded bg-[#eae5de] px-1.5 py-0.5 font-mono text-[12px] text-[#5e7279]">{raw.slice(1, -1)}</code>);
           }
           last = match.index + raw.length;
         }
@@ -142,7 +142,7 @@ function ThinkingDots() {
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className="h-2 w-2 rounded-full bg-stone-400"
+          className="h-2 w-2 rounded-full bg-[#8a9ba1]"
           style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
         />
       ))}
@@ -272,27 +272,27 @@ export function GlobalAdminAiChat({
   const canSend = runtimeReady && !running && request.trim().length > 0;
 
   const panel = (
-    <div className="flex h-full flex-col bg-white overflow-hidden">
+    <div className="flex h-full flex-col bg-[#fffbf4] overflow-hidden">
 
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-100 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e0e4dd] px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-stone-900 text-white">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#12343b] text-[#f6ead6]">
             <Bot className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-stone-900 leading-none">AI Coworker</p>
-            <p className="mt-0.5 text-xs text-stone-400 truncate">{pageContext.label}</p>
+            <p className="text-sm font-semibold text-[#11272b] leading-none">AI Coworker</p>
+            <p className="mt-0.5 text-xs text-[#8a9ba1] truncate">{pageContext.label}</p>
           </div>
           {/* Status pill */}
           <span
             className={`ml-1 flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
               runtimeReady
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-amber-200 bg-amber-50 text-amber-700"
+                ? "border-[#b8d6b8] bg-[#dce8dc] text-[#375a3f]"
+                : "border-[#f3e8ce] bg-[#f9f2e3] text-[#7a5a17]"
             }`}
           >
-            <span className={`h-1.5 w-1.5 rounded-full ${runtimeReady ? "bg-emerald-500" : "bg-amber-400"}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${runtimeReady ? "bg-[#375a3f]" : "bg-[#c9922f]"}`} />
             {runtimeReady ? "Ready" : "Setup"}
           </span>
         </div>
@@ -304,7 +304,7 @@ export function GlobalAdminAiChat({
               type="button"
               onClick={clearChat}
               title="New conversation"
-              className="rounded-lg p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
+              className="rounded-lg p-1.5 text-[#8a9ba1] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -316,17 +316,17 @@ export function GlobalAdminAiChat({
               type="button"
               onClick={() => setSettingsOpen((o) => !o)}
               title="Settings"
-              className="rounded-lg p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
+              className="rounded-lg p-1.5 text-[#8a9ba1] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
             >
               <Settings className="h-4 w-4" />
             </button>
             {settingsOpen && (
-              <div className="absolute right-0 top-9 z-30 w-64 rounded-2xl border border-stone-200 bg-white p-4 shadow-xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Model</p>
+              <div className="absolute right-0 top-9 z-30 w-64 rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-4 shadow-xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8a9ba1]">Model</p>
                 <select
                   value={modelMode}
                   onChange={(e) => setModelMode(e.target.value as ModelMode)}
-                  className="mt-2 w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                  className="mt-2 w-full rounded-xl border border-[#e0e4dd] bg-[#faf6ef] px-3 py-2 text-sm text-[#11272b] outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/20"
                 >
                   <option value="auto">Auto ({runtime.defaultModel})</option>
                   <option value="simple">Simple ({runtime.simpleModel})</option>
@@ -334,16 +334,16 @@ export function GlobalAdminAiChat({
                   <option value="heavy">Heavy ({runtime.heavyModel})</option>
                 </select>
 
-                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5">
-                  <span className="block text-sm font-medium text-emerald-800">Full execution enabled</span>
-                  <span className="mt-0.5 block text-xs text-emerald-600">AI executes all actions immediately — no restrictions</span>
+                <div className="mt-3 rounded-xl border border-[#b8d6b8] bg-[#dce8dc] px-3 py-2.5">
+                  <span className="block text-sm font-medium text-[#375a3f]">Full execution enabled</span>
+                  <span className="mt-0.5 block text-xs text-[#375a3f]/80">AI executes all actions immediately — no restrictions</span>
                 </div>
 
-                <div className="mt-3 border-t border-stone-100 pt-3">
+                <div className="mt-3 border-t border-[#e0e4dd] pt-3">
                   <Link
                     href="/admin/ai"
                     onClick={() => setSettingsOpen(false)}
-                    className="flex items-center justify-between rounded-xl px-2 py-1.5 text-sm text-stone-600 transition hover:bg-stone-50 hover:text-stone-900"
+                    className="flex items-center justify-between rounded-xl px-2 py-1.5 text-sm text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
                   >
                     Full AI workspace
                     <ArrowUpRight className="h-3.5 w-3.5" />
@@ -352,7 +352,7 @@ export function GlobalAdminAiChat({
                     <Link
                       href="/admin/settings?section=ai"
                       onClick={() => setSettingsOpen(false)}
-                      className="mt-1 flex items-center justify-between rounded-xl px-2 py-1.5 text-sm text-amber-700 transition hover:bg-amber-50"
+                      className="mt-1 flex items-center justify-between rounded-xl px-2 py-1.5 text-sm text-[#7a5a17] transition hover:bg-[#f9f2e3]"
                     >
                       Fix AI settings
                       <AlertTriangle className="h-3.5 w-3.5" />
@@ -368,7 +368,7 @@ export function GlobalAdminAiChat({
             type="button"
             onClick={onClose}
             title="Close"
-            className="rounded-lg p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
+            className="rounded-lg p-1.5 text-[#8a9ba1] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
           >
             <X className="h-4 w-4" />
           </button>
@@ -377,14 +377,14 @@ export function GlobalAdminAiChat({
 
       {/* ── Not ready banner ───────────────────────────────── */}
       {!runtimeReady && (
-        <div className="shrink-0 border-b border-amber-100 bg-amber-50 px-4 py-3">
-          <div className="flex items-start gap-2 text-sm text-amber-800">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+        <div className="shrink-0 border-b border-[#f3e8ce] bg-[#f9f2e3] px-4 py-3">
+          <div className="flex items-start gap-2 text-sm text-[#7a5a17]">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#c9922f]" />
             <div>
               <p className="font-medium">{runtime.missingReason || "AI not configured"}</p>
               <Link
                 href="/admin/settings?section=ai"
-                className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 underline underline-offset-2"
+                className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#7a5a17] underline underline-offset-2"
               >
                 Open AI settings →
               </Link>
@@ -401,12 +401,12 @@ export function GlobalAdminAiChat({
         {/* Empty state — suggestion chips */}
         {chatHistory.length === 0 && !running && (
           <div className="flex flex-col items-center justify-center h-full min-h-[12rem] gap-6 py-8 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-900 text-white shadow-lg">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6] shadow-lg">
               <Bot className="h-7 w-7" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-stone-800">How can I help?</p>
-              <p className="mt-1 text-xs text-stone-400">{pageContext.label} · {runtime.defaultModel}</p>
+              <p className="text-sm font-semibold text-[#11272b]">How can I help?</p>
+              <p className="mt-1 text-xs text-[#8a9ba1]">{pageContext.label} · {runtime.defaultModel}</p>
             </div>
             <div className="flex w-full flex-col gap-2">
               {pageContext.prompts.map((prompt) => (
@@ -419,7 +419,7 @@ export function GlobalAdminAiChat({
                     setTimeout(() => handleSubmit(prompt), 0);
                   }}
                   disabled={!runtimeReady}
-                  className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-left text-sm text-stone-700 transition hover:border-stone-300 hover:bg-white hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="w-full rounded-xl border border-[#e0e4dd] bg-[#faf6ef] px-4 py-2.5 text-left text-sm text-[#5e7279] transition hover:border-[#e0d4bc] hover:bg-[#f4ecdd] hover:text-[#11272b] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {prompt}
                 </button>
@@ -434,16 +434,16 @@ export function GlobalAdminAiChat({
             /* User bubble — right aligned, dark */
             <div key={entry.id} className="flex justify-end">
               <div className="max-w-[85%]">
-                <div className="rounded-2xl rounded-br-sm bg-stone-900 px-4 py-3 text-white shadow-sm">
+                <div className="rounded-2xl rounded-br-sm bg-[#12343b] px-4 py-3 text-[#f6ead6] shadow-sm">
                   <p className="text-sm leading-6 whitespace-pre-wrap">{entry.content}</p>
                 </div>
-                <p className="mt-1 pr-1 text-right text-[10px] text-stone-400">{entry.timestamp}</p>
+                <p className="mt-1 pr-1 text-right text-[10px] text-[#8a9ba1]">{entry.timestamp}</p>
               </div>
             </div>
           ) : (
             /* AI bubble — left aligned, white card */
             <div key={entry.id} className="flex items-start gap-2.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-600 mt-0.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#eef4f4] text-[#12343b] mt-0.5">
                 <Bot className="h-3.5 w-3.5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -451,14 +451,14 @@ export function GlobalAdminAiChat({
                   className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${
                     entry.ok === false && entry.content
                       ? "border-rose-200 bg-rose-50"
-                      : "border-stone-100 bg-white"
+                      : "border-[#e0e4dd] bg-[#fffbf4]"
                   }`}
                 >
-                  <div className={entry.ok === false ? "text-rose-700" : "text-stone-800"}>
+                  <div className={entry.ok === false ? "text-rose-700" : "text-[#5e7279]"}>
                     <RenderText text={entry.content} />
                   </div>
                 </div>
-                <p className="mt-1 pl-1 text-[10px] text-stone-400">{entry.timestamp}</p>
+                <p className="mt-1 pl-1 text-[10px] text-[#8a9ba1]">{entry.timestamp}</p>
               </div>
             </div>
           )
@@ -467,10 +467,10 @@ export function GlobalAdminAiChat({
         {/* Thinking dots */}
         {showThinking && (
           <div className="flex items-start gap-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-600 mt-0.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#eef4f4] text-[#12343b] mt-0.5">
               <Bot className="h-3.5 w-3.5" />
             </div>
-            <div className="rounded-2xl rounded-tl-sm border border-stone-100 bg-white px-4 py-2 shadow-sm">
+            <div className="rounded-2xl rounded-tl-sm border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2 shadow-sm">
               <ThinkingDots />
             </div>
           </div>
@@ -478,18 +478,18 @@ export function GlobalAdminAiChat({
       </div>
 
       {/* ── Input area ─────────────────────────────────────── */}
-      <div className="shrink-0 border-t border-stone-100 bg-white px-4 py-3">
+      <div className="shrink-0 border-t border-[#e0e4dd] bg-[#fffbf4] px-4 py-3">
 
         {/* Always-on execution indicator */}
         <div className="mb-2.5 flex items-center gap-1.5">
-          <Zap className="h-3 w-3 text-teal-600" />
-          <span className="text-xs font-medium text-teal-700">Actions always on — AI executes immediately</span>
+          <Zap className="h-3 w-3 text-[#12343b]" />
+          <span className="text-xs font-medium text-[#12343b]">Actions always on — AI executes immediately</span>
         </div>
 
         {/* Input container */}
-        <div className={`flex items-end gap-2 rounded-2xl border bg-stone-50 px-3 py-2 transition-colors ${
-          canSend ? "border-stone-300" : "border-stone-200"
-        } focus-within:border-stone-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-stone-200`}>
+        <div className={`flex items-end gap-2 rounded-2xl border bg-[#faf6ef] px-3 py-2 transition-colors ${
+          canSend ? "border-[#c5cdd0]" : "border-[#e0e4dd]"
+        } focus-within:border-[#12343b] focus-within:bg-[#fffbf4] focus-within:ring-2 focus-within:ring-[#12343b]/10`}>
           <textarea
             ref={textareaRef}
             value={request}
@@ -502,7 +502,7 @@ export function GlobalAdminAiChat({
                 ? "Set up AI in Settings first…"
                 : `Message AI — ${pageContext.label.toLowerCase()}`
             }
-            className="flex-1 resize-none bg-transparent py-1 text-sm text-stone-900 placeholder:text-stone-400 outline-none disabled:cursor-not-allowed"
+            className="flex-1 resize-none bg-transparent py-1 text-sm text-[#11272b] placeholder:text-[#8a9ba1] outline-none disabled:cursor-not-allowed"
             style={{ minHeight: "24px", maxHeight: "180px" }}
           />
           <button
@@ -511,8 +511,8 @@ export function GlobalAdminAiChat({
             disabled={!canSend}
             className={`mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all ${
               canSend
-                ? "bg-stone-900 text-white hover:bg-stone-700 shadow-sm"
-                : "bg-stone-200 text-stone-400 cursor-not-allowed"
+                ? "bg-[#12343b] text-[#f6ead6] hover:bg-[#0f2b31] shadow-sm"
+                : "bg-[#e0e4dd] text-[#8a9ba1] cursor-not-allowed"
             }`}
           >
             {running ? (
@@ -525,7 +525,7 @@ export function GlobalAdminAiChat({
           </button>
         </div>
 
-        <p className="mt-1.5 text-center text-[10px] text-stone-300">
+        <p className="mt-1.5 text-center text-[10px] text-[#c5cdd0]">
           Enter to send · Shift+Enter for new line
         </p>
       </div>
@@ -539,7 +539,7 @@ export function GlobalAdminAiChat({
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-stone-950/25 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`fixed inset-0 z-40 bg-[#11272b]/20 transition-opacity duration-300 ${
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}

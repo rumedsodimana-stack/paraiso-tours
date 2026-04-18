@@ -222,61 +222,61 @@ function makeTheme(theme: Theme) {
   }
 
   return {
-    root: "fixed inset-0 z-50 flex bg-gradient-to-br from-amber-50 via-emerald-50 to-sky-50 text-stone-900",
-    lSidebar: "flex flex-col border-r border-stone-200/60 bg-white/60 backdrop-blur-xl transition-all",
-    lHeader: "flex h-14 items-center justify-between border-b border-stone-200/40 px-4",
-    backBtn: "flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900 transition",
-    sectionLabel: "px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400",
-    sessionActive: "bg-teal-50 text-teal-900 font-medium",
-    sessionInactive: "text-stone-500 hover:bg-stone-100/80 hover:text-stone-800",
-    pastSession: "flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-stone-400",
-    lFooter: "border-t border-stone-200/40 px-4 py-3",
-    providerText: "flex items-center gap-2 text-xs text-stone-400",
-    topBar: "flex h-14 items-center justify-between border-b border-stone-200/40 bg-white/40 backdrop-blur-sm px-4",
-    topBarTitle: "font-semibold text-stone-800",
-    copilotBadge: "rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-medium text-teal-700",
-    topBarBtn: "rounded-lg px-2 py-1 text-xs text-stone-400 hover:bg-stone-100 hover:text-stone-700",
-    welcomeTitle: "text-2xl font-bold text-stone-900",
-    welcomeSub: "mt-2 text-sm text-stone-500",
-    taskCard: "group flex flex-col items-start gap-2 rounded-xl border border-stone-200/60 bg-white/50 backdrop-blur-sm p-4 text-left transition hover:border-stone-300 hover:bg-white/80 shadow-sm",
-    taskLabel: "text-sm font-medium text-stone-700 group-hover:text-stone-900",
-    aiAvatar: "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-stone-100 shadow-sm",
-    botIcon: "h-4 w-4 text-teal-600",
-    reasoning: "rounded-lg border border-stone-200/60 bg-stone-50/60 backdrop-blur-sm px-3 py-2",
-    reasoningToggle: "flex w-full items-center gap-2 text-[11px] font-medium text-stone-400 hover:text-stone-700",
-    reasoningActive: "text-teal-600",
-    reasoningDone: "text-stone-500",
-    reasoningPending: "text-stone-300",
-    reasoningDot: "h-3 w-3 rounded-full border border-stone-300",
-    actionOk: "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700",
-    actionErr: "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700",
-    msgContent: "whitespace-pre-wrap text-sm text-stone-700 leading-relaxed",
-    artifactInline: "inline-flex items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-500",
-    msgTime: "text-[10px] text-stone-400",
-    alertBanner: "mb-6 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700",
-    alertBtn: "ml-auto rounded-lg bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-200 transition",
-    inputArea: "border-t border-stone-200/40 bg-white/30 backdrop-blur-sm px-4 py-4",
-    inputBox: "relative flex items-end rounded-2xl border border-stone-200 bg-white/80 backdrop-blur-sm focus-within:border-teal-500 shadow-sm transition",
-    inputText: "flex-1 resize-none bg-transparent px-4 py-3 text-sm text-stone-900 placeholder-stone-400 focus:outline-none",
-    inputDisclaimer: "mt-2 text-center text-[10px] text-stone-400",
-    rSidebar: "flex flex-col border-l border-stone-200/60 bg-white/60 backdrop-blur-xl transition-all",
-    rSectionBorder: "border-b border-stone-200/40",
-    rSectionLabel: "text-xs font-semibold uppercase tracking-wider text-stone-500",
-    progressActive: "text-teal-600",
-    progressDone: "text-stone-500",
-    progressPending: "text-stone-300",
-    progressDot: "h-3 w-3 rounded-full border border-stone-300",
-    noItems: "text-xs text-stone-400",
-    artifactBadge: "ml-auto rounded-full bg-violet-50 px-1.5 text-[10px] font-medium text-violet-700",
-    artifactCard: "flex items-center gap-2 rounded-lg border border-stone-200 bg-white/60 px-3 py-2 text-xs text-stone-600",
-    ctxDivider: "mt-2 pt-2 border-t border-stone-200/40",
-    ctxRow: "flex items-center justify-between rounded-lg px-2 py-1 text-xs text-stone-500",
-    ctxCount: "text-stone-400",
-    ctxSettingsBtn: "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition",
-    connectorOn: "text-emerald-500",
-    connectorOff: "text-stone-300",
-    connectorLabel: "text-stone-700",
-    connectorDesc: "text-stone-400",
+    root: "fixed inset-0 z-50 flex bg-[#faf6ef] text-[#11272b]",
+    lSidebar: "flex flex-col border-r border-[#e0e4dd] bg-[#fffbf4] transition-all",
+    lHeader: "flex h-14 items-center justify-between border-b border-[#e0e4dd] px-4",
+    backBtn: "flex items-center gap-2 text-sm text-[#5e7279] hover:text-[#11272b] transition",
+    sectionLabel: "px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#8a9ba1]",
+    sessionActive: "bg-[#eef4f4] text-[#11272b] font-medium",
+    sessionInactive: "text-[#5e7279] hover:bg-[#f4ecdd] hover:text-[#11272b]",
+    pastSession: "flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-[#8a9ba1]",
+    lFooter: "border-t border-[#e0e4dd] px-4 py-3",
+    providerText: "flex items-center gap-2 text-xs text-[#8a9ba1]",
+    topBar: "flex h-14 items-center justify-between border-b border-[#e0e4dd] bg-[#fffbf4] px-4",
+    topBarTitle: "font-semibold text-[#11272b]",
+    copilotBadge: "rounded-full bg-[#eef4f4] px-2 py-0.5 text-[10px] font-medium text-[#12343b]",
+    topBarBtn: "rounded-lg px-2 py-1 text-xs text-[#8a9ba1] hover:bg-[#f4ecdd] hover:text-[#11272b]",
+    welcomeTitle: "text-2xl font-bold text-[#11272b]",
+    welcomeSub: "mt-2 text-sm text-[#5e7279]",
+    taskCard: "group flex flex-col items-start gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-4 text-left transition hover:border-[#e0d4bc] hover:bg-[#f4ecdd] shadow-sm",
+    taskLabel: "text-sm font-medium text-[#5e7279] group-hover:text-[#11272b]",
+    aiAvatar: "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#eef4f4]",
+    botIcon: "h-4 w-4 text-[#12343b]",
+    reasoning: "rounded-lg border border-[#e0e4dd] bg-[#faf6ef] px-3 py-2",
+    reasoningToggle: "flex w-full items-center gap-2 text-[11px] font-medium text-[#8a9ba1] hover:text-[#11272b]",
+    reasoningActive: "text-[#12343b]",
+    reasoningDone: "text-[#5e7279]",
+    reasoningPending: "text-[#c5cdd0]",
+    reasoningDot: "h-3 w-3 rounded-full border border-[#e0e4dd]",
+    actionOk: "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium bg-[#dce8dc] text-[#375a3f]",
+    actionErr: "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium bg-[#eed9cf] text-[#7c3a24]",
+    msgContent: "whitespace-pre-wrap text-sm text-[#5e7279] leading-relaxed",
+    artifactInline: "inline-flex items-center gap-2 rounded-lg border border-[#e0e4dd] bg-[#faf6ef] px-3 py-2 text-xs text-[#8a9ba1]",
+    msgTime: "text-[10px] text-[#8a9ba1]",
+    alertBanner: "mb-6 flex items-center gap-3 rounded-xl border border-[#f3e8ce] bg-[#f9f2e3] px-4 py-3 text-sm text-[#7a5a17]",
+    alertBtn: "ml-auto rounded-lg bg-[#f3e8ce] px-3 py-1 text-xs font-medium text-[#7a5a17] hover:bg-[#eed9a0] transition",
+    inputArea: "border-t border-[#e0e4dd] bg-[#fffbf4] px-4 py-4",
+    inputBox: "relative flex items-end rounded-2xl border border-[#e0e4dd] bg-[#faf6ef] focus-within:border-[#12343b] focus-within:ring-2 focus-within:ring-[#12343b]/10 shadow-sm transition",
+    inputText: "flex-1 resize-none bg-transparent px-4 py-3 text-sm text-[#11272b] placeholder-[#8a9ba1] focus:outline-none",
+    inputDisclaimer: "mt-2 text-center text-[10px] text-[#8a9ba1]",
+    rSidebar: "flex flex-col border-l border-[#e0e4dd] bg-[#fffbf4] transition-all",
+    rSectionBorder: "border-b border-[#e0e4dd]",
+    rSectionLabel: "text-xs font-semibold uppercase tracking-wider text-[#8a9ba1]",
+    progressActive: "text-[#12343b]",
+    progressDone: "text-[#5e7279]",
+    progressPending: "text-[#c5cdd0]",
+    progressDot: "h-3 w-3 rounded-full border border-[#e0e4dd]",
+    noItems: "text-xs text-[#8a9ba1]",
+    artifactBadge: "ml-auto rounded-full bg-[#ede8f5] px-1.5 text-[10px] font-medium text-[#5b3e8a]",
+    artifactCard: "flex items-center gap-2 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-xs text-[#5e7279]",
+    ctxDivider: "mt-2 pt-2 border-t border-[#e0e4dd]",
+    ctxRow: "flex items-center justify-between rounded-lg px-2 py-1 text-xs text-[#5e7279]",
+    ctxCount: "text-[#8a9ba1]",
+    ctxSettingsBtn: "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-[#8a9ba1] hover:bg-[#f4ecdd] hover:text-[#11272b] transition",
+    connectorOn: "text-[#375a3f]",
+    connectorOff: "text-[#c5cdd0]",
+    connectorLabel: "text-[#5e7279]",
+    connectorDesc: "text-[#8a9ba1]",
   };
 }
 
@@ -496,7 +496,7 @@ export function AiCowork({
           </button>
           <button
             onClick={createSession}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-white hover:bg-teal-500 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#12343b] text-[#f6ead6] hover:bg-[#0f2b31] transition"
             title="New session"
           >
             <Plus className="h-4 w-4" />
@@ -597,8 +597,8 @@ export function AiCowork({
             {activeSession.messages.length === 0 && !loading ? (
               /* ─── Welcome / Task Suggestions ─────────────────────────── */
               <div className="flex flex-col items-center pt-12">
-                <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 shadow-lg shadow-teal-500/20">
-                  <Sparkles className="h-8 w-8 text-white" />
+                <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#12343b] shadow-lg shadow-[#12343b]/20">
+                  <Sparkles className="h-8 w-8 text-[#f6ead6]" />
                 </div>
                 <h2 className={T.welcomeTitle}>What would you like to do?</h2>
                 <p className={T.welcomeSub}>
@@ -632,7 +632,7 @@ export function AiCowork({
                   <div key={msg.id}>
                     {msg.role === "user" ? (
                       <div className="flex justify-end">
-                        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-teal-600 px-4 py-3 text-sm text-white">
+                        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-[#12343b] px-4 py-3 text-sm text-[#f6ead6]">
                           {msg.content}
                         </div>
                       </div>
@@ -706,7 +706,7 @@ export function AiCowork({
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
-                className="m-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white transition hover:bg-teal-500 disabled:opacity-30 disabled:hover:bg-teal-600"
+                className="m-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#12343b] text-[#f6ead6] transition hover:bg-[#0f2b31] disabled:opacity-30 disabled:hover:bg-[#12343b]"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -852,10 +852,10 @@ export function AiCowork({
                       c.connected
                         ? theme === "dark"
                           ? "bg-emerald-900/60 text-emerald-400"
-                          : "bg-emerald-100 text-emerald-700"
+                          : "bg-[#dce8dc] text-[#375a3f]"
                         : theme === "dark"
                           ? "bg-neutral-800 text-neutral-500"
-                          : "bg-stone-100 text-stone-500"
+                          : "bg-[#e2e3dd] text-[#545a54]"
                     }`}
                   >
                     {c.connected ? "On" : "Off"}

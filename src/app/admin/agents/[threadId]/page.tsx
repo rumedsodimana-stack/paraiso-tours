@@ -18,7 +18,7 @@ export default async function AgentThreadPage({
     <div className="space-y-6">
       <Link
         href="/admin/agents"
-        className="inline-flex items-center gap-2 text-sm text-stone-600 hover:text-stone-900"
+        className="inline-flex items-center gap-2 text-sm text-[#5e7279] hover:text-[#11272b]"
       >
         <ArrowLeft className="h-4 w-4" /> Back to agents
       </Link>

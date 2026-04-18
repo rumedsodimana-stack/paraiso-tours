@@ -8,7 +8,6 @@ import {
   XCircle,
   Clock,
   AlertCircle,
-  Mail,
   Search,
   BedDouble,
   CarFront,
@@ -53,26 +52,38 @@ export function ThreadDetail({ thread, tasks }: { thread: AgentThread; tasks: Ag
     setLoading(false);
   }
 
+  const statusBadge = isAwaitingApproval
+    ? "bg-[#f3e8ce] text-[#7a5a17]"
+    : thread.status === "completed"
+      ? "bg-[#dce8dc] text-[#375a3f]"
+      : thread.status === "rejected"
+        ? "bg-[#eed9cf] text-[#7c3a24]"
+        : "bg-[#e2e3dd] text-[#545a54]";
+
+  const iconBg = isAwaitingApproval
+    ? "bg-[#f3e8ce]"
+    : thread.status === "completed"
+      ? "bg-[#dce8dc]"
+      : thread.status === "rejected"
+        ? "bg-[#eed9cf]"
+        : "bg-[#eef4f4]";
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="rounded-2xl border border-[#ddc8b0] bg-white/74 p-6">
+      <div className="paraiso-card rounded-2xl p-6">
         <div className="flex items-start gap-3">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-            isAwaitingApproval ? "bg-amber-100" : thread.status === "completed" ? "bg-green-100" : thread.status === "rejected" ? "bg-red-100" : "bg-stone-100"
-          }`}>
-            <Bot className="h-5 w-5" />
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
+            <Bot className="h-5 w-5 text-[#12343b]" />
           </div>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-stone-900">Booking Processor</h1>
-            <p className="mt-1 text-sm text-stone-600 whitespace-pre-wrap">{thread.summary}</p>
+            <h1 className="text-xl font-bold text-[#11272b]">Booking Processor</h1>
+            <p className="mt-1 text-sm text-[#5e7279] whitespace-pre-wrap">{thread.summary}</p>
             <div className="mt-2 flex items-center gap-2">
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                isAwaitingApproval ? "bg-amber-100 text-amber-700" : thread.status === "completed" ? "bg-green-100 text-green-700" : thread.status === "rejected" ? "bg-red-100 text-red-700" : "bg-stone-100 text-stone-700"
-              }`}>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusBadge}`}>
                 {thread.status.replace(/_/g, " ")}
               </span>
-              <span className="text-xs text-stone-400">{new Date(thread.createdAt).toLocaleString()}</span>
+              <span className="text-xs text-[#8a9ba1]">{new Date(thread.createdAt).toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -80,12 +91,14 @@ export function ThreadDetail({ thread, tasks }: { thread: AgentThread; tasks: Ag
 
       {/* Analysis & Availability */}
       {analysisTasks.map((task) => (
-        <div key={task.id} className="rounded-2xl border border-[#ddc8b0] bg-white/74 p-5">
+        <div key={task.id} className="paraiso-card rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
-            {task.taskType === "analysis" ? <Search className="h-4 w-4 text-[#12343b]" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
-            <h2 className="text-sm font-semibold text-stone-900">{task.title}</h2>
+            {task.taskType === "analysis"
+              ? <Search className="h-4 w-4 text-[#12343b]" />
+              : <AlertCircle className="h-4 w-4 text-[#c9922f]" />}
+            <h2 className="text-sm font-semibold text-[#11272b]">{task.title}</h2>
           </div>
-          <p className="text-sm text-stone-700 whitespace-pre-wrap leading-relaxed">{task.description}</p>
+          <p className="text-sm text-[#5e7279] whitespace-pre-wrap leading-relaxed">{task.description}</p>
         </div>
       ))}
 
@@ -93,17 +106,19 @@ export function ThreadDetail({ thread, tasks }: { thread: AgentThread; tasks: Ag
       {guestEmail && (() => {
         const action = guestEmail.proposedAction as Record<string, unknown>;
         return (
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5">
+          <div className="rounded-2xl border border-[#d6e2e5] bg-[#eef4f4] p-5">
             <div className="flex items-center gap-2 mb-3">
-              <User className="h-4 w-4 text-blue-600" />
-              <h2 className="text-sm font-semibold text-stone-900">Guest Confirmation Email</h2>
-              <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${guestEmail.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>{guestEmail.status}</span>
+              <User className="h-4 w-4 text-[#12343b]" />
+              <h2 className="text-sm font-semibold text-[#11272b]">Guest Confirmation Email</h2>
+              <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${guestEmail.status === "pending" ? "bg-[#f3e8ce] text-[#7a5a17]" : "bg-[#dce8dc] text-[#375a3f]"}`}>
+                {guestEmail.status}
+              </span>
             </div>
-            <div className="rounded-xl border border-blue-200 bg-white p-4">
-              <p className="text-xs text-stone-500">To: <span className="font-medium text-stone-700">{String(action.to)}</span></p>
-              <p className="text-xs text-stone-500 mt-1">Subject: <span className="font-medium text-stone-700">{String(action.subject)}</span></p>
-              <div className="mt-3 border-t border-stone-100 pt-3">
-                <p className="text-sm text-stone-700 whitespace-pre-wrap leading-relaxed">{String(action.body)}</p>
+            <div className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-4">
+              <p className="text-xs text-[#8a9ba1]">To: <span className="font-medium text-[#5e7279]">{String(action.to)}</span></p>
+              <p className="text-xs text-[#8a9ba1] mt-1">Subject: <span className="font-medium text-[#5e7279]">{String(action.subject)}</span></p>
+              <div className="mt-3 border-t border-[#e0e4dd] pt-3">
+                <p className="text-sm text-[#5e7279] whitespace-pre-wrap leading-relaxed">{String(action.body)}</p>
               </div>
             </div>
           </div>
@@ -113,24 +128,28 @@ export function ThreadDetail({ thread, tasks }: { thread: AgentThread; tasks: Ag
       {/* Supplier Emails */}
       {supplierEmailTasks.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[#8a9ba1]">
             Supplier Reservation Emails ({supplierEmailTasks.length})
           </h2>
           {supplierEmailTasks.map((task) => {
             const action = task.proposedAction as Record<string, unknown>;
             const isHotel = task.title.toLowerCase().includes("hotel");
             return (
-              <div key={task.id} className={`rounded-2xl border p-5 ${isHotel ? "border-teal-200 bg-teal-50/50" : "border-purple-200 bg-purple-50/50"}`}>
+              <div key={task.id} className={`rounded-2xl border p-5 ${isHotel ? "border-[#dce8dc] bg-[#dce8dc]/30" : "border-[#e2e3dd] bg-[#e2e3dd]/30"}`}>
                 <div className="flex items-center gap-2 mb-3">
-                  {isHotel ? <BedDouble className="h-4 w-4 text-teal-600" /> : <CarFront className="h-4 w-4 text-purple-600" />}
-                  <h3 className="text-sm font-semibold text-stone-900">{task.title}</h3>
-                  <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${task.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>{task.status}</span>
+                  {isHotel
+                    ? <BedDouble className="h-4 w-4 text-[#375a3f]" />
+                    : <CarFront className="h-4 w-4 text-[#545a54]" />}
+                  <h3 className="text-sm font-semibold text-[#11272b]">{task.title}</h3>
+                  <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${task.status === "pending" ? "bg-[#f3e8ce] text-[#7a5a17]" : "bg-[#dce8dc] text-[#375a3f]"}`}>
+                    {task.status}
+                  </span>
                 </div>
-                <div className="rounded-xl border border-stone-200 bg-white p-4">
-                  <p className="text-xs text-stone-500">To: <span className="font-medium text-stone-700">{String(action.supplierEmail || action.to)}</span></p>
-                  <p className="text-xs text-stone-500 mt-1">Subject: <span className="font-medium text-stone-700">{String(action.subject)}</span></p>
-                  <div className="mt-3 border-t border-stone-100 pt-3">
-                    <p className="text-sm text-stone-700 whitespace-pre-wrap leading-relaxed">{String(action.body)}</p>
+                <div className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-4">
+                  <p className="text-xs text-[#8a9ba1]">To: <span className="font-medium text-[#5e7279]">{String(action.supplierEmail || action.to)}</span></p>
+                  <p className="text-xs text-[#8a9ba1] mt-1">Subject: <span className="font-medium text-[#5e7279]">{String(action.subject)}</span></p>
+                  <div className="mt-3 border-t border-[#e0e4dd] pt-3">
+                    <p className="text-sm text-[#5e7279] whitespace-pre-wrap leading-relaxed">{String(action.body)}</p>
                   </div>
                 </div>
               </div>
@@ -141,27 +160,37 @@ export function ThreadDetail({ thread, tasks }: { thread: AgentThread; tasks: Ag
 
       {/* Approval */}
       {isAwaitingApproval && firstPendingId && (
-        <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-6">
+        <div className="rounded-2xl border-2 border-[#f3e8ce] bg-[#f9f2e3] p-6">
           <div className="flex items-center gap-2 mb-2">
-            <Clock className="h-5 w-5 text-amber-600" />
-            <h3 className="text-lg font-bold text-stone-900">Your Decision Required</h3>
+            <Clock className="h-5 w-5 text-[#c9922f]" />
+            <h3 className="text-lg font-bold text-[#11272b]">Your Decision Required</h3>
           </div>
-          <p className="text-sm text-stone-600 mb-3">On approval:</p>
-          <ul className="text-sm text-stone-600 space-y-1 mb-4 ml-4 list-disc">
+          <p className="text-sm text-[#5e7279] mb-3">On approval:</p>
+          <ul className="text-sm text-[#5e7279] space-y-1 mb-4 ml-4 list-disc">
             <li>Tour scheduled in the calendar</li>
             <li>{supplierEmailTasks.length} reservation email{supplierEmailTasks.length !== 1 ? "s" : ""} sent to suppliers</li>
             <li>Confirmation email sent to the guest</li>
           </ul>
-          <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Notes (optional)" rows={2}
-            className="w-full rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm outline-none focus:border-teal-400" />
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Notes (optional)"
+            rows={2}
+            className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2 text-sm text-[#11272b] outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/20"
+          />
           <div className="mt-4 flex gap-3">
-            <button onClick={handleApprove} disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-6 py-3 text-sm font-bold text-white hover:bg-[#0f2b31] disabled:opacity-60">
+            <button
+              onClick={handleApprove}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-6 py-3 text-sm font-bold text-[#f6ead6] hover:bg-[#0f2b31] disabled:opacity-60"
+            >
               <CheckCircle2 className="h-5 w-5" /> {loading ? "Processing..." : "Approve & Send All"}
             </button>
-            <button onClick={handleReject} disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-6 py-3 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-60">
+            <button
+              onClick={handleReject}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#eed9cf] bg-[#fffbf4] px-6 py-3 text-sm font-bold text-[#7c3a24] hover:bg-[#eed9cf] disabled:opacity-60"
+            >
               <XCircle className="h-5 w-5" /> Reject
             </button>
           </div>
@@ -169,20 +198,20 @@ export function ThreadDetail({ thread, tasks }: { thread: AgentThread; tasks: Ag
       )}
 
       {thread.status === "completed" && (
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-5 flex items-center gap-3">
-          <CheckCircle2 className="h-6 w-6 text-green-600" />
+        <div className="paraiso-card rounded-2xl p-5 flex items-center gap-3">
+          <CheckCircle2 className="h-6 w-6 text-[#375a3f]" />
           <div>
-            <p className="font-semibold text-green-800">Approved & Processed</p>
-            <p className="text-sm text-green-700">Tour scheduled. All emails sent to suppliers and guest.</p>
+            <p className="font-semibold text-[#375a3f]">Approved &amp; Processed</p>
+            <p className="text-sm text-[#5e7279]">Tour scheduled. All emails sent to suppliers and guest.</p>
           </div>
         </div>
       )}
       {thread.status === "rejected" && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 flex items-center gap-3">
-          <XCircle className="h-6 w-6 text-red-600" />
+        <div className="rounded-2xl border border-[#eed9cf] bg-[#eed9cf]/30 p-5 flex items-center gap-3">
+          <XCircle className="h-6 w-6 text-[#7c3a24]" />
           <div>
-            <p className="font-semibold text-red-800">Rejected</p>
-            <p className="text-sm text-red-700">{thread.summary}</p>
+            <p className="font-semibold text-[#7c3a24]">Rejected</p>
+            <p className="text-sm text-[#5e7279]">{thread.summary}</p>
           </div>
         </div>
       )}
