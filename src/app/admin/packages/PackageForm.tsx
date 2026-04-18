@@ -27,6 +27,7 @@ import type {
   HotelSupplier,
   HotelMealPlan,
   PackageOption,
+  PriceType,
 } from "@/lib/types";
 import type { PlannerDestination, PlannerDestinationId } from "@/lib/route-planner";
 import { getPlannerActivities } from "@/lib/route-planner";
@@ -81,6 +82,18 @@ function calcOptionCost(opt: PackageOption, pax: number, nights: number) {
     default: return p;
   }
 }
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const TRANSPORT_PRICE_TYPES: { value: PriceType; label: string }[] = [
+  { value: "per_vehicle_per_day", label: "Per vehicle / day" },
+  { value: "per_person_per_day", label: "Per person / day" },
+  { value: "per_person_total", label: "Per person (trip total)" },
+  { value: "total", label: "Fixed total" },
+];
+
+const FIELD =
+  "rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] placeholder-[#b0bdc2] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20";
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
@@ -192,6 +205,7 @@ export function PackageForm({
   const [packageName, setPackageName] = useState(pkg?.name ?? "");
   const [destination, setDestination] = useState(pkg?.destination ?? "");
   const [currency, setCurrency] = useState(pkg?.currency ?? "USD");
+  const [basePrice, setBasePrice] = useState<number | "">(pkg?.price ?? "");
 
   // ── Step 2: Transport ──
   const [transportOptions, setTransportOptions] = useState<PackageOption[]>(pkg?.transportOptions ?? []);
@@ -319,8 +333,11 @@ export function PackageForm({
     formData.set("transportOptions", JSON.stringify(transportOptions));
     formData.set("customOptions", JSON.stringify([]));
 
-    // Auto-set price to min total, duration from day count
-    formData.set("price", String(minPrice > 0 ? minPrice : 0));
+    // Use manual base price if set, otherwise auto-calculated minimum
+    const finalPrice = basePrice !== "" && Number(basePrice) > 0
+      ? Number(basePrice)
+      : minPrice > 0 ? minPrice : 0;
+    formData.set("price", String(finalPrice));
     formData.set("duration", duration);
     formData.set("description", description);
 
@@ -446,6 +463,30 @@ export function PackageForm({
     });
   }
 
+  // Transport option editing
+  function updateTransportOption(idx: number, patch: Partial<PackageOption>) {
+    setTransportOptions((prev) => prev.map((o, i) => (i === idx ? { ...o, ...patch } : o)));
+  }
+
+  function removeTransportOption(idx: number) {
+    setTransportOptions((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function addCustomTransport() {
+    setTransportOptions((prev) => [
+      ...prev,
+      {
+        id: genId(),
+        label: "",
+        price: 0,
+        costPrice: 0,
+        priceType: "per_vehicle_per_day" as PriceType,
+        capacity: 4,
+        isDefault: prev.length === 0,
+      },
+    ]);
+  }
+
   // Transport selection
   function toggleTransport(supplier: HotelSupplier) {
     const existing = transportOptions.find((o) => o.supplierId === supplier.id);
@@ -518,14 +559,20 @@ export function PackageForm({
                 </select>
               </div>
               <div>
-                <label htmlFor="region" className={LABEL}>Region</label>
-                <select id="region" name="region" defaultValue={pkg?.region ?? ""} className={INPUT}>
-                  <option value="">— All Sri Lanka —</option>
-                  {["Colombo","Kandy","Galle","Ella","Sigiriya","Yala","Nuwara Eliya","Southern Coast","Cultural Triangle","Tea Country"].map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
+                <label htmlFor="basePrice" className={LABEL}>Base price <span className="text-xs font-normal text-[#8a9ba1]">(optional override)</span></label>
+                <div className="relative">
+                  <DollarSign className="pointer-events-none absolute left-3 top-[calc(50%+2px)] h-4 w-4 -translate-y-1/2 text-[#8a9ba1]" />
+                  <input
+                    id="basePrice" type="number" min={0} step={1}
+                    value={basePrice}
+                    onChange={(e) => setBasePrice(e.target.value === "" ? "" : parseFloat(e.target.value) || 0)}
+                    className={`${INPUT} pl-9`} placeholder="Auto-calculated if empty"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-[#8a9ba1]">Leave empty to auto-calculate from cheapest options</p>
               </div>
+              {/* Preserve existing region when editing (not exposed in UI) */}
+              <input type="hidden" name="region" value={pkg?.region ?? ""} />
             </div>
             {/* Rating + Review + Toggles */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -576,49 +623,141 @@ export function PackageForm({
         <SectionAccordion
           number={2} title="Transport"
           subtitle={transportOptions.length > 0
-            ? `${transportOptions.length} option${transportOptions.length === 1 ? "" : "s"} · guests pick on booking`
-            : "Choose which vehicles guests can select"}
+            ? `${transportOptions.length} option${transportOptions.length === 1 ? "" : "s"} · guests pick one at booking`
+            : "Add all vehicles guests can choose from"}
           open={openSection === 2} done={sectionDone(2)}
           onToggle={() => setOpenSection(openSection === 2 ? 0 : 2)}
         >
-          <div className="space-y-4">
-            {transportSuppliers.length === 0 ? (
+          <div className="space-y-5">
+
+            {/* Catalog suppliers */}
+            {transportSuppliers.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#8a9ba1]">
+                  From your catalog — select all you want to offer
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {transportSuppliers.map((t) => {
+                    const isSelected = transportOptions.some((o) => o.supplierId === t.id);
+                    return (
+                      <button
+                        key={t.id} type="button" onClick={() => toggleTransport(t)}
+                        className={`rounded-xl border px-4 py-3 text-left transition ${
+                          isSelected
+                            ? "border-[#12343b] bg-[#12343b] text-[#f6ead6] shadow-sm"
+                            : "border-[#e0e4dd] bg-[#fffbf4] text-[#11272b] hover:border-[#8a9ba1]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">{t.name}</span>
+                          {isSelected
+                            ? <Check className="h-4 w-4 shrink-0" />
+                            : <Plus className="h-4 w-4 shrink-0 text-[#8a9ba1]" />}
+                        </div>
+                        <span className={`mt-0.5 block text-xs ${isSelected ? "text-[#f6ead6]/70" : "text-[#5e7279]"}`}>
+                          {t.defaultPricePerNight != null
+                            ? `${t.defaultPricePerNight.toLocaleString()} ${t.currency}/day`
+                            : "Rate not set"}
+                          {t.capacity ? ` · up to ${t.capacity} pax` : ""}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {transportSuppliers.length === 0 && transportOptions.length === 0 && (
               <p className="rounded-xl border border-dashed border-[#ddd3c4] py-4 text-center text-sm text-[#8a9ba1]">
-                No transport suppliers found — add them in the Suppliers section first.
+                No transport suppliers yet — add them in Suppliers, or use the custom option below.
               </p>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {transportSuppliers.map((t) => {
-                  const isSelected = transportOptions.some((o) => o.supplierId === t.id);
-                  return (
-                    <button
-                      key={t.id} type="button" onClick={() => toggleTransport(t)}
-                      className={`rounded-xl border px-4 py-3 text-left transition ${
-                        isSelected
-                          ? "border-[#12343b] bg-[#12343b] text-[#f6ead6] shadow-sm"
-                          : "border-[#e0e4dd] bg-white text-[#11272b] hover:border-[#8a9ba1]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold">{t.name}</span>
-                        {isSelected && <Check className="h-4 w-4 shrink-0" />}
-                      </div>
-                      <span className={`mt-0.5 block text-xs ${isSelected ? "text-[#f6ead6]/70" : "text-[#5e7279]"}`}>
-                        {t.defaultPricePerNight != null
-                          ? `${t.defaultPricePerNight.toLocaleString()} ${t.currency}/day`
-                          : "Rate not set"}
-                        {t.capacity ? ` · up to ${t.capacity} guests` : ""}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
             )}
+
+            {/* Editable option cards */}
             {transportOptions.length > 0 && (
-              <div className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-3 text-xs text-[#5e7279]">
-                <strong className="text-[#11272b]">{transportOptions.length}</strong> transport option{transportOptions.length === 1 ? "" : "s"} added. Cheapest sets the base price: <strong className="text-[#11272b]">{fmt(Math.min(...transportOptions.map((o) => o.price)), currency)}/day</strong>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#8a9ba1]">
+                  Configure each option · guests choose one at booking
+                </p>
+                {transportOptions.map((opt, i) => (
+                  <div key={opt.id} className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Label */}
+                      <input
+                        value={opt.label}
+                        onChange={(e) => updateTransportOption(i, { label: e.target.value })}
+                        placeholder="Option name (e.g. Economy Van)"
+                        className={`min-w-[160px] flex-1 ${FIELD}`}
+                      />
+                      {/* Price */}
+                      <input
+                        type="number" min={0} step={1}
+                        value={opt.price || ""}
+                        onChange={(e) => updateTransportOption(i, { price: parseFloat(e.target.value) || 0, costPrice: parseFloat(e.target.value) || 0 })}
+                        placeholder="Price"
+                        className={`w-28 ${FIELD}`}
+                      />
+                      {/* Price type */}
+                      <select
+                        value={opt.priceType}
+                        onChange={(e) => updateTransportOption(i, { priceType: e.target.value as PriceType })}
+                        className={`w-44 ${FIELD}`}
+                      >
+                        {TRANSPORT_PRICE_TYPES.map((pt) => (
+                          <option key={pt.value} value={pt.value}>{pt.label}</option>
+                        ))}
+                      </select>
+                      {/* Capacity */}
+                      <input
+                        type="number" min={1} step={1}
+                        value={opt.capacity ?? ""}
+                        onChange={(e) => updateTransportOption(i, { capacity: e.target.value ? Math.max(1, parseInt(e.target.value, 10) || 1) : undefined })}
+                        placeholder="Max pax"
+                        title="Max passengers"
+                        className={`w-24 ${FIELD}`}
+                      />
+                      {/* Default toggle */}
+                      <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[#e0e4dd] bg-[#f4ecdd] px-3 py-2 text-xs font-medium text-[#11272b] transition hover:bg-[#eaded0]">
+                        <input
+                          type="checkbox"
+                          checked={opt.isDefault ?? false}
+                          onChange={(e) => updateTransportOption(i, { isDefault: e.target.checked })}
+                          className="h-3.5 w-3.5 rounded border-[#c0b8ae] text-[#12343b] focus:ring-[#c9922f]"
+                        />
+                        Default
+                      </label>
+                      {/* Remove */}
+                      <button
+                        type="button" onClick={() => removeTransportOption(i)}
+                        className="rounded-lg p-2 text-[#8a9ba1] transition hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {/* Supplier rate hint */}
+                    {opt.supplierId && (transportSuppliers.find((s) => s.id === opt.supplierId)?.defaultPricePerNight != null) && (
+                      <p className="mt-1.5 text-xs text-[#8a9ba1]">
+                        Supplier default rate: <strong className="text-[#11272b]">{transportSuppliers.find((s) => s.id === opt.supplierId)!.defaultPricePerNight!.toLocaleString()} {transportSuppliers.find((s) => s.id === opt.supplierId)!.currency}/day</strong>
+                      </p>
+                    )}
+                  </div>
+                ))}
+
+                {/* Summary */}
+                <p className="text-xs text-[#8a9ba1]">
+                  Cheapest option ({fmt(Math.min(...transportOptions.map((o) => o.price)), currency)}) is used for the starting price.
+                </p>
               </div>
             )}
+
+            {/* Custom option button */}
+            <button
+              type="button" onClick={addCustomTransport}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#12343b]/30 py-3 text-sm font-medium text-[#12343b] transition hover:border-[#12343b]/60 hover:bg-[#12343b]/5"
+            >
+              <Plus className="h-4 w-4" /> Add custom transport option
+            </button>
+
             <button type="button"
               onClick={() => { setError(""); setOpenSection(3); }}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12343b] py-3 text-sm font-semibold text-[#f6ead6] transition hover:bg-[#1a474f]"
@@ -1040,22 +1179,39 @@ export function PackageForm({
             </div>
 
             {/* Pricing summary */}
-            <div className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
-                <DollarSign className="h-4 w-4 text-[#c9922f]" />
-                Calculated package price
-              </div>
-              <p className="mt-1 text-xs text-[#8a9ba1]">
-                Based on cheapest options (1 traveller). Guests who upgrade will pay the difference.
-              </p>
-              <p className="mt-2 text-2xl font-bold text-[#12343b]">
-                {minPrice > 0 ? fmt(minPrice, currency) : <span className="text-base font-normal text-[#8a9ba1]">Add hotels and transport to see price</span>}
-              </p>
-              <p className="mt-0.5 text-xs text-[#8a9ba1]">{duration} · starting from</p>
-              {/* Hidden input carries the computed price */}
-              <input type="hidden" name="price" value={minPrice > 0 ? minPrice : 0} readOnly />
-              <input type="hidden" name="duration" value={duration} readOnly />
-            </div>
+            {(() => {
+              const effectivePrice = basePrice !== "" && Number(basePrice) > 0
+                ? Number(basePrice)
+                : minPrice > 0 ? minPrice : 0;
+              const isManual = basePrice !== "" && Number(basePrice) > 0;
+              return (
+                <div className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
+                    <DollarSign className="h-4 w-4 text-[#c9922f]" />
+                    Package starting price
+                  </div>
+                  <p className="mt-1 text-xs text-[#8a9ba1]">
+                    {isManual
+                      ? "Using your manual base price from Step 1. Guests who upgrade pay the difference."
+                      : "Auto-calculated from cheapest options (1 traveller). Set a manual price in Step 1 to override."}
+                  </p>
+                  <div className="mt-2 flex items-end gap-3">
+                    <p className="text-2xl font-bold text-[#12343b]">
+                      {effectivePrice > 0
+                        ? fmt(effectivePrice, currency)
+                        : <span className="text-base font-normal text-[#8a9ba1]">Set a price in Step 1 or add hotels &amp; transport</span>}
+                    </p>
+                    {isManual && minPrice > 0 && (
+                      <p className="mb-1 text-xs text-[#8a9ba1]">
+                        (auto-calc: {fmt(minPrice, currency)})
+                      </p>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs text-[#8a9ba1]">{duration} · starting from</p>
+                  <input type="hidden" name="duration" value={duration} readOnly />
+                </div>
+              );
+            })()}
 
           </div>
         </SectionAccordion>
@@ -1074,8 +1230,12 @@ export function PackageForm({
             </p>
           </div>
           <div className="hidden shrink-0 text-right sm:block">
-            <p className="text-xs text-[#8a9ba1]">Starting from (1 pax)</p>
-            <p className="text-sm font-bold text-[#12343b]">{minPrice > 0 ? fmt(minPrice, currency) : "—"}</p>
+            <p className="text-xs text-[#8a9ba1]">Starting from</p>
+            <p className="text-sm font-bold text-[#12343b]">
+              {basePrice !== "" && Number(basePrice) > 0
+                ? fmt(Number(basePrice), currency)
+                : minPrice > 0 ? fmt(minPrice, currency) : "—"}
+            </p>
           </div>
           {warnings.length > 0 && (
             <div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
