@@ -269,17 +269,33 @@ export default async function BookingDetailPage({
                 customRoute ? (
                   <div className="space-y-5">
                     <CustomRouteBreakdown lead={lead} route={customRoute} />
-                    <section className="flex flex-wrap items-center gap-3 border-t border-[#e0e4dd] pt-5">
-                      <Link
-                        href={`/admin/bookings/${lead.id}/edit`}
-                        className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd]"
-                      >
-                        Edit booking
-                      </Link>
-                      <p className="text-sm text-[#8a9ba1]">
-                        Finalize package and booking selections before confirming this journey.
-                      </p>
-                    </section>
+                    {!isScheduled ? (
+                      <section className="flex flex-wrap items-center gap-3 border-t border-[#e0e4dd] pt-5">
+                        <Link
+                          href={`/admin/bookings/${lead.id}/edit`}
+                          className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd]"
+                        >
+                          Edit booking
+                        </Link>
+                        <ApproveScheduleButton
+                          leadId={lead.id}
+                          hasTravelDate={!!lead.travelDate}
+                        />
+                      </section>
+                    ) : (
+                      <section className="rounded-xl border border-[#dce8dc] bg-[#dce8dc]/30 px-4 py-3 flex items-center gap-3">
+                        <Calendar className="h-5 w-5 text-[#375a3f] shrink-0" />
+                        <div>
+                          <p className="font-semibold text-[#375a3f]">Tour scheduled</p>
+                          <p className="text-xs text-[#5e7279]">
+                            View details in{" "}
+                            <Link href="/admin/calendar" className="underline hover:no-underline">
+                              Scheduled Tours
+                            </Link>
+                          </p>
+                        </div>
+                      </section>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-xl border border-[#f3e8ce] bg-[#f9f2e3] px-4 py-4 text-[#7a5a17]">
