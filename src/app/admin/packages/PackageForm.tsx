@@ -129,7 +129,8 @@ function SectionAccordion({
         </span>
         {open ? <ChevronUp className="h-5 w-5 shrink-0 text-[#8a9ba1]" /> : <ChevronDown className="h-5 w-5 shrink-0 text-[#8a9ba1]" />}
       </button>
-      {open && <div className="border-t border-[#e0e4dd] px-5 pb-6 pt-5">{children}</div>}
+      {/* Always render children so form inputs stay in the DOM for FormData collection */}
+      <div className={`border-t border-[#e0e4dd] px-5 pb-6 pt-5${open ? "" : " hidden"}`}>{children}</div>
     </section>
   );
 }
@@ -312,6 +313,13 @@ export function PackageForm({
     setSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
+
+    // Explicitly set all state-controlled fields so they survive accordion close/open
+    formData.set("name", packageName);
+    formData.set("destination", destination);
+    formData.set("currency", currency);
+    formData.set("description", description);
+    if (imageUrlInput) formData.set("imageUrl", imageUrlInput);
 
     // Serialise itinerary
     days.forEach((day, i) => {
