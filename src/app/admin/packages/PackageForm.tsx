@@ -690,7 +690,7 @@ export function PackageForm({
                       />
 
                       {isStayNight ? (
-                        <>
+                        <div className="grid gap-3 sm:grid-cols-2">
                           <OptionsEditor
                             title={`Night ${index + 1} — Hotel options`}
                             options={day.accommodationOptions ?? []}
@@ -725,7 +725,7 @@ export function PackageForm({
                               />
                             );
                           })()}
-                        </>
+                        </div>
                       ) : (
                         <div className="rounded-xl border border-dashed border-[#ddd3c4] bg-[#faf6ef] px-4 py-3 text-sm text-[#8a9ba1]">
                           No hotel selector — this is the final / transit day.
