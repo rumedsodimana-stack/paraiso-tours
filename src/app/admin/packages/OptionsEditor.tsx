@@ -17,6 +17,9 @@ const PRICE_TYPES: { value: PriceType; label: string }[] = [
   { value: "total", label: "Total" },
 ];
 
+const FIELD =
+  "rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] placeholder-[#b0bdc2] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20";
+
 function genId() {
   return `opt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -66,7 +69,6 @@ function buildOptionFromSupplier(
   existing?: PackageOption
 ): PackageOption {
   const supplierRate = supplier.defaultPricePerNight ?? 0;
-
   return {
     id: existing?.id ?? genId(),
     label: supplier.name,
@@ -74,8 +76,7 @@ function buildOptionFromSupplier(
     price: supplierRate,
     costPrice: supplierRate,
     priceType: getPriceTypeForSupplierType(supplierType),
-    capacity:
-      existing?.capacity ?? getDefaultCapacityForSupplierType(supplierType),
+    capacity: existing?.capacity ?? getDefaultCapacityForSupplierType(supplierType),
     isDefault: existing?.isDefault ?? false,
   };
 }
@@ -100,17 +101,13 @@ export function OptionsEditor({
   supplierType?: "hotel" | "transport" | "meal";
   allowCustom?: boolean;
   packageCurrency?: string;
-  /** When set, hotel options are filtered to this destination only */
   destinationId?: string;
-  /** When provided, meal options are sourced from hotel meal plan catalog */
   mealPlans?: MealPlanEntry[];
 }) {
-  const defaultPriceType: PriceType =
-    showSupplier
-      ? getPriceTypeForSupplierType(supplierType)
-      : "per_person";
+  const defaultPriceType: PriceType = showSupplier
+    ? getPriceTypeForSupplierType(supplierType)
+    : "per_person";
 
-  // Filter supplier list: for hotels, filter by destination when provided
   const supplierList = (hotels?.filter((h) => {
     if (h.type !== supplierType) return false;
     if (supplierType === "hotel" && destinationId) {
@@ -119,7 +116,6 @@ export function OptionsEditor({
     return true;
   }) ?? []);
 
-  // Whether to use meal plan catalog instead of supplier list
   const useMealPlanCatalog = supplierType === "meal" && mealPlans !== undefined;
 
   function add() {
@@ -131,11 +127,7 @@ export function OptionsEditor({
       onChange([...options, buildOptionFromSupplier(supplierList[0], supplierType)]);
       return;
     }
-
-    onChange([
-      ...options,
-      { id: genId(), label: "", price: 0, priceType: defaultPriceType },
-    ]);
+    onChange([...options, { id: genId(), label: "", price: 0, priceType: defaultPriceType }]);
   }
 
   function remove(i: number) {
@@ -147,51 +139,58 @@ export function OptionsEditor({
   }
 
   return (
-    <div className="rounded-xl border border-white/30 bg-white/40 p-4 backdrop-blur-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-stone-700">{title}</span>
+    <div className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] p-4">
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold text-[#11272b]">{title}</span>
         <button
           type="button"
           onClick={add}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm text-teal-600 hover:bg-teal-50"
+          className="flex items-center gap-1.5 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-2.5 py-1 text-xs font-medium text-[#12343b] transition hover:bg-[#eaded0] active:scale-95"
         >
           <Plus className="h-3.5 w-3.5" />
           Add
         </button>
       </div>
+
+      {/* Hint */}
       {showSupplier && !useMealPlanCatalog ? (
-        <p className="mb-3 text-xs text-stone-500">
-          Selecting a supplier copies its saved default rate into the option.
-          You can then adjust the package price if needed.
+        <p className="mb-3 text-xs text-[#8a9ba1]">
+          Pick a supplier to copy its saved default rate — adjust the package price if needed.
         </p>
       ) : useMealPlanCatalog ? (
-        <p className="mb-3 text-xs text-stone-500">
-          Select a meal plan from your hotel catalog. Price is copied from the plan.
+        <p className="mb-3 text-xs text-[#8a9ba1]">
+          Select a meal plan from the hotel catalog. Price is copied automatically.
         </p>
       ) : null}
+
+      {/* Empty state */}
+      {options.length === 0 && (
+        <div className="rounded-lg border border-dashed border-[#ddd3c4] py-3 text-center text-xs text-[#8a9ba1]">
+          No options yet — click Add to start.
+        </div>
+      )}
+
+      {/* Option rows */}
       <div className="space-y-2">
-        {options.map((opt, i) => (
+        {options.map((opt, i) =>
           (() => {
             const linkedSupplier = opt.supplierId
-              ? supplierList.find((supplier) => supplier.id === opt.supplierId)
+              ? supplierList.find((s) => s.id === opt.supplierId)
               : undefined;
             const supplierRate = linkedSupplier?.defaultPricePerNight;
             const currentCost = opt.costPrice ?? opt.price;
-            const isSyncedToSupplier =
+            const isSynced =
               linkedSupplier &&
               supplierRate != null &&
               opt.price === supplierRate &&
               currentCost === supplierRate;
             const hasCurrencyMismatch =
-              linkedSupplier &&
-              packageCurrency &&
-              linkedSupplier.currency !== packageCurrency;
+              linkedSupplier && packageCurrency && linkedSupplier.currency !== packageCurrency;
 
             return (
-              <div
-                key={opt.id}
-                className="rounded-xl border border-white/30 bg-white/55 p-3"
-              >
+              <div key={opt.id} className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-3">
+                {/* Row 1 — supplier/label selector + delete */}
                 <div className="flex flex-wrap items-center gap-2">
                   {useMealPlanCatalog && mealPlans!.length > 0 ? (
                     <select
@@ -206,7 +205,7 @@ export function OptionsEditor({
                         if (!mp) return;
                         update(i, buildOptionFromMealPlan(mp, opt));
                       }}
-                      className="min-w-[260px] rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                      className={`min-w-[240px] ${FIELD}`}
                     >
                       <option value="">Select meal plan…</option>
                       {Array.from(new Set(mealPlans!.map((m) => m.hotelName))).map((hotelName) => (
@@ -214,10 +213,7 @@ export function OptionsEditor({
                           {mealPlans!
                             .filter((m) => m.hotelName === hotelName)
                             .map((m) => (
-                              <option
-                                key={m.id}
-                                value={`${m.hotelId}|||${m.hotelName} — ${m.label}`}
-                              >
+                              <option key={m.id} value={`${m.hotelId}|||${m.hotelName} — ${m.label}`}>
                                 {m.label} — {m.pricePerPerson.toLocaleString()} {m.currency}/person
                               </option>
                             ))}
@@ -231,51 +227,29 @@ export function OptionsEditor({
                         onChange={(e) => {
                           const val = e.target.value;
                           if (allowCustom && val === "__custom__") {
-                            update(i, {
-                              supplierId: undefined,
-                              label: "",
-                              price: 0,
-                              costPrice: undefined,
-                              priceType: defaultPriceType,
-                            });
+                            update(i, { supplierId: undefined, label: "", price: 0, costPrice: undefined, priceType: defaultPriceType });
                           } else {
-                            const supplier = supplierList.find(
-                              (item) => item.id === val
-                            );
+                            const supplier = supplierList.find((s) => s.id === val);
                             if (!supplier) return;
-                            update(
-                              i,
-                              buildOptionFromSupplier(supplier, supplierType, opt)
-                            );
+                            update(i, buildOptionFromSupplier(supplier, supplierType, opt));
                           }
                         }}
-                        className="min-w-[210px] rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                        className={`min-w-[200px] ${FIELD}`}
                       >
                         {allowCustom ? <option value="__custom__">Custom</option> : null}
-                        {!allowCustom ? (
-                          <option value="" disabled>
-                            Select supplier
-                          </option>
-                        ) : null}
-                        {supplierList.map((supplier) => (
-                          <option key={supplier.id} value={supplier.id}>
-                            {supplier.name}
-                            {supplierType === "hotel" &&
-                            supplier.starRating != null
-                              ? ` (${supplier.starRating} ★)`
-                              : ""}
+                        {!allowCustom ? <option value="" disabled>Select supplier</option> : null}
+                        {supplierList.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}{supplierType === "hotel" && s.starRating != null ? ` (${s.starRating}★)` : ""}
                           </option>
                         ))}
                       </select>
-                      {allowCustom &&
-                      (opt.supplierId === "__custom__" || !opt.supplierId) ? (
+                      {allowCustom && (opt.supplierId === "__custom__" || !opt.supplierId) ? (
                         <input
                           placeholder="Custom name"
                           value={opt.label}
-                          onChange={(e) =>
-                            update(i, { label: e.target.value })
-                          }
-                          className="min-w-[180px] flex-1 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                          onChange={(e) => update(i, { label: e.target.value })}
+                          className={`min-w-[160px] flex-1 ${FIELD}`}
                         />
                       ) : null}
                     </>
@@ -284,140 +258,124 @@ export function OptionsEditor({
                       placeholder="Label (e.g. BB, HB)"
                       value={opt.label}
                       onChange={(e) => update(i, { label: e.target.value })}
-                      className="min-w-[220px] flex-1 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                      className={`min-w-[200px] flex-1 ${FIELD}`}
                     />
                   )}
+
+                  {/* Price */}
                   <input
                     type="number"
                     min={0}
                     step={0.01}
                     placeholder="Price"
                     value={opt.price || ""}
-                    onChange={(e) =>
-                      update(i, { price: parseFloat(e.target.value) || 0 })
-                    }
-                    className="w-28 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                    onChange={(e) => update(i, { price: parseFloat(e.target.value) || 0 })}
+                    className={`w-28 ${FIELD}`}
                   />
+
+                  {/* Price type */}
                   <select
                     value={opt.priceType}
                     onChange={(e) =>
                       update(i, {
                         priceType: e.target.value as PriceType,
-                        capacity: usesCapacityField(
-                          e.target.value as PriceType
-                        )
+                        capacity: usesCapacityField(e.target.value as PriceType)
                           ? opt.capacity ?? getDefaultCapacityForSupplierType(supplierType)
                           : undefined,
                       })
                     }
-                    className="w-32 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                    className={`w-36 ${FIELD}`}
                   >
-                    {PRICE_TYPES.map((priceType) => (
-                      <option key={priceType.value} value={priceType.value}>
-                        {priceType.label}
-                      </option>
+                    {PRICE_TYPES.map((pt) => (
+                      <option key={pt.value} value={pt.value}>{pt.label}</option>
                     ))}
                   </select>
+
+                  {/* Cost */}
                   <input
                     type="number"
                     min={0}
                     step={0.01}
                     placeholder="Cost"
+                    title="Your cost (for margin tracking)"
                     value={opt.costPrice ?? ""}
                     onChange={(e) =>
-                      update(i, {
-                        costPrice: e.target.value
-                          ? parseFloat(e.target.value)
-                          : undefined,
-                      })
+                      update(i, { costPrice: e.target.value ? parseFloat(e.target.value) : undefined })
                     }
-                    className="w-28 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
-                    title="Cost (for margin)"
+                    className={`w-28 ${FIELD}`}
                   />
+
+                  {/* Capacity */}
                   {usesCapacityField(opt.priceType) ? (
                     <input
                       type="number"
                       min={1}
                       step={1}
-                      placeholder={
-                        opt.priceType === "per_room_per_night"
-                          ? "Room pax"
-                          : "Vehicle pax"
-                      }
+                      placeholder={opt.priceType === "per_room_per_night" ? "Pax/room" : "Pax/vehicle"}
+                      title="People covered by one unit"
                       value={opt.capacity ?? ""}
                       onChange={(e) =>
-                        update(i, {
-                          capacity: e.target.value
-                            ? Math.max(1, parseInt(e.target.value, 10) || 1)
-                            : undefined,
-                        })
+                        update(i, { capacity: e.target.value ? Math.max(1, parseInt(e.target.value, 10) || 1) : undefined })
                       }
-                      className="w-28 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
-                      title="People covered by one room or vehicle unit"
+                      className={`w-28 ${FIELD}`}
                     />
                   ) : null}
-                  <label className="flex shrink-0 items-center gap-1 rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-xs font-medium text-stone-600">
+
+                  {/* Default toggle */}
+                  <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[#e0e4dd] bg-[#f4ecdd] px-3 py-2 text-xs font-medium text-[#11272b] transition hover:bg-[#eaded0]">
                     <input
                       type="checkbox"
                       checked={opt.isDefault ?? false}
-                      onChange={(e) =>
-                        update(i, { isDefault: e.target.checked })
-                      }
+                      onChange={(e) => update(i, { isDefault: e.target.checked })}
+                      className="h-3.5 w-3.5 rounded border-[#c0b8ae] text-[#12343b] focus:ring-[#c9922f]"
                     />
                     Default
                   </label>
+
+                  {/* Remove */}
                   <button
                     type="button"
                     onClick={() => remove(i)}
-                    className="rounded-lg p-2 text-red-500 transition hover:bg-red-50"
+                    className="rounded-lg p-2 text-[#8a9ba1] transition hover:bg-red-50 hover:text-red-500"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
 
+                {/* Supplier rate badge row */}
                 {!useMealPlanCatalog && linkedSupplier ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-stone-50/80 px-3 py-2 text-xs text-stone-600">
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-lg border border-[#e0e4dd] bg-[#f4ecdd] px-3 py-2 text-xs text-[#5e7279]">
                     <span>
-                      Saved supplier rate:{" "}
-                      <strong>
+                      Supplier rate:{" "}
+                      <strong className="text-[#11272b]">
                         {supplierRate != null
                           ? `${supplierRate.toLocaleString()} ${linkedSupplier.currency}`
                           : `0 ${linkedSupplier.currency}`}
                       </strong>
                     </span>
-                    {isSyncedToSupplier ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-1 font-medium text-emerald-700">
+                    {isSynced ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-700">
                         Synced
                       </span>
                     ) : (
                       <button
                         type="button"
-                        onClick={() =>
-                          update(
-                            i,
-                            buildOptionFromSupplier(
-                              linkedSupplier,
-                              supplierType,
-                              opt
-                            )
-                          )
-                        }
-                        className="rounded-full bg-teal-100 px-2 py-1 font-medium text-teal-700 transition hover:bg-teal-200"
+                        onClick={() => update(i, buildOptionFromSupplier(linkedSupplier, supplierType, opt))}
+                        className="rounded-full bg-[#12343b]/10 px-2 py-0.5 font-semibold text-[#12343b] transition hover:bg-[#12343b]/20"
                       >
                         Reset to supplier rate
                       </button>
                     )}
                     {hasCurrencyMismatch ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-1 font-medium text-amber-800">
-                        Supplier is in {linkedSupplier.currency}, package is in{" "}
-                        {packageCurrency}
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">
+                        Supplier: {linkedSupplier.currency} · Package: {packageCurrency}
                       </span>
                     ) : null}
                     {usesCapacityField(opt.priceType) ? (
-                      <span className="rounded-full bg-stone-100 px-2 py-1 font-medium text-stone-700">
+                      <span className="rounded-full bg-[#e0e4dd] px-2 py-0.5 font-medium text-[#5e7279]">
                         {opt.priceType === "per_room_per_night"
-                          ? `Occupancy ${opt.capacity ?? 1} pax/room`
-                          : `Capacity ${opt.capacity ?? 1} pax/vehicle`}
+                          ? `${opt.capacity ?? 1} pax/room`
+                          : `${opt.capacity ?? 1} pax/vehicle`}
                       </span>
                     ) : null}
                   </div>
@@ -425,7 +383,7 @@ export function OptionsEditor({
               </div>
             );
           })()
-        ))}
+        )}
       </div>
     </div>
   );
