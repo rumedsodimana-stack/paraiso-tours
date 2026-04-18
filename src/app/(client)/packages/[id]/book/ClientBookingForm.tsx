@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Car, UtensilsCrossed } from "lucide-react";
 import type { TourPackage, PackageOption, HotelSupplier } from "@/lib/types";
-import { calcOptionPrice } from "@/lib/package-price";
+import { calcOptionPrice, getFlatMealPlanOptions } from "@/lib/package-price";
 import { createClientBookingAction } from "@/app/actions/client-booking";
 import { debugClient } from "@/lib/debug";
 
@@ -78,7 +78,8 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
   const nights = parseNights(pkg.duration) || 7;
 
   const transportOptions = useMemo(() => pkg.transportOptions ?? [], [pkg.transportOptions]);
-  const mealOptions = useMemo(() => pkg.mealOptions ?? [], [pkg.mealOptions]);
+  // Reads per-night mealPlanOptions from itinerary when pkg.mealOptions is empty (new packages)
+  const mealOptions = useMemo(() => getFlatMealPlanOptions(pkg), [pkg]);
   const legacyAccommodation = useMemo(() => hasLegacyAccommodation(pkg), [pkg]);
   const legacyAccommodationOptions = useMemo(
     () => pkg.accommodationOptions ?? [],

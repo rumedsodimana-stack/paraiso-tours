@@ -1,5 +1,5 @@
 import type { Lead, TourPackage, PackageOption, HotelSupplier } from "./types";
-import { calcOptionCost, calcOptionPrice } from "./package-price";
+import { calcOptionCost, calcOptionPrice, getFlatMealPlanOptions } from "./package-price";
 
 function parseNights(duration: string): number {
   const m = duration.match(/(\d+)\s*[Nn]ight/);
@@ -105,7 +105,9 @@ export function getBookingBreakdownBySupplier(
   }
 
   if (lead.selectedMealOptionId) {
-    const opt = pkg.mealOptions?.find((o) => o.id === lead.selectedMealOptionId);
+    // Search package-level mealOptions first (legacy), then per-night itinerary (new packages)
+    const flatMeals = getFlatMealPlanOptions(pkg);
+    const opt = flatMeals.find((o) => o.id === lead.selectedMealOptionId);
     if (opt) addSupplierItem(opt, "meal");
   }
 

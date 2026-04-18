@@ -1,5 +1,5 @@
 import { getBookingBreakdownBySupplier } from "./booking-breakdown";
-import { calcOptionPrice } from "./package-price";
+import { calcOptionPrice, getFlatMealPlanOptions } from "./package-price";
 import type { HotelSupplier, Lead, PackageOption, TourPackage } from "./types";
 
 function roundCurrency(value: number): number {
@@ -88,7 +88,8 @@ export function calculateBookingSelectionsTotal(input: {
   let total = pkg.price * pax;
 
   const transportOptions = pkg.transportOptions ?? [];
-  const mealOptions = pkg.mealOptions ?? [];
+  // Use per-night mealPlanOptions when pkg.mealOptions is empty (new per-night packages)
+  const mealOptions = getFlatMealPlanOptions(pkg);
   const accommodationOptions = pkg.accommodationOptions ?? [];
   const nightSlots = getAccommodationNightSlots(pkg);
 

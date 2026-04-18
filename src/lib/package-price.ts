@@ -65,15 +65,34 @@ function getAccommodationOptionsForNight(pkg: TourPackage, nightIndex: number): 
   return pkg.accommodationOptions ?? [];
 }
 
+/**
+ * Returns a flat, deduplicated list of meal plan options for a package.
+ * - Legacy packages: returns pkg.mealOptions directly.
+ * - New per-night packages: collects unique plan types from itinerary days,
+ *   stripping hotel prefix ("Cinnamon Lodge — BB" → "BB"), using first
+ *   occurrence's option as the representative (for ID + price).
+ */
+export function getFlatMealPlanOptions(pkg: TourPackage): PackageOption[] {
+  if (pkg.mealOptions?.length) return pkg.mealOptions;
+  const seen = new Map<string, PackageOption>();
+  for (const day of pkg.itinerary ?? []) {
+    for (const mp of day.mealPlanOptions ?? []) {
+      const label = mp.label.includes(" — ")
+        ? mp.label.split(" — ").slice(-1)[0]!.trim()
+        : mp.label;
+      if (!seen.has(label)) seen.set(label, { ...mp, label });
+    }
+  }
+  return Array.from(seen.values());
+}
+
 export function getFromPrice(pkg: TourPackage, pax = 1): number {
   const nights = parseNights(pkg.duration);
   let total = pkg.price * pax;
 
   const min = (opts?: PackageOption[]) => {
     if (!opts?.length) return 0;
-    return Math.min(
-      ...opts.map((o) => calcOptionPrice(o, pax, nights))
-    );
+    return Math.min(...opts.map((o) => calcOptionPrice(o, pax, nights)));
   };
 
   // Accommodation: per-night or legacy package-level
@@ -88,7 +107,8 @@ export function getFromPrice(pkg: TourPackage, pax = 1): number {
   }
 
   total += min(pkg.transportOptions);
-  total += min(pkg.mealOptions);
+  // Meal plans: per-night or legacy package-level
+  total += min(getFlatMealPlanOptions(pkg));
 
   return total;
 }
