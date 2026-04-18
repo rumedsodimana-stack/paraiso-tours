@@ -14,7 +14,6 @@ import {
   Phone,
   MessageSquare,
 } from "lucide-react";
-import { getAiRuntimeStatus } from "@/lib/ai";
 import { getLead, getPackage, getHotels, getInvoiceByLeadId } from "@/lib/db";
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { getAuditLogsForEntities } from "@/lib/audit";
@@ -27,7 +26,6 @@ import { BookingSupplierBreakdown } from "../BookingSupplierBreakdown";
 import { EmailSuppliersButton } from "../EmailSuppliersButton";
 import { InvoiceButton } from "../InvoiceButton";
 import { ApproveScheduleButton } from "./ApproveScheduleButton";
-import { BookingCopilotPanel } from "./BookingCopilotPanel";
 import { CustomRouteBreakdown } from "../CustomRouteBreakdown";
 
 export const dynamic = "force-dynamic";
@@ -57,12 +55,11 @@ export default async function BookingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [lead, suppliers, existingInvoice, settings, aiRuntime] = await Promise.all([
+  const [lead, suppliers, existingInvoice, settings] = await Promise.all([
     getLead(id),
     getHotels(),
     getInvoiceByLeadId(id),
     getAppSettings(),
-    getAiRuntimeStatus(),
   ]);
   const livePackage = lead?.packageId ? await getPackage(lead.packageId) : null;
   const pkg = lead ? resolveLeadPackage(lead, livePackage) : null;
@@ -140,9 +137,7 @@ export default async function BookingDetailPage({
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        {/* ── Left column ── */}
-        <div className="space-y-6">
+      <div className="space-y-6">
           <div className="paraiso-card overflow-hidden rounded-2xl">
             {/* Header */}
             <div className="border-b border-[#e0e4dd] bg-[#f4ecdd] px-6 py-5">
@@ -401,18 +396,6 @@ export default async function BookingDetailPage({
           </div>
 
           <AuditTimeline title="Booking Activity" logs={auditLogs} />
-        </div>
-
-        {/* ── Right column — AI Copilot ── */}
-        <div className="space-y-6">
-          <BookingCopilotPanel
-            leadId={lead.id}
-            leadName={lead.name}
-            leadReference={lead.reference}
-            runtimeReady={aiRuntime.configured}
-            missingReason={aiRuntime.missingReason}
-          />
-        </div>
       </div>
     </div>
   );
