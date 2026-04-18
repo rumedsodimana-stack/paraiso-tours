@@ -13,14 +13,17 @@ function parseItinerary(formData: FormData): ItineraryDay[] {
     const description = formData.get(`itinerary_${i}_description`) as string;
     const accommodation = formData.get(`itinerary_${i}_accommodation`) as string;
     const accommodationOptionsRaw = formData.get(`itinerary_${i}_accommodationOptions`) as string;
+    const mealPlanOptionsRaw = formData.get(`itinerary_${i}_mealPlanOptions`) as string;
     if (!title && !description && !accommodationOptionsRaw) break;
     const accommodationOptions = parseOptionsFromJson(accommodationOptionsRaw);
+    const mealPlanOptions = parseOptionsFromJson(mealPlanOptionsRaw);
     days.push({
       day: i + 1,
       title: title?.trim() || "",
       description: description?.trim() || "",
       accommodation: accommodation?.trim() || undefined,
       accommodationOptions: accommodationOptions.length ? accommodationOptions : undefined,
+      mealPlanOptions: mealPlanOptions.length ? mealPlanOptions : undefined,
     });
     i++;
   }

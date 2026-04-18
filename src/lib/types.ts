@@ -86,8 +86,10 @@ export interface ItineraryDay {
   title: string;
   description: string;
   accommodation?: string;
-  /** Accommodation options for this night (hotels guest can choose) */
+  /** Hotel options for this night (guest chooses one) */
   accommodationOptions?: PackageOption[];
+  /** Meal plan options for this night — tied to the hotel(s) above (BB, HB, FB etc.) */
+  mealPlanOptions?: PackageOption[];
 }
 
 export type PriceType =

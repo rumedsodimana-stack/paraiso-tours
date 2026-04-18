@@ -18,7 +18,6 @@ import {
   Star,
   Trash2,
   TriangleAlert,
-  UtensilsCrossed,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -71,11 +70,10 @@ function calcTrackedCost(option: PackageOption, pax: number, nights: number) {
 function buildPreview(args: {
   itinerary: ItineraryDay[];
   transportOptions: PackageOption[];
-  mealOptions: PackageOption[];
   customOptions: PackageOption[];
   basePrice: number;
 }) {
-  const { itinerary, transportOptions, mealOptions, customOptions, basePrice } = args;
+  const { itinerary, transportOptions, customOptions, basePrice } = args;
   const pax = 1;
   const expectedNights = Math.max(0, itinerary.length - 1);
   const lines: PreviewLine[] = [];
@@ -84,14 +82,24 @@ function buildPreview(args: {
   let configuredNights = 0;
 
   itinerary.slice(0, expectedNights).forEach((day, i) => {
-    const opt = getDefaultOption(day.accommodationOptions ?? []);
-    if (!opt) return;
-    configuredNights += 1;
-    const sell = calcOptionPrice(opt, pax, 1);
-    const cost = calcTrackedCost(opt, pax, 1);
-    lines.push({ label: `Night ${i + 1}: ${opt.label}`, sellAmount: sell, costAmount: cost });
-    sellTotal += sell;
-    trackedCostTotal += cost;
+    const accom = getDefaultOption(day.accommodationOptions ?? []);
+    if (accom) {
+      configuredNights += 1;
+      const sell = calcOptionPrice(accom, pax, 1);
+      const cost = calcTrackedCost(accom, pax, 1);
+      lines.push({ label: `Night ${i + 1}: ${accom.label}`, sellAmount: sell, costAmount: cost });
+      sellTotal += sell;
+      trackedCostTotal += cost;
+    }
+    // Per-night meal plan
+    const meal = getDefaultOption(day.mealPlanOptions ?? []);
+    if (meal) {
+      const sell = calcOptionPrice(meal, pax, 1);
+      const cost = calcTrackedCost(meal, pax, 1);
+      lines.push({ label: `Night ${i + 1} meals: ${meal.label}`, sellAmount: sell, costAmount: cost });
+      sellTotal += sell;
+      trackedCostTotal += cost;
+    }
   });
 
   const transport = getDefaultOption(transportOptions);
@@ -99,14 +107,6 @@ function buildPreview(args: {
     const sell = calcOptionPrice(transport, pax, expectedNights);
     const cost = calcTrackedCost(transport, pax, expectedNights);
     lines.push({ label: `Transport: ${transport.label}`, sellAmount: sell, costAmount: cost });
-    sellTotal += sell; trackedCostTotal += cost;
-  }
-
-  const meals = getDefaultOption(mealOptions);
-  if (meals) {
-    const sell = calcOptionPrice(meals, pax, expectedNights);
-    const cost = calcTrackedCost(meals, pax, expectedNights);
-    lines.push({ label: `Meals: ${meals.label}`, sellAmount: sell, costAmount: cost });
     sellTotal += sell; trackedCostTotal += cost;
   }
 
@@ -276,15 +276,18 @@ export function PackageForm({
   const [inclusions, setInclusions] = useState<string[]>(pkg?.inclusions ?? []);
   const [exclusions, setExclusions] = useState<string[]>(pkg?.exclusions ?? []);
 
-  // Itinerary
+  // Itinerary — mealPlanOptions are now per-night, not package-level
   const [itinerary, setItinerary] = useState<ItineraryDay[]>(
     pkg?.itinerary?.length
-      ? pkg.itinerary.map((d) => ({ ...d, accommodationOptions: d.accommodationOptions ?? [] }))
-      : [{ day: 1, title: "", description: "", accommodation: "", accommodationOptions: [] }]
+      ? pkg.itinerary.map((d) => ({
+          ...d,
+          accommodationOptions: d.accommodationOptions ?? [],
+          mealPlanOptions: d.mealPlanOptions ?? [],
+        }))
+      : [{ day: 1, title: "", description: "", accommodation: "", accommodationOptions: [], mealPlanOptions: [] }]
   );
 
   // Options
-  const [mealOptions, setMealOptions] = useState<PackageOption[]>(pkg?.mealOptions ?? []);
   const [transportOptions, setTransportOptions] = useState<PackageOption[]>(pkg?.transportOptions ?? []);
   const [customOptions, setCustomOptions] = useState<PackageOption[]>(pkg?.customOptions ?? []);
 
@@ -311,23 +314,32 @@ export function PackageForm({
     durationMetrics.nights !== undefined &&
     (durationMetrics.days !== itineraryDays || durationMetrics.nights !== itineraryNights);
 
-  const preview = buildPreview({ itinerary, transportOptions, mealOptions, customOptions, basePrice });
+  const preview = buildPreview({ itinerary, transportOptions, customOptions, basePrice });
 
   const missingAccommodationNights = Array.from({ length: itineraryNights }, (_, i) => i + 1).filter(
     (n) => (itinerary[n - 1]?.accommodationOptions?.length ?? 0) === 0
   );
 
   const linkedSupplierIds = new Set<string>();
-  itinerary.forEach((d) => (d.accommodationOptions ?? []).forEach((o) => o.supplierId && linkedSupplierIds.add(o.supplierId)));
-  mealOptions.forEach((o) => o.supplierId && linkedSupplierIds.add(o.supplierId));
+  itinerary.forEach((d) => {
+    (d.accommodationOptions ?? []).forEach((o) => o.supplierId && linkedSupplierIds.add(o.supplierId));
+    (d.mealPlanOptions ?? []).forEach((o) => o.supplierId && linkedSupplierIds.add(o.supplierId));
+  });
   transportOptions.forEach((o) => o.supplierId && linkedSupplierIds.add(o.supplierId));
   customOptions.forEach((o) => o.supplierId && linkedSupplierIds.add(o.supplierId));
+
+  // Nights that have a hotel but no meal plan configured
+  const missingMealNights = Array.from({ length: itineraryNights }, (_, i) => i + 1).filter(
+    (n) =>
+      (itinerary[n - 1]?.accommodationOptions?.length ?? 0) > 0 &&
+      (itinerary[n - 1]?.mealPlanOptions?.length ?? 0) === 0
+  );
 
   const warnings: string[] = [
     ...(durationMismatch ? [`Duration text says "${duration}" but itinerary maps to ${recommendedDuration}.`] : []),
     ...(missingAccommodationNights.length > 0 ? [`Hotel choices missing for night${missingAccommodationNights.length > 1 ? "s" : ""} ${missingAccommodationNights.join(", ")}.`] : []),
     ...(transportOptions.length === 0 ? ["No transport option configured yet."] : []),
-    ...(mealOptions.length === 0 ? ["No meal option configured yet."] : []),
+    ...(missingMealNights.length > 0 ? [`Meal plans missing for night${missingMealNights.length > 1 ? "s" : ""} ${missingMealNights.join(", ")}.`] : []),
   ];
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -343,11 +355,13 @@ export function PackageForm({
       formData.set(`itinerary_${i}_description`, day.description);
       formData.set(`itinerary_${i}_accommodation`, day.accommodation || "");
       formData.set(`itinerary_${i}_accommodationOptions`, JSON.stringify(day.accommodationOptions ?? []));
+      formData.set(`itinerary_${i}_mealPlanOptions`, JSON.stringify(day.mealPlanOptions ?? []));
     });
 
     formData.set("inclusions", inclusions.join("\n"));
     formData.set("exclusions", exclusions.join("\n"));
-    formData.set("mealOptions", JSON.stringify(mealOptions));
+    // Meal plans are now per-night on each itinerary day — clear the legacy package-level field
+    formData.set("mealOptions", JSON.stringify([]));
     formData.set("transportOptions", JSON.stringify(transportOptions));
     formData.set("customOptions", JSON.stringify(customOptions));
 
@@ -363,7 +377,7 @@ export function PackageForm({
   function addDay() {
     setItinerary((prev) => [
       ...prev,
-      { day: prev.length + 1, title: "", description: "", accommodation: "", accommodationOptions: [] },
+      { day: prev.length + 1, title: "", description: "", accommodation: "", accommodationOptions: [], mealPlanOptions: [] },
     ]);
   }
 
@@ -676,17 +690,42 @@ export function PackageForm({
                       />
 
                       {isStayNight ? (
-                        <OptionsEditor
-                          title={`Night ${index + 1} — Hotel options`}
-                          options={day.accommodationOptions ?? []}
-                          onChange={(opts) => updateDay(index, { accommodationOptions: opts })}
-                          hotels={hotels}
-                          showSupplier
-                          supplierType="hotel"
-                          allowCustom={false}
-                          packageCurrency={currency}
-                          destinationId={selectedDestId || undefined}
-                        />
+                        <>
+                          <OptionsEditor
+                            title={`Night ${index + 1} — Hotel options`}
+                            options={day.accommodationOptions ?? []}
+                            onChange={(opts) => updateDay(index, { accommodationOptions: opts })}
+                            hotels={hotels}
+                            showSupplier
+                            supplierType="hotel"
+                            allowCustom={false}
+                            packageCurrency={currency}
+                            destinationId={selectedDestId || undefined}
+                          />
+                          {/* Meal plans for this night — filtered to the hotels assigned above */}
+                          {(() => {
+                            const nightHotelIds = new Set(
+                              (day.accommodationOptions ?? [])
+                                .map((o) => o.supplierId)
+                                .filter((id): id is string => Boolean(id))
+                            );
+                            const nightMealPlans = enrichedMealPlans.filter(
+                              (mp) => nightHotelIds.size === 0 || nightHotelIds.has(mp.hotelId)
+                            );
+                            return (
+                              <OptionsEditor
+                                title={`Night ${index + 1} — Meal plan options`}
+                                options={day.mealPlanOptions ?? []}
+                                onChange={(opts) => updateDay(index, { mealPlanOptions: opts })}
+                                hotels={hotels}
+                                showSupplier
+                                supplierType="meal"
+                                packageCurrency={currency}
+                                mealPlans={nightMealPlans.length > 0 ? nightMealPlans : enrichedMealPlans.length > 0 ? enrichedMealPlans : undefined}
+                              />
+                            );
+                          })()}
+                        </>
                       ) : (
                         <div className="rounded-xl border border-dashed border-[#ddd3c4] bg-[#faf6ef] px-4 py-3 text-sm text-[#8a9ba1]">
                           No hotel selector — this is the final / transit day.
@@ -698,28 +737,6 @@ export function PackageForm({
               })}
             </div>
 
-            {/* Meal plans — hotel-tied, lives here alongside accommodation */}
-            <div className="border-t border-[#e0e4dd] pt-5">
-              <div className="mb-3 flex items-center gap-2">
-                <UtensilsCrossed className="h-4 w-4 text-[#8a9ba1]" />
-                <div>
-                  <p className="text-sm font-semibold text-[#11272b]">Meal Plans</p>
-                  <p className="text-xs text-[#8a9ba1]">
-                    BB, HB, FB etc. come from the hotel — add the plans available at the hotels in this package.
-                  </p>
-                </div>
-              </div>
-              <OptionsEditor
-                title="Meal plan options"
-                options={mealOptions}
-                onChange={setMealOptions}
-                hotels={hotels}
-                showSupplier
-                supplierType="meal"
-                packageCurrency={currency}
-                mealPlans={enrichedMealPlans.length > 0 ? enrichedMealPlans : undefined}
-              />
-            </div>
           </SectionCard>
 
           {/* Step 3 — Transport & Add-ons */}
@@ -860,7 +877,7 @@ export function PackageForm({
                   {[
                     ["Accommodation rows", itinerary.reduce((t, d) => t + (d.accommodationOptions?.length ?? 0), 0)],
                     ["Transport options", transportOptions.length],
-                    ["Meal options", mealOptions.length],
+                    ["Meal plan rows", itinerary.reduce((t, d) => t + (d.mealPlanOptions?.length ?? 0), 0)],
                     ["Inclusions", inclusions.length],
                     ["Exclusions", exclusions.length],
                   ].map(([label, val]) => (
