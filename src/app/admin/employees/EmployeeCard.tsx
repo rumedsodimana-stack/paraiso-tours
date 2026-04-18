@@ -37,22 +37,18 @@ export function EmployeeCard({ emp }: { emp: Employee }) {
   }
 
   return (
-    <div className="group flex items-start justify-between rounded-xl border border-white/30 bg-white/50 p-4 shadow-sm backdrop-blur-sm transition hover:border-teal-200 hover:bg-white/70">
+    <div className="paraiso-card group flex items-start justify-between rounded-2xl p-4 transition hover:bg-[#f4ecdd]">
       <Link href={`/admin/employees/${emp.id}/edit`} className="flex flex-1 min-w-0 gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-900/50 dark:text-teal-400">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#eef4f4] text-[#12343b]">
           <UserCog className="h-5 w-5" />
         </div>
         <div className="min-w-0">
-          <p className="font-medium text-stone-900 dark:text-stone-50 group-hover:text-teal-700">
-            {emp.name}
-          </p>
-          <p className="text-xs text-stone-500">{emp.role}</p>
+          <p className="font-medium text-[#11272b]">{emp.name}</p>
+          <p className="text-xs text-[#8a9ba1]">{emp.role}</p>
           {emp.department && (
-            <p className="mt-0.5 text-sm text-stone-600 dark:text-stone-400">
-              {emp.department}
-            </p>
+            <p className="mt-0.5 text-sm text-[#5e7279]">{emp.department}</p>
           )}
-          <p className="mt-1 text-sm font-medium text-teal-600">
+          <p className="mt-1 text-sm font-semibold text-[#12343b]">
             {payTypeLabels[emp.payType] ?? emp.payType}
             {emp.payType === "salary" && emp.salary != null && (
               <>: {emp.salary.toLocaleString()} {emp.currency}/mo</>
@@ -64,18 +60,20 @@ export function EmployeeCard({ emp }: { emp: Employee }) {
               <>: {emp.hourlyRate} {emp.currency}/hr</>
             )}
           </p>
-          <span
-            className={`mt-1 inline-block text-xs ${emp.status === "active" ? "text-emerald-600" : "text-stone-400"}`}
-          >
+          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+            emp.status === "active"
+              ? "bg-[#dce8dc] text-[#375a3f]"
+              : "bg-[#e2e3dd] text-[#545a54]"
+          }`}>
             {emp.status}
           </span>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-stone-400 transition group-hover:text-teal-600" />
+        <ChevronRight className="h-5 w-5 shrink-0 text-[#8a9ba1] transition group-hover:text-[#12343b]" />
       </Link>
       <div className="flex shrink-0 items-center gap-1 ml-2">
         <Link
           href={`/admin/employees/${emp.id}/edit`}
-          className="rounded-lg p-2 text-stone-500 transition hover:bg-teal-100 hover:text-teal-600"
+          className="rounded-lg p-2 text-[#8a9ba1] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
           title="Edit"
         >
           <Pencil className="h-4 w-4" />
@@ -86,8 +84,8 @@ export function EmployeeCard({ emp }: { emp: Employee }) {
           disabled={deleting}
           className={`rounded-lg p-2 transition ${
             confirmDelete
-              ? "bg-red-100 text-red-600 hover:bg-red-200"
-              : "text-stone-400 hover:bg-red-50 hover:text-red-600"
+              ? "bg-[#eed9cf] text-[#7c3a24] hover:bg-red-100"
+              : "text-[#8a9ba1] hover:bg-red-50 hover:text-red-600"
           }`}
           title={confirmDelete ? "Click again to archive" : "Archive"}
         >

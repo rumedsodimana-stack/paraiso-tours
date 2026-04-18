@@ -51,8 +51,8 @@ export default async function PayablesPage({
 
   const payables = await getPayablesForDateRange({
     tours: activeTours,
-    getLead: getLead,
-    getPackage: getPackage,
+    getLead,
+    getPackage,
     suppliers,
     startDate,
     endDate,
@@ -74,10 +74,8 @@ export default async function PayablesPage({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
-            Payables
-          </h1>
-          <p className="mt-1 text-stone-600 dark:text-stone-400">
+          <h1 className="text-2xl font-bold text-[#11272b]">Payables</h1>
+          <p className="mt-1 text-sm text-[#5e7279]">
             All supplier payment extraction. Click a payable to view breakdown and mark as paid.
           </p>
         </div>
@@ -85,142 +83,108 @@ export default async function PayablesPage({
       </div>
 
       <div className="flex flex-wrap items-center gap-4 print:hidden">
-        <div className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/50 px-3 py-2 backdrop-blur-sm">
+        <div className="paraiso-card flex items-center gap-2 rounded-xl px-3 py-2">
           <Link
             href={`/admin/payables?week=${prevWeek}`}
-            className="rounded-lg p-1.5 text-stone-600 transition hover:bg-white/70 hover:text-stone-900"
+            className="rounded-lg p-1.5 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
-          <span className="min-w-[200px] text-center font-medium text-stone-800 dark:text-stone-100">
+          <span className="min-w-[200px] text-center text-sm font-medium text-[#11272b]">
             {formatWeekLabel(startDate, endDate)}
           </span>
           <Link
             href={`/admin/payables?week=${nextWeek}`}
-            className="rounded-lg p-1.5 text-stone-600 transition hover:bg-white/70 hover:text-stone-900"
+            className="rounded-lg p-1.5 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
           >
             <ChevronRight className="h-5 w-5" />
           </Link>
         </div>
-        <Link
-          href={`/admin/payables?week=${new Date().toISOString().slice(0, 10)}`}
-          className="text-sm text-teal-600 hover:text-teal-700"
-        >
+        <Link href={`/admin/payables?week=${new Date().toISOString().slice(0, 10)}`} className="text-sm font-medium text-[#12343b] hover:underline">
           This week
         </Link>
-        <Link
-          href={`/admin/payables?week=${addDays(new Date().toISOString().slice(0, 10), 7)}`}
-          className="text-sm text-teal-600 hover:text-teal-700"
-        >
+        <Link href={`/admin/payables?week=${addDays(new Date().toISOString().slice(0, 10), 7)}`} className="text-sm font-medium text-[#12343b] hover:underline">
           Next week
         </Link>
       </div>
 
       {payables.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-white/40 bg-white/30 py-16 text-center backdrop-blur-xl">
-          <Landmark className="mx-auto h-12 w-12 text-stone-400" />
-          <p className="mt-4 text-stone-600 dark:text-stone-400">
-            No supplier payables for tours starting this week
-          </p>
-          <p className="mt-1 text-sm text-stone-500">
+        <div className="rounded-2xl border border-dashed border-[#ddd3c4] bg-[#faf6ef] py-16 text-center">
+          <Landmark className="mx-auto h-10 w-10 text-[#8a9ba1]" />
+          <p className="mt-4 text-[#5e7279]">No supplier payables for tours starting this week</p>
+          <p className="mt-1 text-sm text-[#8a9ba1]">
             Add tours and ensure packages have suppliers with cost prices.
           </p>
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap gap-4 print:mb-4">
+          <div className="flex flex-wrap gap-3 print:mb-4">
             {Object.entries(totalByCurrency).map(([currency, amount]) => (
-              <div
-                key={currency}
-                className="rounded-xl border border-stone-200/60 bg-white/60 px-4 py-2 backdrop-blur-sm"
-              >
-                <span className="text-xs font-medium uppercase text-stone-500">
+              <div key={currency} className="paraiso-card rounded-xl px-4 py-2.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">
                   Total {currency}
                 </span>
-                <p className="font-semibold text-stone-900 dark:text-stone-50">
+                <p className="font-bold text-[#11272b]">
                   {amount.toLocaleString()} {currency}
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-white/30 bg-white/50 shadow-lg backdrop-blur-xl">
+          <div className="paraiso-card overflow-x-auto rounded-2xl">
             <table className="w-full min-w-[800px] text-left text-sm">
               <thead>
-                <tr className="border-b border-stone-200/60 bg-stone-50/80 dark:bg-stone-900/30">
-                  <th className="px-4 py-3 font-semibold text-stone-700 dark:text-stone-200">
-                    Supplier
-                  </th>
-                  <th className="px-4 py-3 font-semibold text-stone-700 dark:text-stone-200">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3 font-semibold text-stone-700 dark:text-stone-200">
-                    Bank Details
-                  </th>
-                  <th className="px-4 py-3 font-semibold text-stone-700 dark:text-stone-200 print:hidden">
-                    Bookings
-                  </th>
-                  <th className="px-4 py-3 font-semibold text-stone-700 dark:text-stone-200 print:hidden w-24">
-                    Action
-                  </th>
+                <tr className="border-b border-[#e0e4dd] bg-[#f4ecdd]">
+                  <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Supplier</th>
+                  <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Amount</th>
+                  <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Bank Details</th>
+                  <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1] print:hidden">Bookings</th>
+                  <th className="px-5 py-3.5 w-20 print:hidden" />
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-[#e0e4dd]">
                 {payables.map((p) => (
-                  <tr
-                    key={`${p.supplierId}-${p.currency}`}
-                    className="border-b border-stone-100 last:border-0 hover:bg-white/70 transition print:hover:bg-transparent"
-                  >
-                    <td className="px-4 py-3">
+                  <tr key={`${p.supplierId}-${p.currency}`} className="transition hover:bg-[#faf6ef] print:hover:bg-transparent">
+                    <td className="px-5 py-3.5">
                       <Link
                         href={`/admin/payables/${encodePayableSlug(p.supplierId, p.currency, startDate, endDate)}`}
-                        className="block font-medium text-stone-900 dark:text-stone-50 hover:text-teal-600"
+                        className="block font-medium text-[#11272b] hover:text-[#12343b]"
                       >
                         {p.supplierName}
                       </Link>
-                      <p className="text-xs capitalize text-stone-500">
-                        {p.supplierType}
-                      </p>
+                      <p className="text-xs capitalize text-[#8a9ba1]">{p.supplierType}</p>
                     </td>
-                    <td className="px-4 py-3 font-semibold tabular-nums">
+                    <td className="px-5 py-3.5 font-semibold tabular-nums text-[#11272b]">
                       {p.amount.toLocaleString()} {p.currency}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-3.5">
                       {p.bankName || p.accountNumber ? (
-                        <div className="space-y-0.5 text-stone-600 dark:text-stone-400">
+                        <div className="space-y-0.5 text-xs text-[#5e7279]">
                           {p.bankName && <p>{p.bankName}{p.bankBranch ? `, ${p.bankBranch}` : ""}</p>}
                           {p.accountName && <p>{p.accountName}</p>}
-                          {p.accountNumber && <p className="font-mono text-xs">{p.accountNumber}</p>}
+                          {p.accountNumber && <p className="font-mono">{p.accountNumber}</p>}
                           {p.swiftCode && <p>SWIFT: {p.swiftCode}</p>}
                           {p.bankCurrency && <p>Currency: {p.bankCurrency}</p>}
-                          {p.paymentReference && (
-                            <p className="text-xs">Ref: {p.paymentReference}</p>
-                          )}
+                          {p.paymentReference && <p>Ref: {p.paymentReference}</p>}
                         </div>
                       ) : (
-                        <p className="text-xs text-amber-600">
-                          Add banking details in Hotels & Suppliers
-                        </p>
+                        <p className="text-xs text-[#7a5a17]">Add banking details in Hotels &amp; Suppliers</p>
                       )}
                     </td>
-                    <td className="px-4 py-3 print:hidden">
-                      <ul className="space-y-1 text-xs text-stone-600">
+                    <td className="px-5 py-3.5 print:hidden">
+                      <ul className="space-y-1 text-xs text-[#5e7279]">
                         {p.bookings.slice(0, 3).map((b, i) => (
-                          <li key={i}>
-                            {b.clientName} – {b.packageName} ({b.tourStartDate})
-                          </li>
+                          <li key={i}>{b.clientName} – {b.packageName} ({b.tourStartDate})</li>
                         ))}
                         {p.bookings.length > 3 && (
-                          <li className="text-stone-500">
-                            +{p.bookings.length - 3} more
-                          </li>
+                          <li className="text-[#8a9ba1]">+{p.bookings.length - 3} more</li>
                         )}
                       </ul>
                     </td>
-                    <td className="px-4 py-3 print:hidden">
+                    <td className="px-5 py-3.5 text-right print:hidden">
                       <Link
                         href={`/admin/payables/${encodePayableSlug(p.supplierId, p.currency, startDate, endDate)}`}
-                        className="text-sm font-medium text-teal-600 hover:text-teal-700 hover:underline"
+                        className="text-sm font-medium text-[#12343b] hover:underline"
                       >
                         View
                       </Link>
@@ -231,9 +195,8 @@ export default async function PayablesPage({
             </table>
           </div>
 
-          <p className="mt-4 text-xs text-stone-500 print:block">
-            {brandName} – Payables – {formatWeekLabel(startDate, endDate)}. Use
-            Print → Save as PDF for bank transfer instructions.
+          <p className="mt-4 text-xs text-[#8a9ba1] print:block">
+            {brandName} – Payables – {formatWeekLabel(startDate, endDate)}. Use Print → Save as PDF for bank transfer instructions.
           </p>
         </>
       )}

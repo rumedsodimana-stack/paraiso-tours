@@ -22,22 +22,20 @@ import {
 } from "@/app/actions/leads";
 
 const statusColors: Record<LeadStatus, string> = {
-  new: "bg-amber-100 text-amber-800",
-  contacted: "bg-sky-100 text-sky-800",
-  quoted: "bg-violet-100 text-violet-800",
-  negotiating: "bg-orange-100 text-orange-800",
-  won: "bg-emerald-100 text-emerald-800",
-  lost: "bg-stone-100 text-stone-600",
+  new:         "bg-[#f3e8ce] text-[#7a5a17]",
+  contacted:   "bg-[#d6e2e5] text-[#294b55]",
+  quoted:      "bg-[#dce8dc] text-[#375a3f]",
+  negotiating: "bg-[#eed9cf] text-[#7c3a24]",
+  won:         "bg-[#12343b] text-[#f6ead6]",
+  lost:        "bg-[#e2e3dd] text-[#545a54]",
 };
 
-const STATUSES: LeadStatus[] = [
-  "new",
-  "contacted",
-  "quoted",
-  "negotiating",
-  "won",
-  "lost",
-];
+const STATUS_LABELS: Record<LeadStatus, string> = {
+  new: "New", contacted: "Contacted", quoted: "Quoted",
+  negotiating: "Negotiating", won: "Won", lost: "Lost",
+};
+
+const STATUSES: LeadStatus[] = ["new", "contacted", "quoted", "negotiating", "won", "lost"];
 
 export function LeadsTable({
   initialLeads,
@@ -57,7 +55,9 @@ export function LeadsTable({
 
   function copyClientLink(lead: Lead) {
     const ref = lead.reference ?? lead.id;
-    const url = typeof window !== "undefined" ? `${window.location.origin}/booking/${encodeURIComponent(ref)}${lead.email ? `?email=${encodeURIComponent(lead.email)}` : ""}` : "";
+    const url = typeof window !== "undefined"
+      ? `${window.location.origin}/booking/${encodeURIComponent(ref)}${lead.email ? `?email=${encodeURIComponent(lead.email)}` : ""}`
+      : "";
     navigator.clipboard?.writeText(url).then(() => {
       setCopied(lead.id);
       setTimeout(() => setCopied(null), 2000);
@@ -70,17 +70,14 @@ export function LeadsTable({
       lead.name.toLowerCase().includes(search.toLowerCase()) ||
       lead.email.toLowerCase().includes(search.toLowerCase()) ||
       (lead.reference?.toLowerCase().includes(search.toLowerCase()) ?? false);
-    const matchesStatus =
-      statusFilter === "all" || lead.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   async function handleStatusChange(leadId: string, status: LeadStatus) {
     const result = await updateLeadStatusAction(leadId, status);
     if (result?.success) {
-      setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? { ...l, status } : l))
-      );
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status } : l)));
     }
     setOpenMenu(null);
   }
@@ -100,101 +97,80 @@ export function LeadsTable({
     <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
-            Booking Management
-          </h1>
-          <p className="mt-1 text-stone-600 dark:text-stone-400">
+          <h1 className="text-2xl font-bold text-[#11272b]">Booking Management</h1>
+          <p className="mt-1 text-sm text-[#5e7279]">
             Track and manage client inquiries across the sales cycle
           </p>
         </div>
         <Link
           href="/admin/bookings/new"
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
         >
           <Plus className="h-4 w-4" />
           Add Booking
         </Link>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a9ba1]" />
           <input
             type="text"
             placeholder="Search by name, email or reference..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-white/20 bg-white/40 py-2.5 pl-10 pr-4 text-stone-900 placeholder-stone-500 backdrop-blur-md focus:border-teal-400/60 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] py-2.5 pl-10 pr-4 text-[#11272b] placeholder-[#8a9ba1] focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(e.target.value as LeadStatus | "all")
-          }
-          className="rounded-xl border border-white/20 bg-white/40 px-4 py-2.5 text-stone-700 backdrop-blur-md dark:text-stone-300"
+          onChange={(e) => setStatusFilter(e.target.value as LeadStatus | "all")}
+          className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-[#5e7279] focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
         >
           <option value="all">All statuses</option>
           {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
+            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
           ))}
         </select>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-white/30 bg-white/50 shadow-lg shadow-stone-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+      <div className="paraiso-card rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px]">
             <thead>
-              <tr className="border-b border-white/20 bg-white/30 backdrop-blur-sm">
-                <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  Client
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  Reference
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  Contact
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  Trip
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  Actions
-                </th>
+              <tr className="border-b border-[#e0e4dd] bg-[#f4ecdd]">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Client</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Reference</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Contact</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Status</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Trip</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-200 dark:divide-stone-700">
+            <tbody className="divide-y divide-[#e0e4dd]">
               {filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-stone-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-[#8a9ba1]">
                     No bookings found.{" "}
-                    <Link href="/admin/bookings/new" className="text-teal-600 hover:text-teal-700 font-medium">
+                    <Link href="/admin/bookings/new" className="font-medium text-[#12343b] hover:underline">
                       Add your first booking
                     </Link>
                   </td>
                 </tr>
               ) : (
                 filteredLeads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className="relative transition hover:bg-white/30 group"
-                  >
+                  <tr key={lead.id} className="transition hover:bg-[#faf6ef]">
                     <td className="px-6 py-4">
                       <Link
                         href={`/admin/bookings/${lead.id}`}
-                        className="block font-medium text-stone-900 dark:text-stone-50 hover:text-teal-600 transition"
+                        className="block font-medium text-[#11272b] hover:text-[#12343b] transition"
                       >
                         {lead.name}
                       </Link>
-                      <div className="text-xs text-stone-500 dark:text-stone-400">
+                      <div className="mt-0.5 text-xs text-[#8a9ba1]">
                         via {lead.source}
                         {lead.packageId && packageNames[lead.packageId] && (
-                          <span className="ml-1.5 inline-flex items-center rounded bg-teal-100 px-2 py-0.5 text-xs text-teal-700">
+                          <span className="ml-1.5 inline-flex items-center rounded bg-[#eef4f4] px-2 py-0.5 text-xs text-[#12343b]">
                             {packageNames[lead.packageId]}
                           </span>
                         )}
@@ -204,54 +180,47 @@ export function LeadsTable({
                       {lead.reference ? (
                         <Link
                           href={`/admin/bookings/${lead.id}`}
-                          className="font-mono text-sm font-semibold text-teal-700 hover:text-teal-800 transition"
-                          title="View itinerary"
+                          className="font-mono text-sm font-semibold text-[#12343b] hover:text-[#1a474f] transition"
                         >
                           {lead.reference}
                         </Link>
                       ) : (
-                        <span className="text-stone-400">—</span>
+                        <span className="text-[#8a9ba1]">—</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1 text-sm">
-                        <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300">
-                          <Mail className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                      <div className="flex flex-col gap-1 text-sm text-[#5e7279]">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3.5 w-3.5 shrink-0 text-[#8a9ba1]" />
                           {lead.email}
                         </div>
                         {lead.phone && (
-                          <div className="flex items-center gap-2 text-stone-600 dark:text-stone-400">
-                            <Phone className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3.5 w-3.5 shrink-0 text-[#8a9ba1]" />
                             {lead.phone}
                           </div>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="relative">
-                        <select
-                          value={lead.status}
-                          onChange={(e) =>
-                            handleStatusChange(lead.id, e.target.value as LeadStatus)
-                          }
-                          className={`cursor-pointer appearance-none rounded-full border-0 px-3 py-1 text-xs font-medium ${statusColors[lead.status]} pr-8 focus:ring-2 focus:ring-teal-400/50`}
-                        >
-                          {STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <select
+                        value={lead.status}
+                        onChange={(e) => handleStatusChange(lead.id, e.target.value as LeadStatus)}
+                        className={`cursor-pointer appearance-none rounded-full border-0 px-3 py-1 text-xs font-semibold pr-6 focus:ring-2 focus:ring-[#12343b]/30 ${statusColors[lead.status]}`}
+                      >
+                        {STATUSES.map((s) => (
+                          <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1 text-sm text-stone-700 dark:text-stone-300">
+                      <div className="flex flex-col gap-1 text-sm text-[#5e7279]">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                          <Calendar className="h-3.5 w-3.5 shrink-0 text-[#8a9ba1]" />
                           {lead.travelDate || "TBD"}
                         </div>
                         <div className="flex items-center gap-2">
-                          <Users className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                          <Users className="h-3.5 w-3.5 shrink-0 text-[#8a9ba1]" />
                           {lead.pax ?? "-"} pax
                         </div>
                       </div>
@@ -260,34 +229,35 @@ export function LeadsTable({
                       <div className="relative inline-block">
                         <button
                           type="button"
-                          onClick={() =>
-                            setOpenMenu(openMenu === lead.id ? null : lead.id)
-                          }
-                          className="rounded-lg p-1.5 text-stone-400 transition hover:bg-white/50 hover:text-stone-700"
+                          onClick={() => setOpenMenu(openMenu === lead.id ? null : lead.id)}
+                          className="rounded-lg p-1.5 text-[#8a9ba1] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
                         >
                           <MoreVertical className="h-4 w-4" />
                         </button>
                         {openMenu === lead.id && (
                           <>
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={() => setOpenMenu(null)}
-                            />
-                            <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-xl border border-white/30 bg-white/95 py-1 shadow-xl backdrop-blur-xl">
+                            <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
+                            <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] py-1 shadow-xl">
                               <Link
                                 href={`/admin/bookings/${lead.id}`}
-                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
+                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#12343b] hover:bg-[#eef4f4]"
                                 onClick={() => setOpenMenu(null)}
                               >
                                 View itinerary
                               </Link>
-                              <button type="button" onClick={() => copyClientLink(lead)} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-white/60">
-                                {copied === lead.id ? <Copy className="h-4 w-4 text-emerald-500" /> : <Link2 className="h-4 w-4" />}
+                              <button
+                                type="button"
+                                onClick={() => copyClientLink(lead)}
+                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#5e7279] hover:bg-[#faf6ef]"
+                              >
+                                {copied === lead.id
+                                  ? <Copy className="h-4 w-4 text-[#375a3f]" />
+                                  : <Link2 className="h-4 w-4" />}
                                 {copied === lead.id ? "Copied!" : "Copy client link"}
                               </button>
                               <Link
                                 href={`/admin/bookings/${lead.id}/edit`}
-                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-white/60"
+                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#5e7279] hover:bg-[#faf6ef]"
                                 onClick={() => setOpenMenu(null)}
                               >
                                 <Pencil className="h-4 w-4" />

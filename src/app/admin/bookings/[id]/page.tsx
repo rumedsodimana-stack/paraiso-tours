@@ -14,6 +14,7 @@ import { getAiRuntimeStatus } from "@/lib/ai";
 import { getLead, getPackage, getHotels, getInvoiceByLeadId } from "@/lib/db";
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { getAuditLogsForEntities } from "@/lib/audit";
+import { getCustomRouteMetaFromAuditLogs } from "@/lib/custom-route-booking";
 import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { getBookingSupplierEmails } from "@/lib/booking-breakdown";
 import { getLeadBookingFinancials } from "@/lib/booking-pricing";
@@ -23,6 +24,7 @@ import { EmailSuppliersButton } from "../EmailSuppliersButton";
 import { InvoiceButton } from "../InvoiceButton";
 import { ApproveScheduleButton } from "./ApproveScheduleButton";
 import { BookingCopilotPanel } from "./BookingCopilotPanel";
+import { CustomRouteBreakdown } from "../CustomRouteBreakdown";
 
 export const dynamic = "force-dynamic";
 
@@ -50,9 +52,10 @@ export default async function BookingDetailPage({
             ? [{ entityType: "invoice" as const, entityId: existingInvoice.id }]
             : []),
         ],
-        10
+        30
       )
     : [];
+  const customRoute = getCustomRouteMetaFromAuditLogs(auditLogs);
 
   if (!lead) {
     return (
@@ -235,16 +238,33 @@ export default async function BookingDetailPage({
                   </section>
                 </>
               ) : (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800">
-                  <p className="font-medium">No package selected</p>
-                  <p className="mt-1 text-sm">
-                    This booking doesn&apos;t have a package yet.{" "}
-                    <Link href={`/admin/bookings/${lead.id}/edit`} className="underline hover:no-underline">
-                      Edit the booking
-                    </Link>{" "}
-                    to select a package and see the itinerary.
-                  </p>
-                </div>
+                customRoute ? (
+                  <div className="space-y-5">
+                    <CustomRouteBreakdown lead={lead} route={customRoute} />
+                    <section className="flex flex-wrap items-center gap-3 pt-2">
+                      <Link
+                        href={`/admin/bookings/${lead.id}/edit`}
+                        className="rounded-xl border border-teal-600 bg-teal-50 px-4 py-2.5 text-sm font-medium text-teal-700 transition hover:bg-teal-100"
+                      >
+                        Edit booking
+                      </Link>
+                      <p className="text-sm text-stone-500">
+                        Finalize package and booking selections before confirming this journey.
+                      </p>
+                    </section>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800">
+                    <p className="font-medium">No package selected</p>
+                    <p className="mt-1 text-sm">
+                      This booking doesn&apos;t have a package yet.{" "}
+                      <Link href={`/admin/bookings/${lead.id}/edit`} className="underline hover:no-underline">
+                        Edit the booking
+                      </Link>{" "}
+                      to select a package and see the itinerary.
+                    </p>
+                  </div>
+                )
               )}
             </div>
           </div>

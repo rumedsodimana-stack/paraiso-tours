@@ -17,33 +17,41 @@ export function Header({
   showAiToggle?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/20 bg-white/50 px-8 backdrop-blur-xl print:hidden">
-      <h1 className="text-xl font-semibold text-stone-800">
+    <header className="sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-between border-b border-[#e0e4dd] bg-[#fffbf4] px-6 print:hidden">
+      <h1 className="text-[15px] font-semibold text-[#11272b]">
         {title || "Dashboard"}
       </h1>
-      <div className="flex items-center gap-4">
-        <span className="rounded-full border border-white/40 bg-white/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+
+      <div className="flex items-center gap-2">
+        <span className="rounded-full border border-[#e0e4dd] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a9ba1]">
           v{APP_RELEASE.version}
         </span>
+
         <GlobalSearch />
+
         {showAiToggle ? (
           <button
             type="button"
             onClick={onToggleAiChat}
-            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium transition-colors ${
               aiChatOpen
-                ? "border-teal-300 bg-teal-50 text-teal-800"
-                : "border-white/40 bg-white/60 text-stone-600 hover:bg-white/80 hover:text-stone-800"
+                ? "border-[#dce7e8] bg-[#eef4f4] text-[#12343b]"
+                : "border-[#e0e4dd] bg-[#fffbf4] text-[#5e7279] hover:bg-[#f4ecdd] hover:text-[#11272b]"
             }`}
-            >
+          >
             <Bot className="h-4 w-4" />
             AI
           </button>
         ) : null}
-        <button className="relative rounded-xl p-2 text-stone-500 hover:bg-white/50 hover:text-stone-700 backdrop-blur-sm transition">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-teal-500" />
+
+        <button
+          type="button"
+          className="relative rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-2 text-[#5e7279] transition-colors hover:bg-[#f4ecdd] hover:text-[#11272b]"
+        >
+          <Bell className="h-4 w-4" />
+          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#c9922f]" />
         </button>
+
         <AdminLogoutButton />
       </div>
     </header>

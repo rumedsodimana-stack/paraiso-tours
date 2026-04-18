@@ -112,7 +112,7 @@ export function GlobalSearch() {
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative w-[18rem] xl:w-[24rem]">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
         <input
@@ -122,21 +122,19 @@ export function GlobalSearch() {
           onFocus={() => query.trim() && setOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search bookings, packages, tours, invoices..."
-          className="h-9 w-72 rounded-xl border border-white/40 bg-white/40 pl-9 pr-4 text-sm placeholder:text-stone-500 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+          className="h-9 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] pl-9 pr-4 text-sm text-[#11272b] placeholder:text-[#8a9ba1] focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
         />
         {loading && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-[#12343b] border-t-transparent" />
         )}
       </div>
 
       {open && (suggestions.length > 0 || (query.trim() && !loading)) && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border border-white/50 bg-white/95 shadow-xl backdrop-blur-xl">
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] shadow-xl">
           {loading ? (
-            <div className="p-4 text-center text-sm text-stone-500">
-              Searching...
-            </div>
+            <div className="p-4 text-center text-sm text-[#8a9ba1]">Searching...</div>
           ) : suggestions.length === 0 ? (
-            <div className="p-4 text-center text-sm text-stone-500">
+            <div className="p-4 text-center text-sm text-[#8a9ba1]">
               No results for &ldquo;{query}&rdquo;
             </div>
           ) : (
@@ -150,24 +148,20 @@ export function GlobalSearch() {
                       onClick={() => handleSelect(s)}
                       className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition ${
                         i === selectedIndex
-                          ? "bg-teal-50 text-teal-900"
-                          : "hover:bg-stone-50"
+                          ? "bg-[#eef4f4] text-[#11272b]"
+                          : "hover:bg-[#faf6ef]"
                       }`}
                     >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#12343b] text-[#f6ead6]">
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-stone-900">
-                          {s.label}
-                        </p>
+                        <p className="truncate font-medium text-[#11272b]">{s.label}</p>
                         {s.subtitle && (
-                          <p className="truncate text-xs text-stone-500">
-                            {s.subtitle}
-                          </p>
+                          <p className="truncate text-xs text-[#8a9ba1]">{s.subtitle}</p>
                         )}
                       </div>
-                      <span className="shrink-0 text-xs text-stone-400">
+                      <span className="shrink-0 text-xs text-[#8a9ba1]">
                         {typeLabels[s.type]}
                       </span>
                     </button>

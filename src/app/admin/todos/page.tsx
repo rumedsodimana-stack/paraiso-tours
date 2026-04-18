@@ -8,14 +8,12 @@ export default async function TodosPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
-          Todo List
-        </h1>
-        <p className="mt-1 text-stone-600 dark:text-stone-400">
+        <h1 className="text-2xl font-bold text-[#11272b]">Todo List</h1>
+        <p className="mt-1 text-sm text-[#5e7279]">
           Track your tasks and reminders. Add, complete, or remove items.
         </p>
       </div>
-      <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
+      <div className="paraiso-card rounded-2xl p-6">
         <TodosList initialTodos={todos} />
       </div>
     </div>

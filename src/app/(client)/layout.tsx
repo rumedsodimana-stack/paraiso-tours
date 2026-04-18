@@ -13,31 +13,33 @@ export default async function ClientLayout({
   const brandName = getDisplayCompanyName(settings);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f6efe4] text-stone-800">
+    <div className="min-h-screen overflow-x-hidden bg-[#f6efe4] text-stone-800 print:bg-white">
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0"
+        className="pointer-events-none fixed inset-0 print:hidden"
         style={{
           background:
             "radial-gradient(circle at 12% 12%, rgba(210, 164, 87, 0.22), transparent 26%), radial-gradient(circle at 82% 8%, rgba(18, 52, 59, 0.16), transparent 24%), radial-gradient(circle at 86% 62%, rgba(38, 111, 118, 0.14), transparent 26%), linear-gradient(180deg, rgba(252,246,238,0.96), rgba(246,239,228,1))",
         }}
       />
-      <ClientHeader
-        brandName={brandName}
-        logoUrl={settings.company.logoUrl}
-        topBannerText={settings.portal.topBannerText}
-        topBannerSubtext={settings.portal.topBannerSubtext}
-        locationBadgeText={settings.portal.locationBadgeText}
-        mobileMenuDescription={settings.portal.mobileMenuDescription}
-        packagesLabel={settings.portal.packagesLabel}
-        journeyBuilderLabel={settings.portal.journeyBuilderLabel}
-        myBookingsLabel={settings.portal.myBookingsLabel}
-        trackBookingLabel={settings.portal.trackBookingLabel}
-      />
-      <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+      <div className="print:hidden">
+        <ClientHeader
+          brandName={brandName}
+          logoUrl={settings.company.logoUrl}
+          topBannerText={settings.portal.topBannerText}
+          topBannerSubtext={settings.portal.topBannerSubtext}
+          locationBadgeText={settings.portal.locationBadgeText}
+          mobileMenuDescription={settings.portal.mobileMenuDescription}
+          packagesLabel={settings.portal.packagesLabel}
+          journeyBuilderLabel={settings.portal.journeyBuilderLabel}
+          myBookingsLabel={settings.portal.myBookingsLabel}
+          trackBookingLabel={settings.portal.trackBookingLabel}
+        />
+      </div>
+      <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 print:max-w-none print:px-0 print:py-0">
         {children}
       </main>
-      <footer className="relative mt-auto border-t border-[#d9c6ad] bg-[#f8f1e7]/92 shadow-[0_-10px_40px_-30px_rgba(43,32,15,0.55)] backdrop-blur-xl">
+      <footer className="relative mt-auto border-t border-[#d9c6ad] bg-[#f8f1e7]/92 shadow-[0_-10px_40px_-30px_rgba(43,32,15,0.55)] backdrop-blur-xl print:hidden">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
           <div className="mb-8 grid gap-4 rounded-[2rem] border border-[#d9c6ad] bg-[#12343b] p-6 text-[#f6ead6] shadow-[0_24px_60px_-28px_rgba(18,52,59,0.95)] lg:grid-cols-[1.2fr_0.8fr] lg:p-8">
             <div>

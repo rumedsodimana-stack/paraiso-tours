@@ -36,53 +36,88 @@ interface InvoiceDocumentProps {
 }
 
 export function InvoiceDocument({ invoice, letterhead }: InvoiceDocumentProps) {
+  const issuedDate = new Date(invoice.createdAt).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const paidDate = invoice.paidAt
+    ? new Date(invoice.paidAt).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
   return (
     <div className="max-w-[210mm] mx-auto bg-white text-stone-900 print:max-w-none print:shadow-none">
       <InvoiceLetterhead {...letterhead} />
-      <div className="flex justify-between items-start gap-6 mb-6">
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] mb-8">
         <div>
-          <h2 className="text-lg font-semibold text-stone-900">INVOICE</h2>
-          <p className="mt-1 text-sm text-stone-600">Invoice #{invoice.invoiceNumber}</p>
-          <p className="text-sm text-stone-500">
-            Date: {new Date(invoice.createdAt).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
+          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-stone-500">
+            Invoice
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900">
+            {invoice.invoiceNumber}
+          </h2>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-stone-600">
+            This invoice covers the confirmed travel booking and selected package
+            services recorded in your itinerary.
           </p>
         </div>
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(invoice.status)}`}
-        >
-          {statusLabel(invoice.status)}
-        </span>
+        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 print:border-stone-300 print:bg-stone-50">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
+                Status
+              </p>
+              <span
+                className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(invoice.status)}`}
+              >
+                {statusLabel(invoice.status)}
+              </span>
+            </div>
+            <div className="text-right text-sm text-stone-600">
+              <p>Issued: {issuedDate}</p>
+              {paidDate ? <p className="mt-1">Paid: {paidDate}</p> : null}
+            </div>
+          </div>
+          <div className="mt-5 border-t border-stone-200 pt-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
+              Amount due
+            </p>
+            <p className="mt-2 text-3xl font-semibold text-stone-900">
+              {invoice.totalAmount.toLocaleString()} {invoice.currency}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 mb-8">
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-2">Bill to</h3>
-          <p className="font-medium text-stone-900">{invoice.clientName}</p>
-          <p className="text-sm text-stone-600">{invoice.clientEmail}</p>
+      <div className="grid gap-4 lg:grid-cols-2 mb-8">
+        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 print:border-stone-300 print:bg-stone-50">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+            Bill to
+          </h3>
+          <p className="mt-3 font-medium text-stone-900">{invoice.clientName}</p>
+          <p className="mt-1 text-sm text-stone-600">{invoice.clientEmail}</p>
           {invoice.clientPhone && (
-            <p className="text-sm text-stone-600">{invoice.clientPhone}</p>
+            <p className="mt-1 text-sm text-stone-600">{invoice.clientPhone}</p>
           )}
+        </div>
+        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 print:border-stone-300 print:bg-stone-50">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+            Booking details
+          </h3>
+          <p className="mt-3 font-medium text-stone-900">{invoice.packageName}</p>
+          <div className="mt-2 space-y-1 text-sm text-stone-600">
+            {invoice.reference ? <p>Reference: {invoice.reference}</p> : null}
+            {invoice.travelDate ? <p>Travel date: {invoice.travelDate}</p> : null}
+            {invoice.pax != null ? <p>Travellers: {invoice.pax}</p> : null}
+          </div>
         </div>
       </div>
 
-      <div className="mb-6">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-2">Booking details</h3>
-        <p className="font-medium text-stone-900">{invoice.packageName}</p>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-600">
-          {invoice.travelDate && (
-            <span>Travel date: {invoice.travelDate}</span>
-          )}
-          {invoice.pax != null && (
-            <span>Pax: {invoice.pax}</span>
-          )}
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-lg border border-stone-200 print:border-stone-300">
+      <div className="overflow-hidden rounded-2xl border border-stone-200 print:border-stone-300">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-stone-200 bg-stone-50 print:bg-stone-100">
@@ -115,18 +150,46 @@ export function InvoiceDocument({ invoice, letterhead }: InvoiceDocumentProps) {
         </table>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-stone-200 space-y-4 text-sm text-stone-600">
-        <p>
-          <span className="font-medium text-stone-700">Payment terms:</span> Payment due within 14 days of invoice date.
-        </p>
-        <p>
-          <span className="font-medium text-stone-700">Bank details:</span> [Add your bank account details here for wire transfer]
-        </p>
-        {invoice.notes && (
-          <p>
-            <span className="font-medium text-stone-700">Notes:</span> {invoice.notes}
+      <div className="mt-8 grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 print:border-stone-300 print:bg-stone-50">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+            Payment notes
+          </h3>
+          <div className="mt-3 space-y-3 text-sm text-stone-600">
+            <p>
+              <span className="font-medium text-stone-700">Payment terms:</span>{" "}
+              Payment due within 14 days of invoice date.
+            </p>
+            {invoice.notes ? (
+              <p>
+                <span className="font-medium text-stone-700">Notes:</span>{" "}
+                {invoice.notes}
+              </p>
+            ) : (
+              <p>Please contact our team if you need a revised invoice or payment guidance.</p>
+            )}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-stone-200 bg-[#12343b] p-5 text-[#f6ead6] print:border-stone-300 print:bg-white print:text-stone-900">
+          <p className="text-xs uppercase tracking-[0.22em] text-[#dcb87b] print:text-stone-500">
+            Summary
           </p>
-        )}
+          <p className="mt-3 text-sm">
+            Invoice {invoice.invoiceNumber} for {invoice.clientName}
+          </p>
+          <p className="mt-2 text-2xl font-semibold">
+            {invoice.totalAmount.toLocaleString()} {invoice.currency}
+          </p>
+          <p className="mt-4 text-sm text-[#e4d8c1] print:text-stone-600">
+            Thank you for choosing us to arrange your Sri Lanka journey.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-stone-200 space-y-2 text-sm text-stone-500">
+        <p>
+          Generated on {issuedDate}. Please quote invoice number {invoice.invoiceNumber} when making payment or contacting support.
+        </p>
       </div>
     </div>
   );

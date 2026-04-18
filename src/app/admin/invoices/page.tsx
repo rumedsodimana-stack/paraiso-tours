@@ -5,7 +5,7 @@ import type { InvoiceStatus } from "@/lib/types";
 
 function statusLabel(s: InvoiceStatus): string {
   switch (s) {
-    case "pending_payment": return "Pending Payment";
+    case "pending_payment": return "Pending";
     case "paid": return "Paid";
     case "overdue": return "Overdue";
     case "cancelled": return "Cancelled";
@@ -15,11 +15,11 @@ function statusLabel(s: InvoiceStatus): string {
 
 function statusBadgeClass(s: InvoiceStatus): string {
   switch (s) {
-    case "pending_payment": return "bg-amber-100 text-amber-800";
-    case "paid": return "bg-emerald-100 text-emerald-800";
-    case "overdue": return "bg-rose-100 text-rose-800";
-    case "cancelled": return "bg-stone-100 text-stone-600";
-    default: return "bg-stone-100 text-stone-600";
+    case "pending_payment": return "bg-[#f3e8ce] text-[#7a5a17]";
+    case "paid":            return "bg-[#dce8dc] text-[#375a3f]";
+    case "overdue":         return "bg-[#eed9cf] text-[#7c3a24]";
+    case "cancelled":       return "bg-[#e2e3dd] text-[#545a54]";
+    default:                return "bg-[#e2e3dd] text-[#545a54]";
   }
 }
 
@@ -28,51 +28,44 @@ export default async function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
-          Invoices
-        </h1>
-        <p className="mt-1 text-stone-600 dark:text-stone-400">
-          View and manage client invoices
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#11272b]">Invoices</h1>
+          <p className="mt-1 text-sm text-[#5e7279]">View and manage client invoices</p>
+        </div>
       </div>
 
       {invoices.length === 0 ? (
-        <div className="rounded-2xl border border-white/30 bg-white/50 px-6 py-12 text-center shadow-lg backdrop-blur-xl">
-          <FileText className="mx-auto h-12 w-12 text-stone-300" />
-          <p className="mt-3 font-medium text-stone-600">No invoices yet</p>
-          <p className="mt-1 text-sm text-stone-500">
-            Create an invoice from a booking detail page.
-          </p>
+        <div className="paraiso-card flex flex-col items-center justify-center rounded-2xl px-6 py-16 text-center">
+          <FileText className="h-10 w-10 text-[#8a9ba1]" />
+          <p className="mt-3 font-medium text-[#5e7279]">No invoices yet</p>
+          <p className="mt-1 text-sm text-[#8a9ba1]">Create an invoice from a booking detail page.</p>
           <Link
             href="/admin/bookings"
-            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
           >
             Go to Bookings
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/30 bg-white/50 shadow-lg backdrop-blur-xl">
+        <div className="paraiso-card rounded-2xl overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/20 bg-amber-500/10">
-                <th className="px-6 py-4 text-left text-sm font-semibold text-stone-700">Invoice</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-stone-700">Client</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-stone-700">Amount</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-stone-700">Status</th>
-                <th className="px-6 py-4 w-10" />
+              <tr className="border-b border-[#e0e4dd] bg-[#f4ecdd]">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Invoice</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Client</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Amount</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Status</th>
+                <th className="px-6 py-3.5 w-20" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#e0e4dd]">
               {invoices.map((inv) => (
-                <tr
-                  key={inv.id}
-                  className="border-b border-white/20 last:border-0 transition hover:bg-white/30"
-                >
+                <tr key={inv.id} className="transition hover:bg-[#faf6ef]">
                   <td className="px-6 py-4">
-                    <span className="font-mono font-medium text-teal-700">{inv.invoiceNumber}</span>
-                    <p className="text-xs text-stone-500 mt-0.5">
+                    <span className="font-mono text-sm font-semibold text-[#12343b]">{inv.invoiceNumber}</span>
+                    <p className="mt-0.5 text-xs text-[#8a9ba1]">
                       {new Date(inv.createdAt).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "short",
@@ -81,26 +74,24 @@ export default async function InvoicesPage() {
                     </p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="font-medium text-stone-900">{inv.clientName}</p>
-                    <p className="text-sm text-stone-600">{inv.clientEmail}</p>
+                    <p className="font-medium text-[#11272b]">{inv.clientName}</p>
+                    <p className="text-sm text-[#5e7279]">{inv.clientEmail}</p>
                   </td>
-                  <td className="px-6 py-4 text-right font-medium text-stone-900">
+                  <td className="px-6 py-4 text-right font-semibold text-[#11272b]">
                     {inv.totalAmount.toLocaleString()} {inv.currency}
                   </td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(inv.status)}`}
-                    >
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass(inv.status)}`}>
                       {statusLabel(inv.status)}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-right">
                     <Link
                       href={`/admin/invoices/${inv.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-teal-600 transition hover:bg-teal-50"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-1.5 text-xs font-medium text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
                     >
                       View
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </td>
                 </tr>

@@ -19,11 +19,11 @@ export function SaveSuccessBanner({ message = "Saved successfully" }: { message?
 
   return (
     <div
-      className="mb-6 flex items-center justify-center gap-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-6 py-4 text-emerald-800 shadow-sm"
+      className="mb-6 flex items-center justify-center gap-3 rounded-xl border border-[#b8d6b8] bg-[#dce8dc] px-6 py-4 text-[#375a3f] shadow-sm"
       role="status"
       aria-live="polite"
     >
-      <CheckCircle2 className="h-8 w-8 shrink-0 text-emerald-600" />
+      <CheckCircle2 className="h-8 w-8 shrink-0 text-[#375a3f]" />
       <span className="text-lg font-semibold">{message}</span>
     </div>
   );

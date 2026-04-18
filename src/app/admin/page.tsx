@@ -1,184 +1,302 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import {
-  Users,
-  Package,
-  Calendar,
-  TrendingUp,
-  MapPin,
-  ArrowRight,
   AlertTriangle,
+  ArrowRight,
+  Calendar,
+  MapPin,
+  TrendingUp,
+  Users,
 } from "lucide-react";
-import { getLeads, getTours } from "@/lib/db";
+import { getLeads, getTours, getInvoices } from "@/lib/db";
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { supabase } from "@/lib/supabase";
 import { isDefaultPassword } from "@/lib/settings";
 import { WorldClockWidget } from "@/components/WorldClockWidget";
 import { ExchangeRatesWidget } from "@/components/ExchangeRatesWidget";
-import type { Lead } from "@/lib/types";
+import type { Lead, Tour } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 function formatDate(s: string) {
-  const d = new Date(s);
-  return d.toLocaleDateString("en-US", {
+  return new Date(s).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 }
 
-function daysBetween(start: string, end: string) {
-  const a = new Date(start).getTime();
-  const b = new Date(end).getTime();
-  return Math.ceil((b - a) / (1000 * 60 * 60 * 24)) + 1;
+function formatDateShort(s: string) {
+  return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function RecentLeadsCard({ recentLeads }: { recentLeads: Lead[] }) {
-  const statusClasses: Record<string, string> = {
-    new: "px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800",
-    quoted: "px-2.5 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-800",
-    won: "px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800",
-  };
+function daysBetween(start: string, end: string) {
+  return Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1;
+}
+
+function hoursAgo(iso: string) {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 3600000);
+}
+
+function formatTodayHeading() {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  new: "New",
+  contacted: "Contacted",
+  quoted: "Quoted",
+  negotiating: "Negotiating",
+  won: "Won",
+  lost: "Lost",
+};
+
+const TOUR_STATUS_STYLE: Record<string, string> = {
+  scheduled:   "bg-[#f3e8ce] text-[#7a5a17]",
+  confirmed:   "bg-[#dce8dc] text-[#375a3f]",
+  "in-progress": "bg-[#d6e2e5] text-[#294b55]",
+  completed:   "bg-[#e2e3dd] text-[#545a54]",
+  cancelled:   "bg-[#e8e1d2] text-[#6b6451]",
+};
+
+function PipelineBar({ leads }: { leads: Lead[] }) {
+  const statuses = ["new", "contacted", "quoted", "negotiating", "won"] as const;
+  const counts = Object.fromEntries(
+    statuses.map((s) => [s, leads.filter((l) => l.status === s).length])
+  );
+  const maxCount = Math.max(...Object.values(counts), 1);
+
   return (
-    <div className="rounded-2xl border border-white/20 bg-white/40 shadow-lg shadow-stone-200/50 backdrop-blur-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-white/30 flex items-center justify-between">
-        <h2 className="font-semibold text-slate-900">Recent Bookings</h2>
+    <div className="paraiso-card rounded-2xl p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-[#11272b]">Booking Pipeline</h2>
         <Link
           href="/admin/bookings"
-          className="text-sm text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1"
+          className="flex items-center gap-1 text-xs font-medium text-[#12343b] hover:underline"
         >
-          View all
-          <ArrowRight className="w-4 h-4" />
+          View all <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
-      <div className="divide-y divide-white/20">
-        {recentLeads.length === 0 ? (
-          <div className="px-6 py-8 text-center text-slate-500">
-            No bookings yet
+      <div className="flex items-end gap-2">
+        {statuses.map((s, i) => (
+          <div key={s} className="flex flex-1 flex-col items-center gap-1.5">
+            <span className="text-lg font-bold text-[#11272b]">{counts[s]}</span>
+            <div className="w-full rounded-t" style={{
+              height: `${Math.max((counts[s] / maxCount) * 52, 4)}px`,
+              background: i === statuses.length - 1 ? "#12343b" : "#dce7e8",
+            }} />
+            <span className="text-[10px] font-medium text-[#8a9ba1] uppercase tracking-wide">
+              {STATUS_LABEL[s]}
+            </span>
           </div>
-        ) : (
-          recentLeads.map((lead) => (
-            <div
-              key={lead.id}
-              className="px-6 py-4 flex items-center justify-between hover:bg-white/50 transition-colors"
-            >
-              <div>
-                <p className="font-medium text-slate-900">{lead.name}</p>
-                <p className="text-sm text-slate-500">via {lead.source}</p>
-                {lead.reference ? (
-                  <p className="mt-1 font-mono text-sm font-bold text-teal-700">
-                    Ref: {lead.reference}
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {lead.reference ? (
-                  <span className="px-3 py-1.5 rounded-lg font-mono text-sm font-bold bg-teal-100 text-teal-800 border border-teal-300">
-                    {lead.reference}
-                  </span>
-                ) : null}
-                <span className={statusClasses[lead.status] ?? "px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 text-stone-600"}>
-                  {lead.status}
-                </span>
-              </div>
-            </div>
-          ))
-        )}
+        ))}
       </div>
     </div>
   );
 }
 
+function TodaysTours({ tours }: { tours: Tour[] }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const active = tours.filter(
+    (t) =>
+      t.status !== "cancelled" &&
+      t.status !== "completed" &&
+      t.startDate <= today &&
+      t.endDate >= today
+  );
+
+  return (
+    <div className="paraiso-card rounded-2xl p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-[#11272b]">
+          Today&apos;s Tours
+          {active.length > 0 && (
+            <span className="ml-2 rounded-full bg-[#12343b] px-2 py-0.5 text-[10px] font-semibold text-[#f6ead6]">
+              {active.length}
+            </span>
+          )}
+        </h2>
+        <Link
+          href="/admin/calendar"
+          className="flex items-center gap-1 text-xs font-medium text-[#12343b] hover:underline"
+        >
+          Calendar <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      {active.length === 0 ? (
+        <p className="py-4 text-center text-sm text-[#8a9ba1]">No tours on today</p>
+      ) : (
+        <div className="space-y-3">
+          {active.map((t) => {
+            const dayNum = Math.floor(
+              (new Date(today).getTime() - new Date(t.startDate).getTime()) / 86400000
+            ) + 1;
+            const totalDays = daysBetween(t.startDate, t.endDate);
+            const isStart = t.startDate === today;
+
+            return (
+              <Link
+                key={t.id}
+                href={`/admin/bookings/${t.leadId}`}
+                className="flex items-start gap-3 rounded-xl border border-[#e0e4dd] bg-[#faf6ef] p-3 transition-colors hover:bg-[#f4ecdd]"
+              >
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#12343b] text-[#f6ead6]">
+                  <MapPin className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[#11272b]">{t.clientName}</p>
+                  <p className="truncate text-xs text-[#5e7279]">{t.packageName}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${TOUR_STATUS_STYLE[t.status] ?? ""}`}>
+                      {isStart ? "Starts today" : `Day ${dayNum} of ${totalDays}`}
+                    </span>
+                    {t.confirmationId && (
+                      <span className="font-mono text-[10px] text-[#8a9ba1]">{t.confirmationId}</span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AttentionItems({
+  leads,
+  overdueInvoices,
+}: {
+  leads: Lead[];
+  overdueInvoices: number;
+}) {
+  const staleLeads = leads.filter(
+    (l) =>
+      l.status === "new" &&
+      hoursAgo(l.updatedAt || l.createdAt) > 48
+  );
+  const expiringQuotes = leads.filter((l) => l.status === "quoted");
+  const items = [
+    ...staleLeads.map((l) => ({
+      key: l.id,
+      text: `${l.name} — not contacted (${Math.floor(hoursAgo(l.updatedAt || l.createdAt) / 24)}d)`,
+      href: `/admin/bookings/${l.id}`,
+    })),
+    ...(overdueInvoices > 0
+      ? [{ key: "inv", text: `${overdueInvoices} overdue invoice${overdueInvoices > 1 ? "s" : ""}`, href: "/admin/invoices" }]
+      : []),
+    ...(expiringQuotes.length > 0
+      ? [{ key: "quo", text: `${expiringQuotes.length} quote${expiringQuotes.length > 1 ? "s" : ""} awaiting response`, href: "/admin/quotations" }]
+      : []),
+  ];
+
+  if (items.length === 0) {
+    return (
+      <div className="paraiso-card flex items-center gap-3 rounded-2xl p-5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#dce8dc] text-[#375a3f]">
+          ✓
+        </span>
+        <p className="text-sm font-medium text-[#375a3f]">All clear — nothing needs attention</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="paraiso-card rounded-2xl p-5">
+      <h2 className="mb-3 text-sm font-semibold text-[#11272b]">
+        Needs Attention
+        <span className="ml-2 rounded-full bg-[#eed9cf] px-2 py-0.5 text-[10px] font-semibold text-[#7c3a24]">
+          {items.length}
+        </span>
+      </h2>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item.key}>
+            <Link
+              href={item.href}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-[#5e7279] transition-colors hover:bg-[#f4ecdd] hover:text-[#11272b]"
+            >
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c9922f]" />
+              {item.text}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default async function DashboardPage() {
-  const [leads, tours, settings, usingDefaultPw] = await Promise.all([
+  const [leads, tours, invoices, settings, usingDefaultPw] = await Promise.all([
     getLeads(),
     getTours(),
+    getInvoices(),
     getAppSettings(),
     isDefaultPassword(),
   ]);
-  const brandName = getDisplayCompanyName(settings);
-
-  const activeLeads = leads.filter(
-    (l) => l.status !== "won" && l.status !== "lost"
-  ).length;
-  const scheduledTours = tours.filter(
-    (t) => t.status !== "cancelled" && t.status !== "completed"
-  ).length;
-  const totalRevenue = tours
-    .filter((t) => t.status !== "cancelled")
-    .reduce((sum, t) => sum + t.totalValue, 0);
-  const conversion =
-    leads.length > 0
-      ? Math.round(
-          (leads.filter((l) => l.status === "won").length / leads.length) * 100
-        )
-      : 0;
+  getDisplayCompanyName(settings);
 
   const today = new Date().toISOString().slice(0, 10);
+
+  const activeLeads = leads.filter((l) => l.status !== "won" && l.status !== "lost").length;
+  const scheduledTours = tours.filter((t) => t.status !== "cancelled" && t.status !== "completed").length;
+  const totalRevenue = tours.filter((t) => t.status !== "cancelled").reduce((s, t) => s + t.totalValue, 0);
+  const conversion = leads.length > 0
+    ? Math.round((leads.filter((l) => l.status === "won").length / leads.length) * 100)
+    : 0;
+  const overdueInvoices = invoices.filter((i) => i.status === "overdue").length;
+  const newLeadsToday = leads.filter(
+    (l) => l.createdAt.slice(0, 10) === today
+  ).length;
+
   const upcomingTours = tours
-    .filter((t) => t.status !== "cancelled" && t.status !== "completed" && t.startDate >= today)
+    .filter((t) => t.status !== "cancelled" && t.status !== "completed" && t.startDate > today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate))
-    .slice(0, 5);
+    .slice(0, 6);
 
   const recentLeads = [...leads]
     .sort((a, b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt))
-    .slice(0, 5);
-
-  const stats = [
-    { label: "Active Bookings", value: String(activeLeads), icon: "bookings" as const },
-    {
-      label: "Scheduled Tours",
-      value: String(scheduledTours),
-      icon: "tours" as const,
-    },
-    {
-      label: "Revenue",
-      value: `$${(totalRevenue / 1000).toFixed(1)}k`,
-      icon: "revenue" as const,
-    },
-    {
-      label: "Conversion Rate",
-      value: `${conversion}%`,
-      icon: "conversion" as const,
-    },
-  ];
+    .slice(0, 6);
 
   const isVercel = process.env.VERCEL === "1";
   const hasSupabase = supabase !== null;
 
+  const kpis = [
+    { label: "Active Bookings", value: activeLeads, sub: newLeadsToday > 0 ? `+${newLeadsToday} today` : null, icon: Users, href: "/admin/bookings" },
+    { label: "Scheduled Tours", value: scheduledTours, sub: null, icon: Calendar, href: "/admin/calendar" },
+    { label: "Revenue", value: `$${(totalRevenue / 1000).toFixed(1)}k`, sub: null, icon: TrendingUp, href: "/admin/finance" },
+    { label: "Conversion", value: `${conversion}%`, sub: `${leads.filter((l) => l.status === "won").length} won`, icon: null, href: "/admin/bookings" },
+  ];
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* System alerts */}
       {isVercel && !hasSupabase && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+        <div className="flex items-start gap-3 rounded-xl border border-[#f3e8ce] bg-[#fdf6e8] px-4 py-3 text-sm text-[#7a5a17]">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#c9922f]" />
           <div>
             <p className="font-semibold">Data persistence not configured</p>
-            <p className="mt-0.5 text-amber-800">
-              Running on Vercel without Supabase — bookings, tours, invoices and payments
-              are stored in memory and will be lost on cold start. Set{" "}
-              <code className="rounded bg-amber-100 px-1 font-mono text-xs">
-                NEXT_PUBLIC_SUPABASE_URL
-              </code>{" "}
-              and{" "}
-              <code className="rounded bg-amber-100 px-1 font-mono text-xs">
-                SUPABASE_SERVICE_ROLE_KEY
-              </code>{" "}
-              in Vercel to enable persistent storage.
+            <p className="mt-0.5 text-[#9a7230]">
+              Set <code className="rounded bg-[#f3e8ce] px-1 font-mono text-xs">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
+              <code className="rounded bg-[#f3e8ce] px-1 font-mono text-xs">SUPABASE_SERVICE_ROLE_KEY</code> in Vercel.
             </p>
           </div>
         </div>
       )}
-
       {usingDefaultPw && (
-        <div className="flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
+        <div className="flex items-start gap-3 rounded-xl border border-[#eed9cf] bg-[#fdf2ee] px-4 py-3 text-sm text-[#7c3a24]">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#c9502f]" />
           <div>
-            <p className="font-semibold">You&apos;re using the default password</p>
-            <p className="mt-0.5 text-rose-800">
+            <p className="font-semibold">Using the default password</p>
+            <p className="mt-0.5 text-[#9a4a30]">
               Change it in{" "}
-              <Link href="/admin/settings" className="font-medium underline hover:text-rose-900">
-                Settings &gt; Security
+              <Link href="/admin/settings" className="font-medium underline hover:text-[#7c3a24]">
+                Settings › Security
               </Link>
               .
             </p>
@@ -186,116 +304,132 @@ export default async function DashboardPage() {
         </div>
       )}
 
+      {/* Page heading */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Welcome back to {brandName}
-        </h1>
-        <p className="mt-1 text-slate-600">
-          Here&apos;s what&apos;s happening with your tours today.
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8a9ba1]">
+          {formatTodayHeading()}
         </p>
+        <h1 className="mt-0.5 text-2xl font-bold text-[#11272b]">Operations</h1>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-2xl border border-white/20 bg-white/40 p-5 shadow-lg shadow-stone-200/50 backdrop-blur-xl transition-all hover:bg-white/50 hover:shadow-xl"
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {kpis.map((kpi) => (
+          <Link
+            key={kpi.label}
+            href={kpi.href}
+            className="paraiso-card group rounded-2xl p-5 transition-colors hover:bg-[#f4ecdd]"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-500">{stat.label}</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">
-                  {stat.value}
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a9ba1]">
+                  {kpi.label}
                 </p>
-              </div>
-              <div
-                className={`p-3 rounded-lg ${
-                  stat.icon === "bookings"
-                    ? "bg-amber-100 text-amber-700"
-                    : stat.icon === "tours"
-                    ? "bg-teal-100 text-teal-700"
-                    : stat.icon === "revenue"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-sky-100 text-sky-700"
-                }`}
-              >
-                {stat.icon === "bookings" && <Users className="w-6 h-6" />}
-                {stat.icon === "tours" && <Calendar className="w-6 h-6" />}
-                {stat.icon === "revenue" && <TrendingUp className="w-6 h-6" />}
-                {stat.icon === "conversion" && (
-                  <Package className="w-6 h-6" />
+                <p className="mt-2 text-3xl font-bold text-[#11272b]">{kpi.value}</p>
+                {kpi.sub && (
+                  <p className="mt-1 text-xs text-[#c9922f] font-medium">{kpi.sub}</p>
                 )}
               </div>
+              {kpi.icon && (
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#12343b] text-[#f6ead6]">
+                  <kpi.icon className="h-4 w-4" />
+                </span>
+              )}
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Suspense fallback={<div className="rounded-2xl border border-white/20 bg-white/40 p-5 h-64 animate-pulse" />}>
-          <WorldClockWidget />
-        </Suspense>
-        <Suspense fallback={<div className="rounded-2xl border border-white/20 bg-white/40 p-5 h-64 animate-pulse" />}>
-          <ExchangeRatesWidget />
-        </Suspense>
+      {/* Attention + Today's tours */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AttentionItems leads={leads} overdueInvoices={overdueInvoices} />
+        <TodaysTours tours={tours} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-white/20 bg-white/40 shadow-lg shadow-stone-200/50 backdrop-blur-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-white/30 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900">Upcoming Tours</h2>
-            <Link
-              href="/admin/calendar"
-              className="text-sm text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1"
-            >
-              View scheduled tours
-              <ArrowRight className="w-4 h-4" />
+      {/* Pipeline + Upcoming */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <PipelineBar leads={leads} />
+
+        {/* Upcoming tours */}
+        <div className="paraiso-card rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between border-b border-[#e0e4dd] px-5 py-4">
+            <h2 className="text-sm font-semibold text-[#11272b]">Upcoming Tours</h2>
+            <Link href="/admin/calendar" className="flex items-center gap-1 text-xs font-medium text-[#12343b] hover:underline">
+              View all <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="divide-y divide-white/20">
-            {upcomingTours.length === 0 ? (
-              <div className="px-6 py-8 text-center text-slate-500">
-                No upcoming tours
-              </div>
-            ) : (
-              upcomingTours.map((tour) => (
-                <div
-                  key={tour.id}
-                  className="px-6 py-4 flex items-center justify-between hover:bg-white/50 transition-colors"
+          {upcomingTours.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-[#8a9ba1]">No upcoming tours scheduled</div>
+          ) : (
+            <div className="divide-y divide-[#e0e4dd]">
+              {upcomingTours.map((t) => (
+                <Link
+                  key={t.id}
+                  href={`/admin/bookings/${t.leadId}`}
+                  className="flex items-center justify-between px-5 py-3 text-sm transition-colors hover:bg-[#faf6ef]"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-teal-50">
-                      <MapPin className="w-4 h-4 text-teal-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        {tour.clientName}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {tour.packageName}
-                      </p>
-                      {tour.confirmationId && (
-                        <p className="font-mono text-[11px] font-semibold text-teal-600">
-                          {tour.confirmationId}
-                        </p>
-                      )}
-                    </div>
+                  <div>
+                    <p className="font-medium text-[#11272b]">{t.clientName}</p>
+                    <p className="text-xs text-[#8a9ba1]">{t.packageName}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-slate-900">
-                      {formatDate(tour.startDate)}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {daysBetween(tour.startDate, tour.endDate)} days
-                    </p>
+                  <div className="text-right shrink-0 ml-4">
+                    <p className="font-medium text-[#11272b]">{formatDateShort(t.startDate)}</p>
+                    <p className="text-xs text-[#8a9ba1]">{daysBetween(t.startDate, t.endDate)}d</p>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
+      </div>
 
-        <RecentLeadsCard recentLeads={recentLeads} />
+      {/* Recent bookings */}
+      <div className="paraiso-card rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[#e0e4dd] px-5 py-4">
+          <h2 className="text-sm font-semibold text-[#11272b]">Recent Bookings</h2>
+          <Link href="/admin/bookings" className="flex items-center gap-1 text-xs font-medium text-[#12343b] hover:underline">
+            View all <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <div className="divide-y divide-[#e0e4dd]">
+          {recentLeads.map((lead) => (
+            <Link
+              key={lead.id}
+              href={`/admin/bookings/${lead.id}`}
+              className="flex items-center justify-between px-5 py-3 transition-colors hover:bg-[#faf6ef]"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[#11272b]">{lead.name}</p>
+                <p className="text-xs text-[#8a9ba1]">via {lead.source}</p>
+              </div>
+              <div className="ml-4 flex shrink-0 items-center gap-3">
+                {lead.reference && (
+                  <span className="font-mono text-xs text-[#8a9ba1]">{lead.reference}</span>
+                )}
+                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                  lead.status === "won"          ? "bg-[#dce8dc] text-[#375a3f]"
+                  : lead.status === "lost" ? "bg-[#e8e1d2] text-[#6b6451]"
+                  : lead.status === "new"        ? "bg-[#f3e8ce] text-[#7a5a17]"
+                  : lead.status === "quoted"     ? "bg-[#d6e2e5] text-[#294b55]"
+                  : lead.status === "negotiating"? "bg-[#eed9cf] text-[#7c3a24]"
+                  :                               "bg-[#e2e3dd] text-[#545a54]"
+                }`}>
+                  {STATUS_LABEL[lead.status] ?? lead.status}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Widgets */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Suspense fallback={<div className="paraiso-card h-48 animate-pulse rounded-2xl" />}>
+          <WorldClockWidget />
+        </Suspense>
+        <Suspense fallback={<div className="paraiso-card h-48 animate-pulse rounded-2xl" />}>
+          <ExchangeRatesWidget />
+        </Suspense>
       </div>
     </div>
   );

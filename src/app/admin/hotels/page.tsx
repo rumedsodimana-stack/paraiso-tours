@@ -6,6 +6,8 @@ import { SaveSuccessBanner } from "../SaveSuccessBanner";
 const typeIcons = { hotel: Building2, transport: Car, meal: UtensilsCrossed, supplier: MapPin };
 const typeLabels = { hotel: "Hotel", transport: "Transport", meal: "Meal Provider", supplier: "Supplier" };
 
+const SEC_BTN = "inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-3.5 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]";
+
 export default async function HotelsPage({
   searchParams,
 }: {
@@ -16,60 +18,26 @@ export default async function HotelsPage({
 
   return (
     <div className="space-y-6">
-      {archived === "1" || deleted === "1" ? (
-        <SaveSuccessBanner message="Archived successfully" />
-      ) : null}
+      {(archived === "1" || deleted === "1") && <SaveSuccessBanner message="Archived successfully" />}
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
-            Hotels & Suppliers
-          </h1>
-          <p className="mt-1 text-stone-600 dark:text-stone-400">
-            Manage hotel contracts and supplier agreements
-          </p>
+          <h1 className="text-2xl font-bold text-[#11272b]">Hotels &amp; Suppliers</h1>
+          <p className="mt-1 text-sm text-[#5e7279]">Manage hotel contracts and supplier agreements</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/admin/hotels/new?type=hotel"
-            className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-white px-4 py-2.5 text-sm font-medium text-teal-600 transition hover:bg-teal-50 dark:bg-stone-900 dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-950"
-          >
-            <Building2 className="h-4 w-4" />
-            Add Hotel
-          </Link>
-          <Link
-            href="/admin/hotels/new?type=transport"
-            className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-white px-4 py-2.5 text-sm font-medium text-teal-600 transition hover:bg-teal-50 dark:bg-stone-900 dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-950"
-          >
-            <Car className="h-4 w-4" />
-            Add Vehicle
-          </Link>
-          <Link
-            href="/admin/hotels/new?type=meal"
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
-          >
-            <UtensilsCrossed className="h-4 w-4" />
-            Add Meal Provider
-          </Link>
-          <Link
-            href="/admin/hotels/new?type=supplier"
-            className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-white px-4 py-2.5 text-sm font-medium text-teal-600 transition hover:bg-teal-50 dark:bg-stone-900 dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-950"
-          >
-            <MapPin className="h-4 w-4" />
-            Add Supplier
-          </Link>
+          <Link href="/admin/hotels/new?type=hotel"      className={SEC_BTN}><Building2    className="h-4 w-4" />Add Hotel</Link>
+          <Link href="/admin/hotels/new?type=transport"  className={SEC_BTN}><Car          className="h-4 w-4" />Add Vehicle</Link>
+          <Link href="/admin/hotels/new?type=meal"       className={SEC_BTN}><UtensilsCrossed className="h-4 w-4" />Add Meal Provider</Link>
+          <Link href="/admin/hotels/new?type=supplier"   className={SEC_BTN}><MapPin       className="h-4 w-4" />Add Supplier</Link>
         </div>
       </div>
 
       {hotels.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/40 bg-white/30 py-16 backdrop-blur-xl">
-          <MapPin className="h-12 w-12 text-stone-400" />
-          <p className="mt-4 text-stone-600 dark:text-stone-400">
-            No hotels or suppliers yet. Add your first one to use in packages.
-          </p>
-          <Link
-            href="/admin/hotels/new"
-            className="mt-4 font-medium text-teal-600 hover:text-teal-700"
-          >
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#ddd3c4] bg-[#faf6ef] py-16">
+          <MapPin className="h-10 w-10 text-[#8a9ba1]" />
+          <p className="mt-4 text-[#5e7279]">No hotels or suppliers yet. Add your first one to use in packages.</p>
+          <Link href="/admin/hotels/new" className="mt-4 font-medium text-[#12343b] hover:underline">
             Add Hotel / Supplier
           </Link>
         </div>
@@ -78,57 +46,46 @@ export default async function HotelsPage({
           {(["hotel", "transport", "meal", "supplier"] as const).map((type) => {
             const items = hotels.filter((h) => h.type === type);
             if (items.length === 0) return null;
-            const Icon = typeIcons[type];
+            const SectionIcon = typeIcons[type];
             const sectionTitle =
-              type === "hotel"
-                ? "Hotels"
-                : type === "transport"
-                  ? "Transportation"
-                  : type === "meal"
-                    ? "Meal Providers"
-                    : "Suppliers";
+              type === "hotel" ? "Hotels"
+              : type === "transport" ? "Transportation"
+              : type === "meal" ? "Meal Providers"
+              : "Suppliers";
             return (
               <section key={type}>
-                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-stone-800 dark:text-stone-100">
-                  <Icon className="h-5 w-5" />
+                <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-[#11272b]">
+                  <SectionIcon className="h-4 w-4 text-[#8a9ba1]" />
                   {sectionTitle}
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((h) => {
-                    const Icon = typeIcons[h.type];
+                    const ItemIcon = typeIcons[h.type];
                     return (
                       <Link
                         key={h.id}
                         href={`/admin/hotels/${h.id}`}
-                        className="group flex items-start justify-between rounded-xl border border-white/30 bg-white/50 p-4 shadow-sm backdrop-blur-sm transition hover:border-teal-200 hover:bg-white/70"
+                        className="paraiso-card group flex items-start justify-between rounded-2xl p-4 transition hover:bg-[#f4ecdd]"
                       >
                         <div className="flex gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-900/50 dark:text-teal-400">
-                            <Icon className="h-5 w-5" />
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#eef4f4] text-[#12343b]">
+                            <ItemIcon className="h-5 w-5" />
                           </div>
                           <div>
-                            <p className="font-medium text-stone-900 dark:text-stone-50 group-hover:text-teal-700">
-                              {h.name}
-                            </p>
-                            <p className="text-xs text-stone-500">{typeLabels[h.type]}</p>
+                            <p className="font-medium text-[#11272b]">{h.name}</p>
+                            <p className="text-xs text-[#8a9ba1]">{typeLabels[h.type]}</p>
                             {h.location && (
-                              <p className="mt-0.5 text-sm text-stone-600 dark:text-stone-400">
-                                {h.location}
-                              </p>
+                              <p className="mt-0.5 text-sm text-[#5e7279]">{h.location}</p>
                             )}
                             {h.defaultPricePerNight != null && (
-                              <p className="mt-1 text-sm font-medium text-teal-600">
+                              <p className="mt-1 text-sm font-semibold text-[#12343b]">
                                 {h.defaultPricePerNight.toLocaleString()} {h.currency}
-                                {type === "hotel"
-                                  ? "/night"
-                                  : type === "meal"
-                                    ? "/person"
-                                    : " (default)"}
+                                {type === "hotel" ? "/night" : type === "meal" ? "/person" : " (default)"}
                               </p>
                             )}
                           </div>
                         </div>
-                        <ChevronRight className="h-5 w-5 shrink-0 text-stone-400 transition group-hover:text-teal-600" />
+                        <ChevronRight className="h-5 w-5 shrink-0 text-[#8a9ba1] transition group-hover:text-[#12343b]" />
                       </Link>
                     );
                   })}

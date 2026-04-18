@@ -23,107 +23,89 @@ export default async function PaymentsPage({
     <div className="space-y-6">
       {(completed || paid) && (
         <SaveSuccessBanner
-          message={completed ? "Tour marked as completed and paid. Receipt sent to client." : "Payable marked as paid. View the transaction and print the voucher below."}
+          message={completed
+            ? "Tour marked as completed and paid. Receipt sent to client."
+            : "Payable marked as paid. View the transaction and print the voucher below."}
         />
       )}
       <div>
-        <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
-          Payments
-        </h1>
-        <p className="mt-1 text-stone-600 dark:text-stone-400">
+        <h1 className="text-2xl font-bold text-[#11272b]">Payments</h1>
+        <p className="mt-1 text-sm text-[#5e7279]">
           Track customer payments and supplier payouts. Click a transaction to view details and linked invoice.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+        <div className="paraiso-card rounded-2xl p-5">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-emerald-100 p-3 text-emerald-600 dark:bg-emerald-900/30">
-              <TrendingUp className="h-6 w-6" />
+            <div className="rounded-lg bg-[#dce8dc] p-3 text-[#375a3f]">
+              <TrendingUp className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500 dark:text-stone-400">Incoming</p>
-              <p className="text-xl font-bold text-stone-900 dark:text-stone-50">${incoming.toLocaleString()}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Incoming</p>
+              <p className="mt-0.5 text-xl font-bold text-[#11272b]">${incoming.toLocaleString()}</p>
             </div>
           </div>
         </div>
-        <div className="rounded-2xl border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+        <div className="paraiso-card rounded-2xl p-5">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-rose-100 p-3 text-rose-600 dark:bg-rose-900/30">
-              <TrendingDown className="h-6 w-6" />
+            <div className="rounded-lg bg-[#eed9cf] p-3 text-[#7c3a24]">
+              <TrendingDown className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500 dark:text-stone-400">Outgoing</p>
-              <p className="text-xl font-bold text-stone-900 dark:text-stone-50">${outgoing.toLocaleString()}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Outgoing</p>
+              <p className="mt-0.5 text-xl font-bold text-[#11272b]">${outgoing.toLocaleString()}</p>
             </div>
           </div>
         </div>
-        <div className="rounded-2xl border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+        <div className="paraiso-card rounded-2xl p-5">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-teal-100 p-3 text-teal-600 dark:bg-teal-900/30">
-              <Banknote className="h-6 w-6" />
+            <div className="rounded-lg bg-[#eef4f4] p-3 text-[#12343b]">
+              <Banknote className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500 dark:text-stone-400">Net</p>
-              <p className="text-xl font-bold text-stone-900 dark:text-stone-50">${(incoming - outgoing).toLocaleString()}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Net</p>
+              <p className="mt-0.5 text-xl font-bold text-[#11272b]">${(incoming - outgoing).toLocaleString()}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Transactions</h3>
+        <h3 className="text-base font-semibold text-[#11272b]">Transactions</h3>
         {payments.map((p) => (
           <Link
             key={p.id}
             id={p.id}
             href={`/admin/payments/${p.id}`}
-            className="flex items-center justify-between rounded-2xl border border-white/30 bg-white/50 px-4 py-3 shadow-sm backdrop-blur-sm transition hover:border-teal-200 hover:bg-white/70"
+            className="paraiso-card flex items-center justify-between rounded-2xl px-4 py-3 transition hover:bg-[#f4ecdd]"
           >
             <div className="flex items-center gap-3">
-              <div
-                className={`rounded-lg p-2 ${
-                  p.type === "incoming"
-                    ? "bg-emerald-100 text-emerald-600"
-                    : "bg-rose-100 text-rose-600"
-                }`}
-              >
-                {p.type === "incoming" ? (
-                  <ArrowDownRight className="h-4 w-4" />
-                ) : (
-                  <ArrowUpRight className="h-4 w-4" />
-                )}
+              <div className={`rounded-lg p-2 ${
+                p.type === "incoming"
+                  ? "bg-[#dce8dc] text-[#375a3f]"
+                  : "bg-[#eed9cf] text-[#7c3a24]"
+              }`}>
+                {p.type === "incoming"
+                  ? <ArrowDownRight className="h-4 w-4" />
+                  : <ArrowUpRight className="h-4 w-4" />}
               </div>
               <div>
-                <p className="font-medium text-stone-900 dark:text-stone-50">
-                  {p.description}
-                </p>
-                <p className="text-xs text-stone-500">{p.date}</p>
+                <p className="font-medium text-[#11272b]">{p.description}</p>
+                <p className="text-xs text-[#8a9ba1]">{p.date}</p>
               </div>
             </div>
             <div className="text-right">
-              <p
-                className={`font-semibold ${
-                  p.type === "incoming" ? "text-emerald-600" : "text-rose-600"
-                }`}
-              >
+              <p className={`font-semibold ${
+                p.type === "incoming" ? "text-[#375a3f]" : "text-[#7c3a24]"
+              }`}>
                 {p.type === "incoming" ? "+" : "-"}
                 {p.amount.toLocaleString()} {p.currency}
               </p>
-              <span
-                className={`text-xs ${
-                  p.status === "completed"
-                    ? "text-stone-500"
-                    : "text-amber-600"
-                }`}
-              >
+              <span className={`text-xs ${p.status === "completed" ? "text-[#8a9ba1]" : "text-[#7a5a17]"}`}>
                 {p.type === "incoming"
-                  ? p.status === "completed"
-                    ? "Incoming · Payment received"
-                    : "Incoming · Awaiting payment"
-                  : p.status === "completed"
-                    ? "Outgoing · Paid"
-                    : "Outgoing · To pay"}
+                  ? p.status === "completed" ? "Incoming · Payment received" : "Incoming · Awaiting payment"
+                  : p.status === "completed" ? "Outgoing · Paid" : "Outgoing · To pay"}
               </span>
             </div>
           </Link>

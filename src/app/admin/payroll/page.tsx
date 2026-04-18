@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { Wallet, Plus, CheckCircle, Clock } from "lucide-react";
+import { Wallet, CheckCircle, Clock } from "lucide-react";
 import { getPayrollRuns } from "@/lib/db";
 import { RunPayrollForm } from "./RunPayrollForm";
 
-const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-  draft: { label: "Draft", color: "text-amber-600", icon: Clock },
-  approved: { label: "Approved", color: "text-blue-600", icon: Clock },
-  paid: { label: "Paid", color: "text-emerald-600", icon: CheckCircle },
+const statusConfig: Record<string, { label: string; badgeClass: string; icon: typeof CheckCircle }> = {
+  draft:    { label: "Draft",    badgeClass: "bg-[#f3e8ce] text-[#7a5a17]", icon: Clock },
+  approved: { label: "Approved", badgeClass: "bg-[#d6e2e5] text-[#294b55]", icon: Clock },
+  paid:     { label: "Paid",     badgeClass: "bg-[#dce8dc] text-[#375a3f]", icon: CheckCircle },
 };
 
 export default async function PayrollPage() {
@@ -16,25 +16,19 @@ export default async function PayrollPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
-            Payroll
-          </h1>
-          <p className="mt-1 text-stone-600 dark:text-stone-400">
-            Run payroll and track staff payments
-          </p>
+          <h1 className="text-2xl font-bold text-[#11272b]">Payroll</h1>
+          <p className="mt-1 text-sm text-[#5e7279]">Run payroll and track staff payments</p>
         </div>
         <RunPayrollForm />
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Payroll Runs</h2>
+        <h2 className="text-base font-semibold text-[#11272b]">Payroll Runs</h2>
         {runs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/40 bg-white/30 py-16 backdrop-blur-xl">
-            <Wallet className="h-12 w-12 text-stone-400" />
-            <p className="mt-4 text-stone-600 dark:text-stone-400">
-              No payroll runs yet. Add employees first, then run payroll.
-            </p>
-            <Link href="/admin/employees" className="mt-4 font-medium text-teal-600 hover:text-teal-700">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#ddd3c4] bg-[#faf6ef] py-16">
+            <Wallet className="h-10 w-10 text-[#8a9ba1]" />
+            <p className="mt-4 text-[#5e7279]">No payroll runs yet. Add employees first, then run payroll.</p>
+            <Link href="/admin/employees" className="mt-4 font-medium text-[#12343b] hover:underline">
               Go to Employees
             </Link>
           </div>
@@ -46,29 +40,31 @@ export default async function PayrollPage() {
               return (
                 <div
                   key={run.id}
-                  className="flex items-center justify-between rounded-xl border border-white/30 bg-white/50 p-4 shadow-sm backdrop-blur-sm"
+                  className="paraiso-card flex items-center justify-between rounded-2xl p-4"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`rounded-lg p-2 ${config.color}`}>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#eef4f4] text-[#12343b]">
                       <Icon className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-medium text-stone-900 dark:text-stone-50">
+                      <p className="font-medium text-[#11272b]">
                         {run.periodStart} – {run.periodEnd}
                       </p>
-                      <p className="text-sm text-stone-500">
+                      <p className="text-sm text-[#8a9ba1]">
                         Pay date: {run.payDate} · {run.items.length} employees
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="text-sm text-stone-500">Total Net</p>
-                      <p className="font-semibold text-stone-900 dark:text-stone-50">
+                      <p className="text-xs text-[#8a9ba1]">Total Net</p>
+                      <p className="font-semibold text-[#11272b]">
                         {run.totalNet.toLocaleString()} {run.currency}
                       </p>
                     </div>
-                    <span className={`text-sm font-medium ${config.color}`}>{config.label}</span>
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${config.badgeClass}`}>
+                      {config.label}
+                    </span>
                     {run.status !== "paid" && (
                       <form action={async () => {
                         "use server";
@@ -77,7 +73,7 @@ export default async function PayrollPage() {
                       }}>
                         <button
                           type="submit"
-                          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                          className="rounded-xl bg-[#12343b] px-4 py-2 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
                         >
                           Mark as Paid
                         </button>
@@ -85,7 +81,7 @@ export default async function PayrollPage() {
                     )}
                     <Link
                       href={`/admin/payroll/${run.id}`}
-                      className="text-sm font-medium text-teal-600 hover:text-teal-700"
+                      className="text-sm font-medium text-[#12343b] hover:underline"
                     >
                       View
                     </Link>

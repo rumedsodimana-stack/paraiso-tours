@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft, DollarSign, Building2, Car, UtensilsCrossed } from "lucide-react";
 import { getLead, getPackages, getPackage, getHotels } from "@/lib/db";
+import { getAuditLogsForEntities } from "@/lib/audit";
+import { getCustomRouteMetaFromAuditLogs } from "@/lib/custom-route-booking";
 import { LeadForm } from "../../LeadForm";
 import { UpdateLeadForm } from "./UpdateLeadForm";
 import { BookingSupplierBreakdown } from "../../BookingSupplierBreakdown";
+import { CustomRouteBreakdown } from "../../CustomRouteBreakdown";
 
 export default async function EditLeadPage({
   params,
@@ -16,6 +19,10 @@ export default async function EditLeadPage({
     getPackages(),
     getHotels(),
   ]);
+  const auditLogs = lead
+    ? await getAuditLogsForEntities([{ entityType: "lead", entityId: lead.id }], 30)
+    : [];
+  const customRoute = getCustomRouteMetaFromAuditLogs(auditLogs);
   const pkg = lead?.packageId ? await getPackage(lead.packageId) : null;
 
   if (!lead) {
@@ -49,6 +56,11 @@ export default async function EditLeadPage({
             <p className="mt-1 font-mono text-lg font-semibold text-teal-900">{lead.reference}</p>
           </div>
         )}
+        {!pkg && customRoute ? (
+          <div className="mt-4">
+            <CustomRouteBreakdown lead={lead} route={customRoute} />
+          </div>
+        ) : null}
         {lead.totalPrice != null && pkg && (lead.selectedAccommodationOptionId || (lead.selectedAccommodationByNight && Object.keys(lead.selectedAccommodationByNight).length > 0) || lead.selectedTransportOptionId || lead.selectedMealOptionId) && (
           <div className="mt-4 space-y-4">
             <div className="rounded-xl border border-teal-200 bg-teal-50/50 px-4 py-3">

@@ -37,7 +37,7 @@ export function AdminLogoutButton() {
             }
           });
         }}
-        className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/60 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-stone-900"
+        className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-3 py-1.5 text-sm font-medium text-[#5e7279] transition-colors hover:bg-[#f4ecdd] hover:text-[#11272b]"
         disabled={isPending}
       >
         <LogOut className="h-4 w-4" />

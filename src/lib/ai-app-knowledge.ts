@@ -52,7 +52,7 @@ export function buildAppArchitectureKnowledgeContext() {
     "- Admin portal routes: /admin/bookings, /admin/packages, /admin/hotels, /admin/tours, /admin/invoices, /admin/payments, /admin/finance, /admin/payroll, /admin/todos, /admin/quotations, /admin/settings, /admin/ai.",
     "- Persistence: Supabase (primary) with JSON file fallback under /data/.",
     "- Commercial flow: lead/booking → package snapshot → scheduled tour → invoice → payment.",
-    "- Package snapshots freeze the sold itinerary even if the live package changes.",
+    "- Package snapshots are important because they freeze the sold itinerary even if the live package changes.",
     "- Admin mutations are server actions under src/app/actions/ (leads, invoices, payments, tours, quotations, packages, ai).",
     "- All important mutations create audit entries via src/lib/audit.ts.",
     "- Database access layer: src/lib/db.ts — all CRUD functions for every entity.",
@@ -75,11 +75,12 @@ export function buildAppUsageKnowledgeContext() {
   return [
     "App usage knowledge:",
     "- Public users browse packages, submit booking requests, track bookings, and use the journey builder.",
-    "- Staff work: Bookings → schedule tours → create invoices → confirm payments → coordinate suppliers.",
+    "- Bookings first: staff start in Bookings, then schedule tours, create invoices, confirm payments, and coordinate suppliers.",
     "- Settings: agency branding, portal copy, themes, AI runtime, notifications.",
     "- Hotels & Suppliers: hotels, transport, meal providers, general suppliers.",
     "- Packages: itinerary days, accommodation, transport, meals.",
     "- Every entity has a reference ID: bookings (PCT-…), tours (TCF-…), packages (PKG-…), quotations (QUO-…).",
+    "- The admin user guide explains the workflow screen by screen when staff need operational detail.",
   ].join("\n");
 }
 
@@ -90,6 +91,7 @@ export function buildWorkspaceCopilotCapabilitiesContext() {
     "YOU HAVE FULL CRUD CONTROL OVER THE APP. You can create, read, update, and delete bookings, tours, packages, invoices, payments, todos, quotations, and suppliers.",
     "",
     "ALWAYS choose an executable action when the staff request maps to a supported capability. Do NOT default to answer_only when an action exists.",
+    "Only one executable action is allowed per response.",
     "Only use answer_only when the user is genuinely asking a question or requesting information, NOT when they want something done.",
     "",
     "Entity resolution: use booking references (PCT-…), tour confirmations (TCF-…), package references (PKG-…), quotation references (QUO-…), client names, or emails. The system does fuzzy matching.",

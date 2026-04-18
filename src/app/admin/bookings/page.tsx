@@ -1,6 +1,6 @@
 import { getLeads, getPackages, getTours } from "@/lib/db";
 import Link from "next/link";
-import { ArrowRight, Bot, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { LeadsTable } from "./LeadsTable";
 import { SaveSuccessBanner } from "../SaveSuccessBanner";
 
@@ -43,38 +43,38 @@ export default async function LeadsPage({
       />
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between rounded-2xl border border-white/30 bg-white/50 px-6 py-3 shadow-lg shadow-stone-900/5 backdrop-blur-xl">
-          <p className="text-sm text-stone-600">
+        <div className="paraiso-card flex items-center justify-between rounded-2xl px-6 py-3">
+          <p className="text-sm text-[#5e7279]">
             Showing {startIndex + 1}&ndash;{Math.min(startIndex + PAGE_SIZE, totalItems)} of {totalItems} bookings
           </p>
           <div className="flex items-center gap-2">
             {currentPage > 1 ? (
               <Link
                 href={`/admin/bookings?page=${currentPage - 1}${initialSearch ? `&q=${encodeURIComponent(initialSearch)}` : ""}`}
-                className="inline-flex items-center gap-1 rounded-xl border border-white/20 bg-white/40 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-white/60"
+                className="inline-flex items-center gap-1 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
               >
                 <ChevronLeft className="h-4 w-4" />
                 Previous
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/20 px-3 py-2 text-sm font-medium text-stone-400 cursor-not-allowed">
+              <span className="inline-flex items-center gap-1 rounded-xl border border-[#e0e4dd] bg-[#faf6ef] px-3 py-2 text-sm font-medium text-[#8a9ba1] cursor-not-allowed">
                 <ChevronLeft className="h-4 w-4" />
                 Previous
               </span>
             )}
-            <span className="px-2 text-sm font-medium text-stone-700">
+            <span className="px-2 text-sm font-medium text-[#5e7279]">
               Page {currentPage} of {totalPages}
             </span>
             {currentPage < totalPages ? (
               <Link
                 href={`/admin/bookings?page=${currentPage + 1}${initialSearch ? `&q=${encodeURIComponent(initialSearch)}` : ""}`}
-                className="inline-flex items-center gap-1 rounded-xl border border-white/20 bg-white/40 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-white/60"
+                className="inline-flex items-center gap-1 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
               >
                 Next
                 <ChevronRight className="h-4 w-4" />
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/20 px-3 py-2 text-sm font-medium text-stone-400 cursor-not-allowed">
+              <span className="inline-flex items-center gap-1 rounded-xl border border-[#e0e4dd] bg-[#faf6ef] px-3 py-2 text-sm font-medium text-[#8a9ba1] cursor-not-allowed">
                 Next
                 <ChevronRight className="h-4 w-4" />
               </span>

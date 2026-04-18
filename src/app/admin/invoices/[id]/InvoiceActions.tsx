@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Printer, FileText } from "lucide-react";
+import { Download, FileText, Mail, MessageCircle, Printer } from "lucide-react";
 import type { Invoice } from "@/lib/types";
 import { updateInvoiceStatus } from "@/app/actions/invoices";
 
@@ -16,9 +16,15 @@ const STATUS_OPTIONS = [
 
 interface InvoiceActionsProps {
   invoice: Invoice;
+  emailHref?: string;
+  whatsappHref?: string;
 }
 
-export function InvoiceActions({ invoice }: InvoiceActionsProps) {
+export function InvoiceActions({
+  invoice,
+  emailHref,
+  whatsappHref,
+}: InvoiceActionsProps) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -55,13 +61,40 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
         <FileText className="h-4 w-4" />
         View booking
       </Link>
+      {emailHref ? (
+        <a
+          href={emailHref}
+          className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+        >
+          <Mail className="h-4 w-4" />
+          Share by email
+        </a>
+      ) : null}
+      {whatsappHref ? (
+        <a
+          href={whatsappHref}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+        >
+          <MessageCircle className="h-4 w-4" />
+          Share on WhatsApp
+        </a>
+      ) : null}
+      <a
+        href={`/api/admin/invoices/${invoice.id}/pdf`}
+        className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+      >
+        <Download className="h-4 w-4" />
+        Download PDF
+      </a>
       <button
         type="button"
         onClick={handlePrint}
         className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
       >
         <Printer className="h-4 w-4" />
-        Print
+        Print / Save PDF
       </button>
     </div>
   );

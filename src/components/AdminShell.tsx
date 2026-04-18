@@ -85,31 +85,25 @@ export function AdminShell({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden print:block print:h-auto print:overflow-auto">
+    <div className="admin-shell flex h-screen overflow-hidden print:block print:h-auto print:overflow-auto">
       <Sidebar brandName={brandName} logoUrl={logoUrl} />
-      <div className="ml-64 flex min-w-0 flex-1 h-full overflow-hidden print:ml-0">
-        <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden">
-          <Suspense
-            fallback={
-              <header className="h-16 shrink-0 border-b border-white/20 bg-white/50" />
-            }
-          >
-            <Header
-              aiChatOpen={showGlobalAiChat && aiChatOpen}
-              onToggleAiChat={handleToggleAiChat}
-              showAiToggle={showGlobalAiChat}
-            />
-          </Suspense>
-          <main
-            className={`flex-1 overflow-y-auto p-6 transition-all duration-500 ${
-              mainGlow
-                ? "ring-2 ring-sky-300/80 shadow-[0_0_38px_rgba(56,189,248,0.24)]"
-                : ""
-            }`}
-          >
+      <div className="relative z-10 ml-64 flex h-full min-w-0 flex-1 flex-col overflow-hidden print:ml-0">
+        <Suspense
+          fallback={
+            <div className="h-[52px] shrink-0 border-b border-[#e0e4dd] bg-[#fffbf4]" />
+          }
+        >
+          <Header
+            aiChatOpen={showGlobalAiChat && aiChatOpen}
+            onToggleAiChat={handleToggleAiChat}
+            showAiToggle={showGlobalAiChat}
+          />
+        </Suspense>
+        <main className="flex-1 overflow-y-auto bg-[#faf6ef] px-6 py-6">
+          <div className="mx-auto w-full max-w-[1680px]">
             {children}
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
       {showGlobalAiChat ? (
         <GlobalAdminAiChat
