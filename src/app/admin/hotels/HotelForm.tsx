@@ -4,14 +4,37 @@ import { useState } from "react";
 import type { HotelSupplier } from "@/lib/types";
 import { SaveSuccessBanner } from "../SaveSuccessBanner";
 
+const DESTINATIONS = [
+  { id: "negombo", name: "Negombo" },
+  { id: "colombo", name: "Colombo" },
+  { id: "kalpitiya", name: "Kalpitiya" },
+  { id: "anuradhapura", name: "Anuradhapura" },
+  { id: "dambulla", name: "Dambulla" },
+  { id: "sigiriya", name: "Sigiriya" },
+  { id: "kandy", name: "Kandy" },
+  { id: "nuwara-eliya", name: "Nuwara Eliya" },
+  { id: "ella", name: "Ella" },
+  { id: "trincomalee", name: "Trincomalee" },
+  { id: "yala", name: "Yala" },
+  { id: "galle", name: "Galle" },
+  { id: "bentota", name: "Bentota" },
+  { id: "mirissa", name: "Mirissa" },
+  { id: "tangalle", name: "Tangalle" },
+  { id: "pasikuda", name: "Pasikuda" },
+  { id: "arugam-bay", name: "Arugam Bay" },
+  { id: "jaffna", name: "Jaffna" },
+];
+
 export function HotelForm({
   hotel,
   action,
   defaultType = "hotel",
+  defaultDestinationId,
 }: {
   hotel?: HotelSupplier;
   action: (formData: FormData) => Promise<{ error?: string; success?: boolean; id?: string }>;
   defaultType?: "hotel" | "transport" | "meal" | "supplier";
+  defaultDestinationId?: string;
 }) {
   const [error, setError] = useState<string>("");
   const [saved, setSaved] = useState(false);
@@ -91,6 +114,27 @@ export function HotelForm({
             placeholder="Negombo"
           />
         </div>
+        {type === "hotel" && (
+          <div>
+            <label htmlFor="destinationId" className="block text-sm font-medium text-stone-700">
+              Destination
+            </label>
+            <select
+              id="destinationId"
+              name="destinationId"
+              defaultValue={hotel?.destinationId ?? defaultDestinationId ?? ""}
+              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            >
+              <option value="">— No destination assigned —</option>
+              {DESTINATIONS.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-stone-500">
+              Links this hotel to a destination for catalog filtering.
+            </p>
+          </div>
+        )}
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-stone-700">
             Email

@@ -5,12 +5,11 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Activity,
   Banknote,
   BookOpen,
   Bot,
-  Building2,
   Calendar,
+  Car,
   ChevronDown,
   ChevronRight,
   Compass,
@@ -89,8 +88,7 @@ const OPERATIONS: NavItem[] = [
 const CATALOG: NavItem[] = [
   { href: "/admin/packages", label: "Tour Packages", icon: Package },
   { href: "/admin/destinations", label: "Destinations", icon: MapPin },
-  { href: "/admin/hotels", label: "Hotels & Transport", icon: Building2 },
-  { href: "/admin/activities", label: "Activities", icon: Activity },
+  { href: "/admin/transportation", label: "Transportation", icon: Car },
 ];
 
 const FINANCE_ITEMS: NavItem[] = [

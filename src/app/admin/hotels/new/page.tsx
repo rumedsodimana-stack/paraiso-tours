@@ -6,10 +6,11 @@ import { createHotelAction } from "@/app/actions/hotels";
 export default async function NewHotelPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ type?: string }> | { type?: string };
+  searchParams?: Promise<{ type?: string; destination?: string }> | { type?: string; destination?: string };
 }) {
   const params = searchParams ? await Promise.resolve(searchParams) : {};
   const typeParam = params.type;
+  const destinationId = params.destination ?? undefined;
   const defaultType = (
     typeParam === "transport"
       ? "transport"
@@ -40,7 +41,7 @@ export default async function NewHotelPage({
       </Link>
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
         <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50">{formTitle}</h1>
-        <HotelForm action={createHotelAction as Parameters<typeof HotelForm>[0]["action"]} defaultType={defaultType} />
+        <HotelForm action={createHotelAction as Parameters<typeof HotelForm>[0]["action"]} defaultType={defaultType} defaultDestinationId={destinationId} />
       </div>
     </div>
   );

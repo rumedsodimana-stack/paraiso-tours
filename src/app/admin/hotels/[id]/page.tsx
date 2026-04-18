@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft, Pencil, Landmark, MapPin, Building2, Car, UtensilsCrossed } from "lucide-react";
 import { notFound } from "next/navigation";
-import { getHotel } from "@/lib/db";
+import { getHotel, getHotelMealPlans } from "@/lib/db";
 import { SaveSuccessBanner } from "../../SaveSuccessBanner";
 import { DeleteHotelButton } from "../DeleteHotelButton";
+import { MealPlanManager } from "./MealPlanManager";
 
 const typeIcons = { hotel: Building2, transport: Car, meal: UtensilsCrossed, supplier: MapPin };
 const typeLabels = { hotel: "Hotel", transport: "Transport", meal: "Meal Provider", supplier: "Supplier" };
@@ -27,7 +28,7 @@ export default async function HotelProfilePage({
 }) {
   const { id } = await params;
   const { saved } = searchParams ? await searchParams : {};
-  const hotel = await getHotel(id);
+  const [hotel, mealPlans] = await Promise.all([getHotel(id), getHotelMealPlans(id)]);
   if (!hotel) notFound();
 
   const Icon = typeIcons[hotel.type];
@@ -39,11 +40,21 @@ export default async function HotelProfilePage({
       {saved === "1" && <SaveSuccessBanner message={`${typeLabels[hotel.type]} saved successfully`} />}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Link
-          href="/admin/hotels"
+          href={
+            hotel.type === "transport"
+              ? "/admin/transportation"
+              : hotel.destinationId
+                ? `/admin/destinations/${hotel.destinationId}`
+                : "/admin/destinations"
+          }
           className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
         >
           <ArrowLeft className="h-5 w-5" />
-          Back to Hotels & Suppliers
+          {hotel.type === "transport"
+            ? "Back to Transportation"
+            : hotel.destinationId
+              ? "Back to Destination"
+              : "Back to Destinations"}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -120,6 +131,17 @@ export default async function HotelProfilePage({
           </div>
         )}
       </div>
+
+      {/* Meal Plans — only for hotel type */}
+      {hotel.type === "hotel" && (
+        <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
+          <MealPlanManager
+            hotelId={hotel.id}
+            hotelCurrency={hotel.currency}
+            initialMealPlans={mealPlans}
+          />
+        </div>
+      )}
     </div>
   );
 }

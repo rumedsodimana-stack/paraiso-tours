@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { getPackage, getHotels } from "@/lib/db";
+import { getPackage, getHotels, getAllMealPlans } from "@/lib/db";
+import { getPlannerDestinations } from "@/lib/route-planner";
 import { UpdatePackageForm } from "./UpdatePackageForm";
 
 export default async function EditPackagePage({
@@ -9,7 +10,8 @@ export default async function EditPackagePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [pkg, hotels] = await Promise.all([getPackage(id), getHotels()]);
+  const [pkg, hotels, allMealPlans] = await Promise.all([getPackage(id), getHotels(), getAllMealPlans()]);
+  const destinations = getPlannerDestinations().filter((d) => d.id !== "airport");
 
   if (!pkg) {
     return (
@@ -34,7 +36,7 @@ export default async function EditPackagePage({
       <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
         <h1 className="text-2xl font-semibold text-stone-900">Edit Package</h1>
         <p className="mt-1 text-stone-600">Composer view for {pkg.name}</p>
-        <UpdatePackageForm pkg={pkg} hotels={hotels} />
+        <UpdatePackageForm pkg={pkg} hotels={hotels} destinations={destinations} allMealPlans={allMealPlans} />
       </div>
     </div>
   );

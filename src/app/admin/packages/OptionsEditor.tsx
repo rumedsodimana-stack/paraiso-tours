@@ -1,7 +1,9 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import type { PackageOption, HotelSupplier, PriceType } from "@/lib/types";
+import type { PackageOption, HotelSupplier, HotelMealPlan, PriceType } from "@/lib/types";
+
+export type MealPlanEntry = HotelMealPlan & { hotelName: string };
 
 const PRICE_TYPES: { value: PriceType; label: string }[] = [
   { value: "per_person_total", label: "Per person (trip)" },
@@ -46,6 +48,18 @@ function usesCapacityField(priceType: PriceType): boolean {
   );
 }
 
+function buildOptionFromMealPlan(mp: MealPlanEntry, existing?: PackageOption): PackageOption {
+  return {
+    id: existing?.id ?? genId(),
+    label: `${mp.hotelName} — ${mp.label}`,
+    supplierId: mp.hotelId,
+    price: mp.pricePerPerson,
+    costPrice: mp.pricePerPerson,
+    priceType: "per_person_per_day",
+    isDefault: existing?.isDefault ?? false,
+  };
+}
+
 function buildOptionFromSupplier(
   supplier: HotelSupplier,
   supplierType: "hotel" | "transport" | "meal",
@@ -75,6 +89,8 @@ export function OptionsEditor({
   supplierType = "hotel",
   allowCustom = true,
   packageCurrency,
+  destinationId,
+  mealPlans,
 }: {
   title: string;
   options: PackageOption[];
@@ -84,15 +100,33 @@ export function OptionsEditor({
   supplierType?: "hotel" | "transport" | "meal";
   allowCustom?: boolean;
   packageCurrency?: string;
+  /** When set, hotel options are filtered to this destination only */
+  destinationId?: string;
+  /** When provided, meal options are sourced from hotel meal plan catalog */
+  mealPlans?: MealPlanEntry[];
 }) {
   const defaultPriceType: PriceType =
     showSupplier
       ? getPriceTypeForSupplierType(supplierType)
       : "per_person";
 
-  const supplierList = hotels?.filter((h) => h.type === supplierType) ?? [];
+  // Filter supplier list: for hotels, filter by destination when provided
+  const supplierList = (hotels?.filter((h) => {
+    if (h.type !== supplierType) return false;
+    if (supplierType === "hotel" && destinationId) {
+      return h.destinationId === destinationId;
+    }
+    return true;
+  }) ?? []);
+
+  // Whether to use meal plan catalog instead of supplier list
+  const useMealPlanCatalog = supplierType === "meal" && mealPlans !== undefined;
 
   function add() {
+    if (useMealPlanCatalog && mealPlans!.length > 0) {
+      onChange([...options, buildOptionFromMealPlan(mealPlans![0])]);
+      return;
+    }
     if (showSupplier && supplierList.length > 0 && !allowCustom) {
       onChange([...options, buildOptionFromSupplier(supplierList[0], supplierType)]);
       return;
@@ -125,10 +159,14 @@ export function OptionsEditor({
           Add
         </button>
       </div>
-      {showSupplier ? (
+      {showSupplier && !useMealPlanCatalog ? (
         <p className="mb-3 text-xs text-stone-500">
           Selecting a supplier copies its saved default rate into the option.
           You can then adjust the package price if needed.
+        </p>
+      ) : useMealPlanCatalog ? (
+        <p className="mb-3 text-xs text-stone-500">
+          Select a meal plan from your hotel catalog. Price is copied from the plan.
         </p>
       ) : null}
       <div className="space-y-2">
@@ -155,7 +193,38 @@ export function OptionsEditor({
                 className="rounded-xl border border-white/30 bg-white/55 p-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  {showSupplier && supplierList.length > 0 ? (
+                  {useMealPlanCatalog && mealPlans!.length > 0 ? (
+                    <select
+                      value={opt.supplierId && opt.label ? `${opt.supplierId}|||${opt.label}` : ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const [hotelId, label] = val.split("|||");
+                        const mp = mealPlans!.find(
+                          (m) => m.hotelId === hotelId && `${m.hotelName} — ${m.label}` === label
+                        );
+                        if (!mp) return;
+                        update(i, buildOptionFromMealPlan(mp, opt));
+                      }}
+                      className="min-w-[260px] rounded-lg border border-white/30 bg-white/70 px-3 py-2 text-sm"
+                    >
+                      <option value="">Select meal plan…</option>
+                      {Array.from(new Set(mealPlans!.map((m) => m.hotelName))).map((hotelName) => (
+                        <optgroup key={hotelName} label={hotelName}>
+                          {mealPlans!
+                            .filter((m) => m.hotelName === hotelName)
+                            .map((m) => (
+                              <option
+                                key={m.id}
+                                value={`${m.hotelId}|||${m.hotelName} — ${m.label}`}
+                              >
+                                {m.label} — {m.pricePerPerson.toLocaleString()} {m.currency}/person
+                              </option>
+                            ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  ) : showSupplier && supplierList.length > 0 ? (
                     <>
                       <select
                         value={opt.supplierId ?? (allowCustom ? "__custom__" : "")}
@@ -306,7 +375,7 @@ export function OptionsEditor({
                   </button>
                 </div>
 
-                {linkedSupplier ? (
+                {!useMealPlanCatalog && linkedSupplier ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-stone-50/80 px-3 py-2 text-xs text-stone-600">
                     <span>
                       Saved supplier rate:{" "}

@@ -3,9 +3,20 @@
 import { useRouter } from "next/navigation";
 import { PackageForm } from "../../PackageForm";
 import { updatePackageAction } from "@/app/actions/packages";
-import type { TourPackage, HotelSupplier } from "@/lib/types";
+import type { TourPackage, HotelSupplier, HotelMealPlan } from "@/lib/types";
+import type { PlannerDestination } from "@/lib/route-planner";
 
-export function UpdatePackageForm({ pkg, hotels = [] }: { pkg: TourPackage; hotels?: HotelSupplier[] }) {
+export function UpdatePackageForm({
+  pkg,
+  hotels = [],
+  destinations = [],
+  allMealPlans = [],
+}: {
+  pkg: TourPackage;
+  hotels?: HotelSupplier[];
+  destinations?: PlannerDestination[];
+  allMealPlans?: HotelMealPlan[];
+}) {
   const router = useRouter();
 
   async function handleSubmit(formData: FormData) {
@@ -15,5 +26,13 @@ export function UpdatePackageForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
     router.refresh();
   }
 
-  return <PackageForm pkg={pkg} hotels={hotels} onSubmit={handleSubmit} />;
+  return (
+    <PackageForm
+      pkg={pkg}
+      hotels={hotels}
+      destinations={destinations}
+      allMealPlans={allMealPlans}
+      onSubmit={handleSubmit}
+    />
+  );
 }

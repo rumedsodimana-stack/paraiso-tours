@@ -3,10 +3,11 @@ import {
   ArrowLeft,
   Building2,
   Compass,
-  Plus,
+  MapPin,
   Pencil,
-  Trash2,
+  Plus,
   Star,
+  UtensilsCrossed,
 } from "lucide-react";
 import { getHotels, getPlannerActivityRecords, getHotelMealPlans } from "@/lib/db";
 import { getPlannerDestination } from "@/lib/route-planner";
@@ -27,7 +28,7 @@ export default async function DestinationDetailPage({
     getPlannerActivityRecords(),
   ]);
 
-  const hotels = allHotels.filter((h) => h.destinationId === id);
+  const hotels = allHotels.filter((h) => h.destinationId === id && !h.archivedAt);
   const activities = allActivities.filter((a) => a.destinationId === id);
 
   // Fetch meal plans for each hotel in parallel
@@ -44,12 +45,9 @@ export default async function DestinationDetailPage({
 
   const energyBadge = (energy: string) => {
     switch (energy) {
-      case "active":
-        return "bg-orange-100 text-orange-700";
-      case "moderate":
-        return "bg-amber-100 text-amber-700";
-      default:
-        return "bg-emerald-100 text-emerald-700";
+      case "active":   return "bg-[#eed9cf] text-[#7c3a24]";
+      case "moderate": return "bg-[#f3e8ce] text-[#7a5a17]";
+      default:         return "bg-[#dce8dc] text-[#375a3f]";
     }
   };
 
@@ -59,29 +57,34 @@ export default async function DestinationDetailPage({
       <div>
         <Link
           href="/admin/destinations"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition hover:text-teal-600"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#5e7279] transition hover:text-[#11272b]"
         >
           <ArrowLeft className="h-4 w-4" />
           All Destinations
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-50">
-          {destination.name}
-        </h1>
-        <p className="mt-1 text-stone-600 dark:text-stone-400">
-          {destination.region} &middot; {destination.summary}
-        </p>
+        <div className="mt-3 flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#12343b] text-[#f6ead6]">
+            <MapPin className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-[#11272b]">{destination.name}</h1>
+            <p className="mt-0.5 text-sm text-[#5e7279]">
+              {destination.region} &middot; {destination.summary}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Hotels section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-stone-800 dark:text-stone-100">
-            <Building2 className="h-5 w-5" />
+          <h2 className="flex items-center gap-2 text-base font-semibold text-[#11272b]">
+            <Building2 className="h-4 w-4 text-[#8a9ba1]" />
             Hotels ({hotels.length})
           </h2>
           <Link
             href={`/admin/hotels/new?type=hotel&destination=${id}`}
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-3.5 py-2 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
           >
             <Plus className="h-4 w-4" />
             Add Hotel
@@ -89,107 +92,94 @@ export default async function DestinationDetailPage({
         </div>
 
         {hotels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-[1.8rem] border-2 border-dashed border-white/40 bg-white/30 py-12 backdrop-blur-xl">
-            <Building2 className="h-10 w-10 text-stone-400" />
-            <p className="mt-3 text-stone-600 dark:text-stone-400">
-              No hotels at this destination yet.
-            </p>
+          <div className="rounded-2xl border border-dashed border-[#ddd3c4] bg-[#faf6ef] px-5 py-10 text-center">
+            <Building2 className="mx-auto h-8 w-8 text-[#8a9ba1]" />
+            <p className="mt-2 text-sm text-[#5e7279]">No hotels at this destination yet.</p>
             <Link
               href={`/admin/hotels/new?type=hotel&destination=${id}`}
-              className="mt-3 font-medium text-teal-600 hover:text-teal-700"
+              className="mt-3 inline-block text-sm font-medium text-[#12343b] hover:underline"
             >
               Add the first hotel
             </Link>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[1.8rem] border border-[#ddc8b0] bg-white/74 shadow-sm backdrop-blur-sm">
-            <table className="min-w-full divide-y divide-stone-200">
+          <div className="paraiso-card overflow-hidden rounded-2xl">
+            <table className="min-w-full">
               <thead>
-                <tr className="bg-stone-50/80">
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Hotel
-                  </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Rating
-                  </th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Price/Night
-                  </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Meal Plans
-                  </th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Actions
-                  </th>
+                <tr className="border-b border-[#e0e4dd] bg-[#f4ecdd]">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Hotel</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Rating</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Rate / Night</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Meal Plans</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-[#e0e4dd]">
                 {hotels.map((hotel) => {
-                  const mealPlans = mealPlansMap.get(hotel.id) ?? [];
+                  const plans = mealPlansMap.get(hotel.id) ?? [];
                   return (
-                    <tr key={hotel.id} className="transition hover:bg-white/70">
+                    <tr key={hotel.id} className="transition hover:bg-[#faf6ef]">
                       <td className="px-5 py-3">
-                        <p className="font-medium text-stone-900">
-                          {hotel.name}
-                        </p>
+                        <p className="font-semibold text-[#11272b]">{hotel.name}</p>
                         {hotel.location && (
-                          <p className="mt-0.5 text-xs text-stone-500">
-                            {hotel.location}
-                          </p>
+                          <p className="mt-0.5 text-xs text-[#8a9ba1]">{hotel.location}</p>
                         )}
                       </td>
                       <td className="px-5 py-3">
                         {hotel.starRating ? (
-                          <span className="inline-flex items-center gap-1 text-sm text-amber-600">
-                            {Array.from({ length: hotel.starRating }).map(
-                              (_, i) => (
-                                <Star
-                                  key={i}
-                                  className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
-                                />
-                              )
-                            )}
+                          <span className="inline-flex items-center gap-0.5 text-sm text-[#c9922f]">
+                            {Array.from({ length: hotel.starRating }).map((_, i) => (
+                              <Star key={i} className="h-3.5 w-3.5 fill-[#c9922f] text-[#c9922f]" />
+                            ))}
                           </span>
                         ) : (
-                          <span className="text-xs text-stone-400">--</span>
+                          <span className="text-xs text-[#8a9ba1]">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-right text-sm font-medium text-stone-700">
+                      <td className="px-5 py-3 text-right text-sm font-semibold text-[#11272b]">
                         {hotel.defaultPricePerNight != null ? (
                           <>
                             {hotel.defaultPricePerNight.toLocaleString()}{" "}
                             {hotel.currency}
                           </>
                         ) : (
-                          <span className="text-stone-400">--</span>
+                          <span className="text-[#8a9ba1]">—</span>
                         )}
                       </td>
                       <td className="px-5 py-3">
-                        {mealPlans.length > 0 ? (
+                        {plans.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5">
-                            {mealPlans.map((mp) => (
+                            {plans.map((mp) => (
                               <span
                                 key={mp.id}
-                                className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700"
+                                className="inline-flex items-center gap-1 rounded-full bg-[#f3e8ce] px-2 py-0.5 text-xs font-medium text-[#7a5a17]"
                               >
+                                <UtensilsCrossed className="h-3 w-3" />
                                 {mp.label}
                               </span>
                             ))}
                           </div>
                         ) : (
-                          <span className="text-xs text-stone-400">
-                            No meal plans
-                          </span>
+                          <span className="text-xs text-[#8a9ba1]">No meal plans</span>
                         )}
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <Link
-                          href={`/admin/hotels/${hotel.id}/edit`}
-                          className="inline-flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 transition hover:border-teal-300 hover:text-teal-700"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
-                        </Link>
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={`/admin/hotels/${hotel.id}`}
+                            className="inline-flex items-center gap-1 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-2.5 py-1.5 text-xs font-medium text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
+                          >
+                            <UtensilsCrossed className="h-3.5 w-3.5" />
+                            Meal Plans
+                          </Link>
+                          <Link
+                            href={`/admin/hotels/${hotel.id}/edit`}
+                            className="inline-flex items-center gap-1 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-2.5 py-1.5 text-xs font-medium text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -203,13 +193,13 @@ export default async function DestinationDetailPage({
       {/* Activities section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-stone-800 dark:text-stone-100">
-            <Compass className="h-5 w-5" />
+          <h2 className="flex items-center gap-2 text-base font-semibold text-[#11272b]">
+            <Compass className="h-4 w-4 text-[#8a9ba1]" />
             Activities ({activities.length})
           </h2>
           <Link
             href={`/admin/activities/new?destination=${id}`}
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-3.5 py-2 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
           >
             <Plus className="h-4 w-4" />
             Add Activity
@@ -217,69 +207,49 @@ export default async function DestinationDetailPage({
         </div>
 
         {activities.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-[1.8rem] border-2 border-dashed border-white/40 bg-white/30 py-12 backdrop-blur-xl">
-            <Compass className="h-10 w-10 text-stone-400" />
-            <p className="mt-3 text-stone-600 dark:text-stone-400">
-              No activities at this destination yet.
-            </p>
+          <div className="rounded-2xl border border-dashed border-[#ddd3c4] bg-[#faf6ef] px-5 py-10 text-center">
+            <Compass className="mx-auto h-8 w-8 text-[#8a9ba1]" />
+            <p className="mt-2 text-sm text-[#5e7279]">No activities at this destination yet.</p>
             <Link
               href={`/admin/activities/new?destination=${id}`}
-              className="mt-3 font-medium text-teal-600 hover:text-teal-700"
+              className="mt-3 inline-block text-sm font-medium text-[#12343b] hover:underline"
             >
               Add the first activity
             </Link>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[1.8rem] border border-[#ddc8b0] bg-white/74 shadow-sm backdrop-blur-sm">
-            <table className="min-w-full divide-y divide-stone-200">
+          <div className="paraiso-card overflow-hidden rounded-2xl">
+            <table className="min-w-full">
               <thead>
-                <tr className="bg-stone-50/80">
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Title
-                  </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Duration
-                  </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Energy
-                  </th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Price
-                  </th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-stone-500">
-                    Actions
-                  </th>
+                <tr className="border-b border-[#e0e4dd] bg-[#f4ecdd]">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Title</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Duration</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Energy</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Price</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-[#e0e4dd]">
                 {activities.map((act) => (
-                  <tr key={act.id} className="transition hover:bg-white/70">
+                  <tr key={act.id} className="transition hover:bg-[#faf6ef]">
                     <td className="px-5 py-3">
-                      <p className="font-medium text-stone-900">{act.title}</p>
-                      <p className="mt-0.5 text-xs text-stone-500 line-clamp-1">
-                        {act.summary}
-                      </p>
+                      <p className="font-medium text-[#11272b]">{act.title}</p>
+                      <p className="mt-0.5 text-xs text-[#8a9ba1] line-clamp-1">{act.summary}</p>
                     </td>
-                    <td className="px-5 py-3 text-sm text-stone-600">
-                      {act.durationLabel}
-                    </td>
+                    <td className="px-5 py-3 text-sm text-[#5e7279]">{act.durationLabel}</td>
                     <td className="px-5 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${energyBadge(act.energy)}`}
-                      >
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${energyBadge(act.energy)}`}>
                         {act.energy}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-right text-sm font-medium text-stone-700">
-                      {act.estimatedPrice > 0
-                        ? `$${act.estimatedPrice.toLocaleString()}`
-                        : "Free"}
+                    <td className="px-5 py-3 text-right text-sm font-semibold text-[#11272b]">
+                      {act.estimatedPrice > 0 ? `$${act.estimatedPrice.toLocaleString()}` : "Free"}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/admin/activities/${act.id}/edit`}
-                          className="inline-flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 transition hover:border-teal-300 hover:text-teal-700"
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-2.5 py-1.5 text-xs font-medium text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           Edit

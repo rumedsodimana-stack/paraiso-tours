@@ -51,6 +51,7 @@ export async function createHotelAction(formData: FormData) {
   const swiftCode = (formData.get("swiftCode") as string)?.trim() || undefined;
   const bankCurrency = (formData.get("bankCurrency") as string)?.trim() || undefined;
   const paymentReference = (formData.get("paymentReference") as string)?.trim() || undefined;
+  const destinationId = (formData.get("destinationId") as string)?.trim() || undefined;
 
   if (!name) return { error: "Name is required" };
 
@@ -58,6 +59,7 @@ export async function createHotelAction(formData: FormData) {
     name,
     type: type as "hotel" | "transport" | "meal" | "supplier",
     location,
+    destinationId,
     contact,
     email,
     defaultPricePerNight,
@@ -112,6 +114,7 @@ export async function updateHotelAction(id: string, formData: FormData) {
   const swiftCode = (formData.get("swiftCode") as string)?.trim() || undefined;
   const bankCurrency = (formData.get("bankCurrency") as string)?.trim() || undefined;
   const paymentReference = (formData.get("paymentReference") as string)?.trim() || undefined;
+  const destinationId = (formData.get("destinationId") as string)?.trim() || undefined;
 
   if (!name) return { error: "Name is required" };
 
@@ -119,6 +122,7 @@ export async function updateHotelAction(id: string, formData: FormData) {
     name,
     type: type as "hotel" | "transport" | "meal" | "supplier",
     location,
+    destinationId,
     contact,
     email,
     defaultPricePerNight,

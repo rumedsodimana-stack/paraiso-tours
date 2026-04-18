@@ -18,10 +18,12 @@ import type {
   TourPackage,
   ItineraryDay,
   HotelSupplier,
+  HotelMealPlan,
   PackageOption,
 } from "@/lib/types";
+import type { PlannerDestination } from "@/lib/route-planner";
 import { calcOptionPrice } from "@/lib/package-price";
-import { OptionsEditor } from "./OptionsEditor";
+import { OptionsEditor, type MealPlanEntry } from "./OptionsEditor";
 
 type PreviewLine = {
   label: string;
@@ -213,15 +215,22 @@ function ComposerStat({
 export function PackageForm({
   pkg,
   hotels = [],
+  destinations = [],
+  allMealPlans = [],
   onSubmit,
 }: {
   pkg?: TourPackage;
   hotels?: HotelSupplier[];
+  destinations?: PlannerDestination[];
+  allMealPlans?: HotelMealPlan[];
   onSubmit: (formData: FormData) => Promise<{ error?: string } | void>;
 }) {
   const [error, setError] = useState<string>("");
   const [packageName, setPackageName] = useState(pkg?.name ?? "");
   const [destination, setDestination] = useState(pkg?.destination ?? "");
+  const [selectedDestId, setSelectedDestId] = useState<string>(
+    () => destinations.find((d) => d.name === (pkg?.destination ?? ""))?.id ?? ""
+  );
   const [duration, setDuration] = useState(
     pkg?.duration ?? getRecommendedDuration(pkg?.itinerary?.length ?? 1)
   );
@@ -254,6 +263,21 @@ export function PackageForm({
   const [customOptions, setCustomOptions] = useState<PackageOption[]>(
     pkg?.customOptions ?? []
   );
+
+  // Enrich meal plans with hotel names, optionally filtered by selected destination
+  const hotelById: Record<string, HotelSupplier> = {};
+  for (const h of hotels) hotelById[h.id] = h;
+  const enrichedMealPlans: MealPlanEntry[] = allMealPlans
+    .filter((mp) => {
+      const hotel = hotelById[mp.hotelId];
+      if (!hotel) return true; // keep unknown hotel plans
+      if (selectedDestId && hotel.destinationId && hotel.destinationId !== selectedDestId) return false;
+      return true;
+    })
+    .map((mp) => ({
+      ...mp,
+      hotelName: hotelById[mp.hotelId]?.name ?? "Unknown Hotel",
+    }));
 
   const basePrice = parseFloat(priceInput) || 0;
   const recommendedDuration = getRecommendedDuration(itinerary.length);
@@ -389,16 +413,39 @@ export function PackageForm({
                 >
                   Destination *
                 </label>
-                <input
-                  id="destination"
-                  name="destination"
-                  type="text"
-                  required
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
-                  placeholder="Sri Lanka"
-                />
+                {destinations.length > 0 ? (
+                  <select
+                    id="destination"
+                    name="destination"
+                    required
+                    value={destination}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      setDestination(name);
+                      const match = destinations.find((d) => d.name === name);
+                      setSelectedDestId(match?.id ?? "");
+                    }}
+                    className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+                  >
+                    <option value="">— Select destination —</option>
+                    {destinations.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="destination"
+                    name="destination"
+                    type="text"
+                    required
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+                    placeholder="Sri Lanka"
+                  />
+                )}
               </div>
             </div>
 
@@ -714,6 +761,7 @@ export function PackageForm({
                           supplierType="hotel"
                           allowCustom={false}
                           packageCurrency={currency}
+                          destinationId={selectedDestId || undefined}
                         />
                       ) : (
                         <div className="rounded-xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-500">
@@ -742,6 +790,7 @@ export function PackageForm({
                 showSupplier
                 supplierType="meal"
                 packageCurrency={currency}
+                mealPlans={enrichedMealPlans.length > 0 ? enrichedMealPlans : undefined}
               />
               <OptionsEditor
                 title="Transport"

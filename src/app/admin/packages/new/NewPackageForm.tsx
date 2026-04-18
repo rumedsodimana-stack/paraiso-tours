@@ -1,12 +1,19 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { PackageForm } from "../PackageForm";
 import { createPackageAction } from "@/app/actions/packages";
-import type { HotelSupplier } from "@/lib/types";
+import type { HotelSupplier, HotelMealPlan } from "@/lib/types";
+import type { PlannerDestination } from "@/lib/route-planner";
 
-export function NewPackageForm({ hotels }: { hotels: HotelSupplier[] }) {
+export function NewPackageForm({
+  hotels,
+  destinations,
+  allMealPlans,
+}: {
+  hotels: HotelSupplier[];
+  destinations: PlannerDestination[];
+  allMealPlans: HotelMealPlan[];
+}) {
   async function handleSubmit(formData: FormData) {
     const result = await createPackageAction(formData);
     if (result.error) return { error: result.error };
@@ -14,6 +21,11 @@ export function NewPackageForm({ hotels }: { hotels: HotelSupplier[] }) {
   }
 
   return (
-    <PackageForm hotels={hotels} onSubmit={handleSubmit} />
+    <PackageForm
+      hotels={hotels}
+      destinations={destinations}
+      allMealPlans={allMealPlans}
+      onSubmit={handleSubmit}
+    />
   );
 }
