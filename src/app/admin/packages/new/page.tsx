@@ -17,9 +17,9 @@ export default async function NewPackagePage() {
         <ArrowLeft className="h-5 w-5" />
         Back
       </Link>
-      <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
-        <h1 className="text-2xl font-semibold text-stone-900">Create Tour Package</h1>
-        <p className="mt-1 text-stone-600">Use the composer to map nights, suppliers, and live pricing in one place.</p>
+      <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-6 shadow-lg">
+        <h1 className="text-2xl font-bold text-[#11272b]">Create Tour Package</h1>
+        <p className="mt-1 text-sm text-[#5e7279]">Use the composer to map nights, suppliers, and live pricing in one place.</p>
         <NewPackageForm hotels={hotels} destinations={destinations} allMealPlans={allMealPlans} />
       </div>
     </div>
