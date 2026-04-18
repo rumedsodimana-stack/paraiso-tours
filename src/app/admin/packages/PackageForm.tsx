@@ -14,7 +14,6 @@ import {
   Map,
   Package,
   Plus,
-  ScrollText,
   Sparkles,
   Star,
   Trash2,
@@ -760,22 +759,6 @@ export function PackageForm({
                 bulletColor="bg-[#c0b8ae]"
               />
             </div>
-          </SectionCard>
-
-          {/* Step 5 — Terms (optional) */}
-          <SectionCard
-            icon={ScrollText}
-            step="Step 5"
-            title="Terms & Conditions"
-            description="Optional detailed T&Cs shown to clients during checkout."
-          >
-            <textarea
-              name="termsAndConditions"
-              rows={5}
-              defaultValue={pkg?.cancellationPolicy ?? ""}
-              className={INPUT}
-              placeholder="Full terms and conditions text…"
-            />
           </SectionCard>
 
         </div>
