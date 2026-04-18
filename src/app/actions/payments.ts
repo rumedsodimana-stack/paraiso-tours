@@ -44,3 +44,25 @@ export async function markPaymentReceived(paymentId: string): Promise<{ success?
   if (payment.invoiceId) revalidatePath(`/admin/invoices/${payment.invoiceId}`);
   return { success: true };
 }
+
+/** Mark outgoing payment as paid/completed */
+export async function markPaymentPaid(paymentId: string): Promise<{ success?: boolean; error?: string }> {
+  const payment = await getPayment(paymentId);
+  if (!payment) return { error: "Payment not found" };
+  if (payment.status === "completed") return { success: true };
+
+  await updatePayment(paymentId, { status: "completed" });
+
+  await recordAuditEvent({
+    entityType: "payment",
+    entityId: payment.id,
+    action: "marked_paid",
+    summary: `Supplier payment marked paid: ${payment.amount} ${payment.currency}`,
+    details: [payment.description],
+  });
+
+  revalidatePath("/admin/payments");
+  revalidatePath(`/admin/payments/${paymentId}`);
+  revalidatePath("/admin/payables");
+  return { success: true };
+}

@@ -164,7 +164,7 @@ export async function createInvoiceFromPayment(paymentId: string) {
 
   const clientName =
     payment.type === "outgoing"
-      ? (payment.supplierName || payment.description || "Supplier").trim()
+      ? (payment.supplierName?.trim() || "Supplier")
       : (payment.clientName?.trim() || "Client");
   const email =
     payment.type === "outgoing"
