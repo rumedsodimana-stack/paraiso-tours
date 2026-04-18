@@ -40,9 +40,9 @@ function InputField(props: {
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-stone-700">{props.label}</span>
+      <span className="text-sm font-medium text-[#11272b]">{props.label}</span>
       {props.hint && (
-        <span className="ml-2 text-xs text-stone-400">{props.hint}</span>
+        <span className="ml-2 text-xs text-[#8a9ba1]">{props.hint}</span>
       )}
       <input
         name={props.name}
@@ -51,7 +51,7 @@ function InputField(props: {
         placeholder={props.placeholder}
         step={props.step}
         autoComplete={props.autoComplete}
-        className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+        className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
       />
     </label>
   );
@@ -65,11 +65,11 @@ function SelectField(props: {
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-stone-700">{props.label}</span>
+      <span className="text-sm font-medium text-[#11272b]">{props.label}</span>
       <select
         name={props.name}
         defaultValue={props.defaultValue}
-        className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+        className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
       >
         {props.options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -88,18 +88,18 @@ function ToggleField(props: {
   description: string;
 }) {
   return (
-    <label className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3">
+    <label className="flex items-start gap-3 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3">
       <input
         type="checkbox"
         name={props.name}
         defaultChecked={props.defaultChecked}
-        className="mt-1 h-4 w-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
+        className="mt-1 h-4 w-4 rounded border-[#e0e4dd] text-[#c9922f] focus:ring-[#c9922f]"
       />
       <span>
-        <span className="block text-sm font-medium text-stone-900">
+        <span className="block text-sm font-medium text-[#11272b]">
           {props.label}
         </span>
-        <span className="mt-1 block text-xs leading-5 text-stone-500">
+        <span className="mt-1 block text-xs leading-5 text-[#5e7279]">
           {props.description}
         </span>
       </span>
@@ -157,17 +157,17 @@ export function AiSettingsSection({
   const savedKeyUpdated = formatSavedTime(runtime.storedKeyUpdatedAt);
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+    <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-6 shadow-sm">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#f4ecdd] text-[#c9922f]">
           <Bot className="h-6 w-6" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-stone-900">
+          <h2 className="text-xl font-semibold text-[#11272b]">
             AI control center
           </h2>
-          <p className="mt-1 text-sm text-stone-500">
+          <p className="mt-1 text-sm text-[#5e7279]">
             Shared runtime for admin AI and the client concierge.
           </p>
         </div>
@@ -201,7 +201,7 @@ export function AiSettingsSection({
             SECTION 1 — CREDENTIALS  (moved to top so it's easy to find)
         ══════════════════════════════════════════════════════ */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
+          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#5e7279]">
             <KeyRound className="h-4 w-4" />
             Credentials
             {isMissingKey && (
@@ -217,15 +217,15 @@ export function AiSettingsSection({
               className={`space-y-4 rounded-2xl border p-5 ${
                 isMissingKey
                   ? "border-amber-200 bg-amber-50/60"
-                  : "border-stone-200 bg-white/70"
+                  : "border-[#e0e4dd] bg-[#fffbf4]"
               }`}
             >
               <div>
                 <label className="block">
-                  <span className="text-sm font-medium text-stone-700">
+                  <span className="text-sm font-medium text-[#11272b]">
                     AI API key
                   </span>
-                  <span className="ml-2 text-xs text-stone-400">
+                  <span className="ml-2 text-xs text-[#8a9ba1]">
                     — encrypted when saved
                   </span>
                   <input
@@ -237,43 +237,43 @@ export function AiSettingsSection({
                         ? "Stored securely. Enter a new key to replace it."
                         : "Paste your Gemini API key here…"
                     }
-                    className={`mt-1 w-full rounded-xl border px-4 py-2.5 text-sm text-stone-900 outline-none transition focus:ring-2 ${
+                    className={`mt-1 w-full rounded-xl border px-4 py-2.5 text-sm text-[#11272b] outline-none transition focus:ring-2 ${
                       isMissingKey
-                        ? "border-amber-300 bg-white focus:border-teal-500 focus:ring-teal-500/20"
-                        : "border-stone-200 bg-white focus:border-teal-500 focus:ring-teal-500/20"
+                        ? "border-amber-300 bg-[#fffbf4] focus:border-[#c9922f] focus:ring-[#c9922f]/20"
+                        : "border-[#e0e4dd] bg-[#fffbf4] focus:border-[#c9922f] focus:ring-[#c9922f]/20"
                     }`}
                   />
                 </label>
               </div>
 
               {runtime.hasStoredKey ? (
-                <label className="flex items-start gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                <label className="flex items-start gap-3 rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-3">
                   <input
                     type="checkbox"
                     name="aiClearSavedApiKey"
-                    className="mt-1 h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-500"
+                    className="mt-1 h-4 w-4 rounded border-[#e0e4dd] text-rose-600 focus:ring-rose-500"
                   />
                   <span>
-                    <span className="block text-sm font-medium text-stone-900">
+                    <span className="block text-sm font-medium text-[#11272b]">
                       Clear saved settings key
                     </span>
-                    <span className="mt-1 block text-xs leading-5 text-stone-500">
+                    <span className="mt-1 block text-xs leading-5 text-[#5e7279]">
                       Leave this off to keep the current saved key.
                     </span>
                   </span>
                 </label>
               ) : null}
 
-              <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-500">
+              <div className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-3 text-xs leading-5 text-[#5e7279]">
                 Use{" "}
-                <code className="rounded bg-stone-200 px-1 text-stone-700">
+                <code className="rounded bg-[#e0e4dd] px-1 text-[#11272b]">
                   GEMINI_API_KEY
                 </code>{" "}
                 as an env variable, or save a fallback key here. Environment
                 variable always wins.{" "}
                 <Link
                   href="/admin/user-guide#ai-setup"
-                  className="font-medium text-teal-700 hover:text-teal-800"
+                  className="font-medium text-[#12343b] hover:text-[#11272b]"
                 >
                   Setup guide
                 </Link>
@@ -281,7 +281,7 @@ export function AiSettingsSection({
             </div>
 
             {/* Status panel */}
-            <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-5">
+            <div className="rounded-2xl border border-[#e0e4dd] bg-[#f4ecdd] p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full border px-3 py-1 text-xs font-semibold ${credentialTone}`}
@@ -289,28 +289,28 @@ export function AiSettingsSection({
                   {credentialLabel}
                 </span>
                 {runtime.hasEnvironmentKey ? (
-                  <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-600">
+                  <span className="rounded-full border border-[#e0e4dd] bg-[#fffbf4] px-3 py-1 text-xs font-medium text-[#5e7279]">
                     Env key detected
                   </span>
                 ) : null}
                 {runtime.hasStoredKey ? (
-                  <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-600">
+                  <span className="rounded-full border border-[#e0e4dd] bg-[#fffbf4] px-3 py-1 text-xs font-medium text-[#5e7279]">
                     Saved fallback ready
                   </span>
                 ) : null}
               </div>
 
-              <div className="mt-4 space-y-3 text-sm leading-6 text-stone-600">
+              <div className="mt-4 space-y-3 text-sm leading-6 text-[#5e7279]">
                 <p>
                   Provider:{" "}
-                  <span className="font-semibold text-stone-900">
+                  <span className="font-semibold text-[#11272b]">
                     {runtime.providerLabel}
                   </span>
                 </p>
                 {savedKeyUpdated ? (
                   <p>
                     Saved key last updated{" "}
-                    <span className="font-medium text-stone-900">
+                    <span className="font-medium text-[#11272b]">
                       {savedKeyUpdated}
                     </span>
                   </p>
@@ -329,7 +329,7 @@ export function AiSettingsSection({
             SECTION 2 — RUNTIME
         ══════════════════════════════════════════════════════ */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
+          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#5e7279]">
             <Orbit className="h-4 w-4" />
             Runtime
           </div>
@@ -440,31 +440,31 @@ export function AiSettingsSection({
             SECTION 3 — KNOWLEDGE & GUIDANCE
         ══════════════════════════════════════════════════════ */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
+          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#5e7279]">
             <ShieldCheck className="h-4 w-4" />
             Knowledge &amp; guidance
           </div>
           <label className="block">
-            <span className="text-sm font-medium text-stone-700">
+            <span className="text-sm font-medium text-[#11272b]">
               Global instructions
             </span>
             <textarea
               name="aiGlobalInstructions"
               defaultValue={settings.ai.globalInstructions}
               rows={4}
-              className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+              className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
               placeholder="Use a practical travel-operations tone..."
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-stone-700">
+            <span className="text-sm font-medium text-[#11272b]">
               Company knowledge notes
             </span>
             <textarea
               name="aiKnowledgeNotes"
               defaultValue={settings.ai.knowledgeNotes}
               rows={5}
-              className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+              className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
               placeholder="Preferred hotel standards, route style, supplier preferences, family/couple guidance, upsell rules..."
             />
           </label>
@@ -474,7 +474,7 @@ export function AiSettingsSection({
             SECTION 4 — TOOLS
         ══════════════════════════════════════════════════════ */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
+          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#5e7279]">
             <Sparkles className="h-4 w-4" />
             Tools
           </div>
@@ -551,13 +551,13 @@ export function AiSettingsSection({
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-[#5e7279]">
             Shared by AI Studio and concierge.
           </p>
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-5 py-3 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-60"
           >
             {isPending ? (
               <>

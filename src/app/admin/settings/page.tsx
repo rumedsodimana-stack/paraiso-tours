@@ -88,16 +88,16 @@ export default async function SettingsPage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="rounded-2xl border border-white/20 bg-white/40 px-6 py-5 shadow-sm backdrop-blur-xl">
-        <h1 className="text-2xl font-semibold text-stone-900">Settings</h1>
-        <p className="mt-1 text-sm text-stone-500">
+      <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] px-6 py-5 shadow-sm">
+        <h1 className="text-2xl font-semibold text-[#11272b]">Settings</h1>
+        <p className="mt-1 text-sm text-[#5e7279]">
           Configure your agency, branding, notifications, and AI tools
         </p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
         {/* Sidebar nav */}
-        <aside className="rounded-2xl border border-white/20 bg-white/40 p-3 shadow-sm backdrop-blur-xl xl:sticky xl:top-6 xl:h-fit">
+        <aside className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-3 shadow-sm xl:sticky xl:top-6 xl:h-fit">
           <nav className="space-y-1">
             {SECTIONS.map(({ icon: Icon, id, title, eyebrow, description }) => {
               const isActive = id === activeId;
@@ -108,11 +108,11 @@ export default async function SettingsPage({
                   href={`/admin/settings?section=${id}`}
                   className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
                     isActive
-                      ? "bg-teal-50 text-teal-900"
-                      : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"
+                      ? "bg-[#f4ecdd] text-[#11272b]"
+                      : "text-[#5e7279] hover:bg-[#f4ecdd] hover:text-[#11272b]"
                   }`}
                 >
-                  <div className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isActive ? "bg-teal-600 text-white" : "bg-stone-100 text-stone-500"}`}>
+                  <div className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isActive ? "bg-[#12343b] text-white" : "bg-[#f4ecdd] text-[#5e7279]"}`}>
                     <Icon className="h-4 w-4" />
                     {showBadge && (
                       <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
@@ -122,8 +122,8 @@ export default async function SettingsPage({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-sm font-medium ${isActive ? "text-teal-900" : "text-stone-700"}`}>{title}</p>
-                    <p className="text-xs text-stone-400 truncate">{description}</p>
+                    <p className={`text-sm font-medium ${isActive ? "text-[#11272b]" : "text-[#11272b]"}`}>{title}</p>
+                    <p className="text-xs text-[#8a9ba1] truncate">{description}</p>
                   </div>
                 </a>
               );

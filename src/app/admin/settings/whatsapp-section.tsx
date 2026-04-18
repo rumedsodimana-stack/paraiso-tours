@@ -40,16 +40,16 @@ export function WhatsAppSection() {
   }, []);
 
   return (
-    <div className="rounded-2xl border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+    <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-6 shadow-sm">
       <div className="flex items-start gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
           <MessageCircle className="h-6 w-6" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
+          <h2 className="text-lg font-semibold text-[#11272b]">
             WhatsApp Business
           </h2>
-          <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
+          <p className="mt-1 text-sm text-[#5e7279]">
             Connect your WhatsApp Business account for automated booking confirmations,
             supplier notifications, and client messages.
           </p>
@@ -81,18 +81,18 @@ export function WhatsAppSection() {
               href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700"
+              className="inline-flex items-center gap-1.5 text-sm text-[#c9922f] hover:text-[#12343b]"
             >
               Setup guide
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
 
-          <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50/50 p-4 dark:border-stone-700 dark:bg-stone-900/30">
-            <p className="text-xs font-medium uppercase tracking-wider text-stone-500">
+          <div className="mt-4 rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] p-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-[#5e7279]">
               Required env variables
             </p>
-            <ul className="mt-2 space-y-1 font-mono text-sm text-stone-700 dark:text-stone-300">
+            <ul className="mt-2 space-y-1 font-mono text-sm text-[#11272b]">
               <li>WHATSAPP_ACCESS_TOKEN — Meta Graph API token</li>
               <li>WHATSAPP_PHONE_NUMBER_ID — Your WhatsApp Business phone number ID</li>
               <li>WHATSAPP_WEBHOOK_VERIFY_TOKEN — Random string for webhook verification</li>

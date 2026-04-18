@@ -38,14 +38,14 @@ const TIMEZONES = [
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-stone-700">{label}</span>
-      {hint && <span className="ml-2 text-xs text-stone-400">{hint}</span>}
+      <span className="text-sm font-medium text-[#11272b]">{label}</span>
+      {hint && <span className="ml-2 text-xs text-[#8a9ba1]">{hint}</span>}
       <div className="mt-1">{children}</div>
     </label>
   );
 }
 
-const inputCls = "w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20";
+const inputCls = "w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20";
 const selectCls = `${inputCls} appearance-none`;
 
 export function CompanySettingsSection({ settings }: { settings: AppSettings }) {
@@ -61,12 +61,12 @@ export function CompanySettingsSection({ settings }: { settings: AppSettings }) 
   return (
     <form action={formAction} className="space-y-6">
       {/* Company Identity */}
-      <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/50 shadow-sm backdrop-blur-xl">
-        <div className="flex items-center gap-3 border-b border-stone-100 px-6 py-4">
-          <Building2 className="h-5 w-5 text-teal-600" />
+      <div className="overflow-hidden rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] shadow-sm">
+        <div className="flex items-center gap-3 border-b border-[#e0e4dd] px-6 py-4">
+          <Building2 className="h-5 w-5 text-[#c9922f]" />
           <div>
-            <p className="font-semibold text-stone-900">Company Identity</p>
-            <p className="text-xs text-stone-500">Your brand name, logo, and business details</p>
+            <p className="font-semibold text-[#11272b]">Company Identity</p>
+            <p className="text-xs text-[#5e7279]">Your brand name, logo, and business details</p>
           </div>
         </div>
         <div className="p-6">
@@ -105,17 +105,17 @@ export function CompanySettingsSection({ settings }: { settings: AppSettings }) 
                   name="logoFile"
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  className="block w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-teal-700"
+                  className="block w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] file:mr-4 file:rounded-lg file:border-0 file:bg-[#f4ecdd] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#12343b]"
                 />
-                <p className="mt-1 text-xs text-stone-400">PNG, JPG, WEBP or SVG · max 2 MB</p>
+                <p className="mt-1 text-xs text-[#8a9ba1]">PNG, JPG, WEBP or SVG · max 2 MB</p>
               </Field>
             </div>
 
             {/* Live preview */}
-            <div className="flex flex-col gap-3 rounded-2xl border border-stone-100 bg-stone-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">Preview</p>
-              <div className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3">
-                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-stone-900 text-white">
+            <div className="flex flex-col gap-3 rounded-2xl border border-[#e0e4dd] bg-[#f4ecdd] p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#8a9ba1]">Preview</p>
+              <div className="flex items-center gap-3 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-3">
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#11272b] text-white">
                   {settings.company.logoUrl ? (
                     <Image src={settings.company.logoUrl} alt={displayName} fill className="object-cover" sizes="48px" />
                   ) : (
@@ -123,23 +123,23 @@ export function CompanySettingsSection({ settings }: { settings: AppSettings }) 
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-stone-900">{displayName}</p>
-                  <p className="truncate text-xs text-stone-500">{settings.company.tagline || "Your tagline"}</p>
+                  <p className="truncate text-sm font-semibold text-[#11272b]">{displayName}</p>
+                  <p className="truncate text-xs text-[#5e7279]">{settings.company.tagline || "Your tagline"}</p>
                 </div>
               </div>
-              <p className="text-[11px] text-stone-400 leading-4">Used in portal header, invoices, emails, and admin shell.</p>
+              <p className="text-[11px] text-[#8a9ba1] leading-4">Used in portal header, invoices, emails, and admin shell.</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Location & Operations */}
-      <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/50 shadow-sm backdrop-blur-xl">
-        <div className="flex items-center gap-3 border-b border-stone-100 px-6 py-4">
-          <Globe2 className="h-5 w-5 text-teal-600" />
+      <div className="overflow-hidden rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] shadow-sm">
+        <div className="flex items-center gap-3 border-b border-[#e0e4dd] px-6 py-4">
+          <Globe2 className="h-5 w-5 text-[#c9922f]" />
           <div>
-            <p className="font-semibold text-stone-900">Location & Operations</p>
-            <p className="text-xs text-stone-500">Country, timezone and default currency for your business</p>
+            <p className="font-semibold text-[#11272b]">Location & Operations</p>
+            <p className="text-xs text-[#5e7279]">Country, timezone and default currency for your business</p>
           </div>
         </div>
         <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -163,19 +163,19 @@ export function CompanySettingsSection({ settings }: { settings: AppSettings }) 
           </Field>
           <div className="sm:col-span-2 lg:col-span-3">
             <Field label="Address">
-              <textarea name="address" defaultValue={settings.company.address} placeholder="123 Galle Road, Colombo 03, Sri Lanka" rows={2} className="w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
+              <textarea name="address" defaultValue={settings.company.address} placeholder="123 Galle Road, Colombo 03, Sri Lanka" rows={2} className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20" />
             </Field>
           </div>
         </div>
       </div>
 
       {/* Contact */}
-      <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/50 shadow-sm backdrop-blur-xl">
-        <div className="flex items-center gap-3 border-b border-stone-100 px-6 py-4">
-          <Phone className="h-5 w-5 text-teal-600" />
+      <div className="overflow-hidden rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] shadow-sm">
+        <div className="flex items-center gap-3 border-b border-[#e0e4dd] px-6 py-4">
+          <Phone className="h-5 w-5 text-[#c9922f]" />
           <div>
-            <p className="font-semibold text-stone-900">Contact Details</p>
-            <p className="text-xs text-stone-500">Shown in footer, invoices, and client communications</p>
+            <p className="font-semibold text-[#11272b]">Contact Details</p>
+            <p className="text-xs text-[#5e7279]">Shown in footer, invoices, and client communications</p>
           </div>
         </div>
         <div className="grid gap-4 p-6 sm:grid-cols-2">
@@ -219,7 +219,7 @@ export function CompanySettingsSection({ settings }: { settings: AppSettings }) 
         <button
           type="submit"
           disabled={isPending}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-60"
         >
           {isPending ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Save company"}
         </button>

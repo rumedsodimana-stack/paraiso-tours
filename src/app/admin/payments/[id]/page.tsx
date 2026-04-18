@@ -53,15 +53,15 @@ export default async function PaymentDetailPage({
     <div className="space-y-6">
       <Link
         href="/admin/payments"
-        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900 print:hidden"
+        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b] print:hidden"
       >
         <ArrowLeft className="h-5 w-5" />
         Back to Payments
       </Link>
 
-      <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl print:hidden">
+      <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-6 shadow-sm print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50">
+          <h1 className="text-xl font-semibold text-[#11272b]">
             Transaction
           </h1>
           {payment.type === "incoming" && payment.status === "pending" && (
@@ -70,11 +70,11 @@ export default async function PaymentDetailPage({
         </div>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-sm font-medium text-stone-500">Type</dt>
+            <dt className="text-sm font-medium text-[#5e7279]">Type</dt>
             <dd className="mt-0.5 font-medium capitalize">{payment.type}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-stone-500">Amount</dt>
+            <dt className="text-sm font-medium text-[#5e7279]">Amount</dt>
             <dd
               className={`mt-0.5 font-semibold ${
                 payment.type === "incoming"
@@ -87,15 +87,15 @@ export default async function PaymentDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-stone-500">Description</dt>
+            <dt className="text-sm font-medium text-[#5e7279]">Description</dt>
             <dd className="mt-0.5">{payment.description}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-stone-500">Date</dt>
+            <dt className="text-sm font-medium text-[#5e7279]">Date</dt>
             <dd className="mt-0.5">{payment.date}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-stone-500">Status</dt>
+            <dt className="text-sm font-medium text-[#5e7279]">Status</dt>
             <dd className="mt-0.5">
               <span
                 className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -103,7 +103,7 @@ export default async function PaymentDetailPage({
                     ? "bg-emerald-100 text-emerald-800"
                     : payment.status === "pending"
                     ? "bg-amber-100 text-amber-800"
-                    : "bg-stone-100 text-stone-600"
+                    : "bg-[#f4ecdd] text-[#5e7279]"
                 }`}
               >
                 {payment.type === "incoming"
@@ -118,13 +118,13 @@ export default async function PaymentDetailPage({
           </div>
           {payment.clientName && (
             <div>
-              <dt className="text-sm font-medium text-stone-500">Client</dt>
+              <dt className="text-sm font-medium text-[#5e7279]">Client</dt>
               <dd className="mt-0.5">{payment.clientName}</dd>
             </div>
           )}
           {payment.reference && (
             <div>
-              <dt className="text-sm font-medium text-stone-500">Reference</dt>
+              <dt className="text-sm font-medium text-[#5e7279]">Reference</dt>
               <dd className="mt-0.5 font-mono text-sm">{payment.reference}</dd>
             </div>
           )}
@@ -132,11 +132,11 @@ export default async function PaymentDetailPage({
       </div>
 
       {invoice ? (
-        <div className="rounded-2xl border border-white/30 bg-white/80 p-8 shadow-lg backdrop-blur-xl print:border-0 print:shadow-none print:bg-white">
+        <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-8 shadow-sm print:border-0 print:shadow-none print:bg-white">
           <div className="mb-6 flex items-center justify-between gap-4 print:hidden">
             <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-teal-600" />
-              <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
+              <FileText className="h-5 w-5 text-[#c9922f]" />
+              <h2 className="text-lg font-semibold text-[#11272b]">
                 Invoice
               </h2>
             </div>
@@ -145,8 +145,8 @@ export default async function PaymentDetailPage({
           <InvoiceDocument invoice={invoice} letterhead={letterhead} />
         </div>
       ) : payment.type === "outgoing" ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/50 p-6 text-center text-stone-600">
-          <FileText className="mx-auto h-10 w-10 text-stone-400" />
+        <div className="rounded-2xl border border-dashed border-[#e0e4dd] bg-[#faf6ef] p-6 text-center text-[#5e7279]">
+          <FileText className="mx-auto h-10 w-10 text-[#8a9ba1]" />
           <p className="mt-2 font-medium">No invoice linked</p>
           <p className="mt-1 text-sm">Create an invoice (payment voucher) directly from this payment.</p>
           <div className="mt-4 flex justify-center">
@@ -154,8 +154,8 @@ export default async function PaymentDetailPage({
           </div>
         </div>
       ) : payment.type === "incoming" ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/50 p-6 text-center text-stone-600">
-          <FileText className="mx-auto h-10 w-10 text-stone-400" />
+        <div className="rounded-2xl border border-dashed border-[#e0e4dd] bg-[#faf6ef] p-6 text-center text-[#5e7279]">
+          <FileText className="mx-auto h-10 w-10 text-[#8a9ba1]" />
           <p className="mt-2 font-medium">No invoice linked</p>
           {payment.leadId ? (
             <>

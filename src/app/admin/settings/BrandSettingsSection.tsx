@@ -18,13 +18,13 @@ function InputField(props: {
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-stone-700">{props.label}</span>
+      <span className="text-sm font-medium text-[#11272b]">{props.label}</span>
       <input
         name={props.name}
         type={props.type ?? "text"}
         defaultValue={props.defaultValue}
         placeholder={props.placeholder}
-        className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+        className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
       />
     </label>
   );
@@ -39,13 +39,13 @@ function TextAreaField(props: {
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-stone-700">{props.label}</span>
+      <span className="text-sm font-medium text-[#11272b]">{props.label}</span>
       <textarea
         name={props.name}
         defaultValue={props.defaultValue}
         placeholder={props.placeholder}
         rows={props.rows ?? 3}
-        className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+        className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
       />
     </label>
   );
@@ -72,16 +72,16 @@ export function BrandSettingsSection({
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+      <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-6 shadow-sm">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#f4ecdd] text-[#c9922f]">
             <Building2 className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-stone-900">
+            <h2 className="text-xl font-semibold text-[#11272b]">
               Brand & company setup
             </h2>
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="mt-1 text-sm text-[#5e7279]">
               Change the travel agency name, contact details, logo URL, and the
               client portal footer/header copy from one place.
             </p>
@@ -90,7 +90,7 @@ export function BrandSettingsSection({
 
         <form action={formAction} className="mt-6 space-y-8">
           <section className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
+            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#5e7279]">
               <ImageIcon className="h-4 w-4" />
               Company Identity
             </div>
@@ -122,16 +122,16 @@ export function BrandSettingsSection({
                   type="url"
                 />
                 <label className="block md:col-span-2">
-                  <span className="text-sm font-medium text-stone-700">
+                  <span className="text-sm font-medium text-[#11272b]">
                     Upload logo image
                   </span>
                   <input
                     name="logoFile"
                     type="file"
                     accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                    className="mt-1 block w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-teal-700"
+                    className="mt-1 block w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] file:mr-4 file:rounded-lg file:border-0 file:bg-[#f4ecdd] file:px-3 file:py-2 file:text-sm file:font-medium file:text-[#12343b]"
                   />
-                  <p className="mt-2 text-xs text-stone-500">
+                  <p className="mt-2 text-xs text-[#5e7279]">
                     PNG, JPG, WEBP, or SVG up to 2 MB. When Supabase is
                     configured, uploads go straight to Supabase Storage instead
                     of Vercel memory.
@@ -152,11 +152,11 @@ export function BrandSettingsSection({
                 />
               </div>
 
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-5">
-                <p className="text-sm font-semibold text-stone-900">
+              <div className="rounded-2xl border border-[#e0e4dd] bg-[#f4ecdd] p-5">
+                <p className="text-sm font-semibold text-[#11272b]">
                   Live branding preview
                 </p>
-                <div className="mt-4 flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-4">
+                <div className="mt-4 flex items-center gap-4 rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-4">
                   <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#12343b] text-[#f7e8d1]">
                     {settings.company.logoUrl ? (
                       <Image
@@ -172,13 +172,13 @@ export function BrandSettingsSection({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-stone-900">
+                    <p className="truncate font-semibold text-[#11272b]">
                       {displayName}
                     </p>
-                    <p className="mt-1 text-sm text-stone-500">
+                    <p className="mt-1 text-sm text-[#5e7279]">
                       {settings.company.tagline || "Tagline will appear here"}
                     </p>
-                    <p className="mt-2 text-xs text-stone-400">
+                    <p className="mt-2 text-xs text-[#8a9ba1]">
                       Header, footer, invoices, admin shell, and notifications
                       use this branding.
                     </p>
@@ -196,7 +196,7 @@ export function BrandSettingsSection({
           </section>
 
           <section className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
+            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#5e7279]">
               <Globe2 className="h-4 w-4" />
               Client Portal Copy
             </div>
@@ -333,14 +333,14 @@ export function BrandSettingsSection({
           ) : null}
 
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-[#5e7279]">
               Changes apply across the public portal and admin documents after
               save.
             </p>
             <button
               type="submit"
               disabled={isPending}
-              className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-5 py-3 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-60"
             >
               {isPending ? (
                 <>

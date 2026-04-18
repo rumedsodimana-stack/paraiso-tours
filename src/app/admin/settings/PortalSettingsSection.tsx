@@ -8,14 +8,14 @@ import type { AppSettings } from "@/lib/types";
 
 const initialState = { ok: false, message: "" };
 
-const inputCls = "w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20";
-const textareaCls = "w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20";
+const inputCls = "w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20";
+const textareaCls = "w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-stone-700">{label}</span>
-      {hint && <span className="ml-1.5 text-xs text-stone-400">{hint}</span>}
+      <span className="text-sm font-medium text-[#11272b]">{label}</span>
+      {hint && <span className="ml-1.5 text-xs text-[#8a9ba1]">{hint}</span>}
       <div className="mt-1">{children}</div>
     </label>
   );
@@ -50,12 +50,12 @@ export function PortalSettingsSection({ settings }: { settings: AppSettings }) {
       <input type="hidden" name="logoUrl" value={c.logoUrl ?? ""} />
 
       {/* Key Portal Fields */}
-      <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/50 shadow-sm backdrop-blur-xl">
-        <div className="flex items-center gap-3 border-b border-stone-100 px-6 py-4">
-          <Globe2 className="h-5 w-5 text-teal-600" />
+      <div className="overflow-hidden rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] shadow-sm">
+        <div className="flex items-center gap-3 border-b border-[#e0e4dd] px-6 py-4">
+          <Globe2 className="h-5 w-5 text-[#c9922f]" />
           <div>
-            <p className="font-semibold text-stone-900">Client Portal</p>
-            <p className="text-xs text-stone-500">What your customers see on the booking site</p>
+            <p className="font-semibold text-[#11272b]">Client Portal</p>
+            <p className="text-xs text-[#5e7279]">What your customers see on the booking site</p>
           </div>
         </div>
         <div className="space-y-4 p-6">
@@ -80,10 +80,10 @@ export function PortalSettingsSection({ settings }: { settings: AppSettings }) {
       </div>
 
       {/* Navigation Labels */}
-      <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/50 shadow-sm backdrop-blur-xl">
+      <div className="overflow-hidden rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] shadow-sm">
         <div className="flex items-center justify-between px-6 py-4">
-          <p className="text-sm font-semibold text-stone-700">Navigation labels</p>
-          <p className="text-xs text-stone-400">Rename menu items for your market</p>
+          <p className="text-sm font-semibold text-[#11272b]">Navigation labels</p>
+          <p className="text-xs text-[#8a9ba1]">Rename menu items for your market</p>
         </div>
         <div className="grid gap-4 px-6 pb-6 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Packages">
@@ -102,20 +102,20 @@ export function PortalSettingsSection({ settings }: { settings: AppSettings }) {
       </div>
 
       {/* Advanced accordion */}
-      <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/50 shadow-sm backdrop-blur-xl">
+      <div className="overflow-hidden rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] shadow-sm">
         <button
           type="button"
           onClick={() => setAdvancedOpen((v) => !v)}
-          className="flex w-full items-center justify-between px-6 py-4 text-left transition hover:bg-stone-50/60"
+          className="flex w-full items-center justify-between px-6 py-4 text-left transition hover:bg-[#f4ecdd]"
         >
           <div>
-            <p className="text-sm font-semibold text-stone-700">Advanced — footer copy</p>
-            <p className="text-xs text-stone-400">Footer titles, CTA section, copyright</p>
+            <p className="text-sm font-semibold text-[#11272b]">Advanced — footer copy</p>
+            <p className="text-xs text-[#8a9ba1]">Footer titles, CTA section, copyright</p>
           </div>
-          <ChevronDown className={`h-4 w-4 text-stone-400 transition ${advancedOpen ? "rotate-180" : ""}`} />
+          <ChevronDown className={`h-4 w-4 text-[#8a9ba1] transition ${advancedOpen ? "rotate-180" : ""}`} />
         </button>
         {advancedOpen && (
-          <div className="space-y-4 border-t border-stone-100 px-6 py-5">
+          <div className="space-y-4 border-t border-[#e0e4dd] px-6 py-5">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Field label="Footer — explore column title">
                 <input name="footerExploreTitle" defaultValue={p.footerExploreTitle} placeholder="Explore" className={inputCls} />
@@ -164,7 +164,7 @@ export function PortalSettingsSection({ settings }: { settings: AppSettings }) {
         <button
           type="submit"
           disabled={isPending}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-60"
         >
           {isPending ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Save portal"}
         </button>

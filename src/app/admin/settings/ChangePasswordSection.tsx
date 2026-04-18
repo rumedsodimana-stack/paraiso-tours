@@ -60,16 +60,16 @@ export function ChangePasswordSection() {
   }
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+    <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-6 shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-600">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#f4ecdd] text-[#c9922f]">
           <KeyRound className="h-6 w-6" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-50">
+          <h2 className="text-xl font-semibold text-[#11272b]">
             Change Admin Password
           </h2>
-          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+          <p className="mt-1 text-sm text-[#5e7279]">
             Update your login password. {IS_VERCEL && "On Vercel, set ADMIN_PASSWORD in Project Settings instead."}
           </p>
         </div>
@@ -83,35 +83,35 @@ export function ChangePasswordSection() {
       ) : (
         <form onSubmit={handleSubmit} className="mt-6 max-w-md space-y-4">
           <div>
-            <label className="block text-sm font-medium text-stone-700">Current password</label>
+            <label className="block text-sm font-medium text-[#11272b]">Current password</label>
             <input
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
               placeholder="Enter current password"
               autoComplete="current-password"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-stone-700">New password</label>
+            <label className="block text-sm font-medium text-[#11272b]">New password</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
               placeholder="At least 6 characters"
               autoComplete="new-password"
               minLength={6}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-stone-700">Confirm new password</label>
+            <label className="block text-sm font-medium text-[#11272b]">Confirm new password</label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
               placeholder="Re-enter new password"
               autoComplete="new-password"
             />
@@ -126,7 +126,7 @@ export function ChangePasswordSection() {
           <button
             type="submit"
             disabled={status === "loading"}
-            className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2 text-sm font-medium text-[#f6ead6] hover:bg-[#1a474f] disabled:opacity-50"
           >
             {status === "loading" ? (
               <>
