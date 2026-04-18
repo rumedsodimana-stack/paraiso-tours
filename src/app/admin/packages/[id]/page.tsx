@@ -20,10 +20,10 @@ export default async function PackageDetailPage({
   if (!pkg) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-stone-600 dark:text-stone-400">Package not found</p>
+        <p className="text-[#5e7279]">Package not found</p>
         <Link
           href="/admin/packages"
-          className="mt-4 font-medium text-teal-600 hover:text-teal-700"
+          className="mt-4 font-medium text-[#12343b] hover:text-[#1a474f]"
         >
           Back to packages
         </Link>
@@ -37,7 +37,7 @@ export default async function PackageDetailPage({
       <div className="flex items-center justify-between gap-4">
         <Link
           href="/admin/packages"
-          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
         >
           <ArrowLeft className="h-5 w-5" />
           Back
@@ -45,7 +45,7 @@ export default async function PackageDetailPage({
         <div className="flex items-center gap-3">
           <Link
             href={`/admin/ai?tool=package_writer&packageId=${pkg.id}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-white"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd]"
           >
             <Bot className="h-4 w-4" />
             AI copy
@@ -54,10 +54,10 @@ export default async function PackageDetailPage({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-white/30 bg-white/50 shadow-lg backdrop-blur-xl">
-        <div className="border-b border-white/20 bg-amber-500/10 px-6 py-6 backdrop-blur-sm">
+      <div className="paraiso-card overflow-hidden rounded-2xl">
+        <div className="border-b border-[#e0e4dd] bg-[#f4ecdd] px-6 py-6">
           <div className="flex flex-wrap items-start gap-3">
-            <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50">
+            <h1 className="text-2xl font-bold text-[#11272b]">
               {pkg.name}
             </h1>
             {pkg.reference && (
@@ -66,7 +66,7 @@ export default async function PackageDetailPage({
               </span>
             )}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-stone-600 dark:text-stone-400">
+          <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-[#5e7279]">
             <span className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               {pkg.destination}
@@ -75,7 +75,7 @@ export default async function PackageDetailPage({
               <Clock className="h-4 w-4" />
               {pkg.duration}
             </span>
-            <span className="flex items-center gap-2 text-lg font-semibold text-teal-600 dark:text-teal-400">
+            <span className="flex items-center gap-2 text-lg font-semibold text-[#12343b]">
               <DollarSign className="h-4 w-4" />
               {pkg.price.toLocaleString()} {pkg.currency} / person
             </span>
@@ -84,41 +84,41 @@ export default async function PackageDetailPage({
 
         <div className="space-y-6 p-6">
           <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#5e7279]">
               Description
             </h2>
-            <p className="text-stone-700 dark:text-stone-300">
+            <p className="text-[#11272b]">
               {pkg.description || "—"}
             </p>
           </section>
 
           {pkg.itinerary?.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#5e7279]">
                 Itinerary
               </h2>
               <div className="space-y-3">
                 {pkg.itinerary.map((day) => (
                   <div
                     key={day.day}
-                    className="flex gap-4 rounded-xl border border-white/20 bg-white/30 px-4 py-3 backdrop-blur-sm"
+                    className="flex gap-4 rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-3"
                   >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-bold text-teal-700 dark:bg-teal-900/50 dark:text-teal-300">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eef4f4] text-sm font-bold text-[#12343b]">
                       {day.day}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-medium text-stone-900 dark:text-stone-50">
+                      <h3 className="font-medium text-[#11272b]">
                         {day.title}
                       </h3>
-                      <p className="text-sm text-stone-600 dark:text-stone-400">
+                      <p className="text-sm text-[#5e7279]">
                         {day.description}
                       </p>
                       {(day.accommodationOptions?.length ?? 0) > 0 ? (
-                        <p className="mt-1.5 text-xs font-medium text-stone-600 dark:text-stone-400">
+                        <p className="mt-1.5 text-xs font-medium text-[#5e7279]">
                           Hotel choices: {day.accommodationOptions!.map((o) => o.label).join(", ")}
                         </p>
                       ) : day.accommodation ? (
-                        <p className="mt-1 text-xs text-stone-500">
+                        <p className="mt-1 text-xs text-[#5e7279]">
                           Hotel: {day.accommodation}
                         </p>
                       ) : null}
@@ -133,11 +133,11 @@ export default async function PackageDetailPage({
 
           <div className="grid gap-6 sm:grid-cols-2">
             <section>
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[#5e7279]">
                 <Check className="h-4 w-4 text-emerald-500" />
                 Inclusions
               </h2>
-              <ul className="space-y-1 text-stone-700 dark:text-stone-300">
+              <ul className="space-y-1 text-[#11272b]">
                 {pkg.inclusions?.length ? (
                   pkg.inclusions.map((item, i) => (
                     <li key={i} className="flex items-center gap-2">
@@ -146,25 +146,25 @@ export default async function PackageDetailPage({
                     </li>
                   ))
                 ) : (
-                  <li className="text-stone-500">—</li>
+                  <li className="text-[#5e7279]">—</li>
                 )}
               </ul>
             </section>
             <section>
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-                <X className="h-4 w-4 text-stone-400" />
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[#5e7279]">
+                <X className="h-4 w-4 text-[#8a9ba1]" />
                 Exclusions
               </h2>
-              <ul className="space-y-1 text-stone-600 dark:text-stone-400">
+              <ul className="space-y-1 text-[#5e7279]">
                 {pkg.exclusions?.length ? (
                   pkg.exclusions.map((item, i) => (
                     <li key={i} className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-stone-400" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#8a9ba1]" />
                       {item}
                     </li>
                   ))
                 ) : (
-                  <li className="text-stone-500">—</li>
+                  <li className="text-[#5e7279]">—</li>
                 )}
               </ul>
             </section>

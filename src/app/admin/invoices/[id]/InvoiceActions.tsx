@@ -46,7 +46,7 @@ export function InvoiceActions({
         value={invoice.status}
         onChange={handleStatusChange}
         disabled={pending}
-        className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:opacity-50"
+        className="rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm font-medium text-[#11272b] shadow-sm focus:border-[#c9922f] focus:outline-none focus:ring-1 focus:ring-[#c9922f]/20 disabled:opacity-50"
       >
         {STATUS_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -56,7 +56,7 @@ export function InvoiceActions({
       </select>
       <Link
         href={`/admin/bookings/${invoice.leadId}`}
-        className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+        className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
       >
         <FileText className="h-4 w-4" />
         View booking
@@ -64,7 +64,7 @@ export function InvoiceActions({
       {emailHref ? (
         <a
           href={emailHref}
-          className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd]"
         >
           <Mail className="h-4 w-4" />
           Share by email
@@ -75,7 +75,7 @@ export function InvoiceActions({
           href={whatsappHref}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd]"
         >
           <MessageCircle className="h-4 w-4" />
           Share on WhatsApp
@@ -83,7 +83,7 @@ export function InvoiceActions({
       ) : null}
       <a
         href={`/api/admin/invoices/${invoice.id}/pdf`}
-        className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+        className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd]"
       >
         <Download className="h-4 w-4" />
         Download PDF
@@ -91,7 +91,7 @@ export function InvoiceActions({
       <button
         type="button"
         onClick={handlePrint}
-        className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+        className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
       >
         <Printer className="h-4 w-4" />
         Print / Save PDF

@@ -71,27 +71,27 @@ export default async function PayableDetailPage({
     <div className="space-y-6">
       <Link
         href={`/admin/payables?week=${startDate}`}
-        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
       >
         <ArrowLeft className="h-5 w-5" />
         Back to Payables
       </Link>
 
-      <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
-        <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50">
+      <div className="paraiso-card rounded-2xl p-6">
+        <h1 className="text-xl font-semibold text-[#11272b]">
           Payable – {payable.supplierName}
         </h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <p className="mt-1 text-sm text-[#5e7279]">
           Week of {formatWeekLabel(startDate, endDate)}
         </p>
         <dl className="mt-6 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-sm font-medium text-stone-500">Supplier</dt>
-            <dd className="mt-0.5 font-medium">{payable.supplierName}</dd>
-            <dd className="text-xs capitalize text-stone-500">{payable.supplierType}</dd>
+            <dt className="text-sm font-medium text-[#5e7279]">Supplier</dt>
+            <dd className="mt-0.5 font-medium text-[#11272b]">{payable.supplierName}</dd>
+            <dd className="text-xs capitalize text-[#8a9ba1]">{payable.supplierType}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-stone-500">Amount</dt>
+            <dt className="text-sm font-medium text-[#5e7279]">Amount</dt>
             <dd className="mt-0.5 text-xl font-semibold text-rose-600">
               {payable.amount.toLocaleString()} {payable.currency}
             </dd>
@@ -99,14 +99,14 @@ export default async function PayableDetailPage({
         </dl>
 
         <div className="mt-6">
-          <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-300">Breakdown by booking</h2>
+          <h2 className="text-sm font-semibold text-[#11272b]">Breakdown by booking</h2>
           <ul className="mt-2 space-y-2">
             {payable.bookings.map((b, i) => (
-              <li key={i} className="flex justify-between rounded-lg bg-white/50 px-4 py-3 text-sm">
-                <span className="font-medium text-stone-900 dark:text-stone-50">
+              <li key={i} className="flex justify-between rounded-lg border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-3 text-sm">
+                <span className="font-medium text-[#11272b]">
                   {b.clientName}
                 </span>
-                <span className="text-stone-600 dark:text-stone-400">
+                <span className="text-[#5e7279]">
                   {b.packageName} – {b.tourStartDate}
                 </span>
               </li>
@@ -115,12 +115,12 @@ export default async function PayableDetailPage({
         </div>
 
         <div className="mt-6">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
-            <Building2 className="h-4 w-4" />
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
+            <Building2 className="h-4 w-4 text-[#8a9ba1]" />
             Bank details
           </h2>
           {payable.bankName || payable.accountNumber ? (
-            <div className="mt-2 space-y-1 rounded-lg bg-stone-50/80 p-4 text-sm dark:bg-stone-900/30">
+            <div className="mt-2 space-y-1 rounded-lg border border-[#e0e4dd] bg-[#f4ecdd] p-4 text-sm text-[#11272b]">
               {payable.bankName && (
                 <p>{payable.bankName}{payable.bankBranch ? `, ${payable.bankBranch}` : ""}</p>
               )}

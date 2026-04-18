@@ -24,15 +24,15 @@ export async function BookingSupplierBreakdown({
     breakdown;
 
   return (
-    <section className="rounded-xl border border-teal-200/50 bg-teal-50/30 p-4 dark:border-teal-900/30 dark:bg-teal-950/20">
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400">
+    <section className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] p-4">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#5e7279]">
         Breakdown by supplier
       </h3>
-      <p className="mb-3 text-xs text-stone-500">
+      <p className="mb-3 text-xs text-[#5e7279]">
         {pax} pax × {nights} nights
       </p>
       <div className="space-y-2.5 text-sm">
-        <div className="flex justify-between gap-4 text-stone-700 dark:text-stone-300">
+        <div className="flex justify-between gap-4 text-[#11272b]">
           <span>Base package</span>
           <span className="tabular-nums">
             {baseAmount.toLocaleString()} {currency}
@@ -49,16 +49,16 @@ export async function BookingSupplierBreakdown({
           return (
             <div
               key={`${item.supplierId}-${item.optionLabel}`}
-              className="flex flex-col gap-0.5 rounded-lg border border-white/50 bg-white/50 px-3 py-2 dark:border-stone-700/50 dark:bg-stone-800/30"
+              className="flex flex-col gap-0.5 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <Icon className="h-4 w-4 shrink-0 text-teal-600" />
+                  <Icon className="h-4 w-4 shrink-0 text-[#12343b]" />
                   <div>
-                    <p className="font-medium text-stone-800 dark:text-stone-200">
+                    <p className="font-medium text-[#11272b]">
                       {item.supplierName}
                     </p>
-                    <p className="text-xs text-stone-500">
+                    <p className="text-xs text-[#5e7279]">
                       {typeLabel}: {item.optionLabel}
                     </p>
                   </div>
@@ -68,7 +68,7 @@ export async function BookingSupplierBreakdown({
                     {item.amount.toLocaleString()} {currency}
                   </p>
                   {item.costAmount != null && (
-                    <p className="text-xs text-stone-500">
+                    <p className="text-xs text-[#5e7279]">
                       cost: {item.costAmount.toLocaleString()}
                     </p>
                   )}
@@ -77,7 +77,7 @@ export async function BookingSupplierBreakdown({
             </div>
           );
         })}
-        <div className="mt-3 border-t border-teal-200/50 pt-3 dark:border-teal-900/30">
+        <div className="mt-3 border-t border-[#e0e4dd] pt-3">
           <div className="flex justify-between font-semibold">
             <span>Total</span>
             <span className="tabular-nums">

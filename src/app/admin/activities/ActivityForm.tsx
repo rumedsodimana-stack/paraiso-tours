@@ -63,7 +63,7 @@ export function ActivityForm({
         <div>
           <label
             htmlFor="destinationId"
-            className="block text-sm font-medium text-stone-700"
+            className="block text-sm font-medium text-[#11272b]"
           >
             Destination *
           </label>
@@ -72,7 +72,7 @@ export function ActivityForm({
             name="destinationId"
             required
             defaultValue={activity?.destinationId ?? ""}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           >
             <option value="" disabled>
               Select a destination
@@ -88,7 +88,7 @@ export function ActivityForm({
         <div>
           <label
             htmlFor="title"
-            className="block text-sm font-medium text-stone-700"
+            className="block text-sm font-medium text-[#11272b]"
           >
             Title *
           </label>
@@ -99,7 +99,7 @@ export function ActivityForm({
             required
             defaultValue={activity?.title}
             placeholder="Sigiriya Rock Fortress"
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           />
         </div>
       </div>
@@ -107,7 +107,7 @@ export function ActivityForm({
       <div>
         <label
           htmlFor="summary"
-          className="block text-sm font-medium text-stone-700"
+          className="block text-sm font-medium text-[#11272b]"
         >
           Summary *
         </label>
@@ -118,7 +118,7 @@ export function ActivityForm({
           rows={3}
           defaultValue={activity?.summary}
           placeholder="Climb the iconic 5th-century rock fortress with panoramic views..."
-          className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+          className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
         />
       </div>
 
@@ -126,7 +126,7 @@ export function ActivityForm({
         <div>
           <label
             htmlFor="durationLabel"
-            className="block text-sm font-medium text-stone-700"
+            className="block text-sm font-medium text-[#11272b]"
           >
             Duration
           </label>
@@ -136,14 +136,14 @@ export function ActivityForm({
             type="text"
             defaultValue={activity?.durationLabel ?? "2 hours"}
             placeholder="2 hours"
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           />
         </div>
 
         <div>
           <label
             htmlFor="energy"
-            className="block text-sm font-medium text-stone-700"
+            className="block text-sm font-medium text-[#11272b]"
           >
             Energy Level
           </label>
@@ -151,7 +151,7 @@ export function ActivityForm({
             id="energy"
             name="energy"
             defaultValue={activity?.energy ?? "easy"}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           >
             <option value="easy">Easy</option>
             <option value="moderate">Moderate</option>
@@ -162,7 +162,7 @@ export function ActivityForm({
         <div>
           <label
             htmlFor="estimatedPrice"
-            className="block text-sm font-medium text-stone-700"
+            className="block text-sm font-medium text-[#11272b]"
           >
             Estimated Price (USD)
           </label>
@@ -173,7 +173,7 @@ export function ActivityForm({
             min="0"
             step="0.01"
             defaultValue={activity?.estimatedPrice ?? 0}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           />
         </div>
       </div>
@@ -182,7 +182,7 @@ export function ActivityForm({
         <div>
           <label
             htmlFor="bestFor"
-            className="block text-sm font-medium text-stone-700"
+            className="block text-sm font-medium text-[#11272b]"
           >
             Best For
           </label>
@@ -192,14 +192,14 @@ export function ActivityForm({
             type="text"
             defaultValue={activity?.bestFor}
             placeholder="History lovers, photographers"
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           />
         </div>
 
         <div>
           <label
             htmlFor="tags"
-            className="block text-sm font-medium text-stone-700"
+            className="block text-sm font-medium text-[#11272b]"
           >
             Tags (comma-separated)
           </label>
@@ -209,21 +209,21 @@ export function ActivityForm({
             type="text"
             defaultValue={activity?.tags?.join(", ")}
             placeholder="culture, history, adventure"
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           />
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 border-t border-stone-200/50 pt-6">
+      <div className="flex justify-end gap-3 border-t border-[#e0e4dd] pt-6">
         <a
           href="/admin/activities"
-          className="rounded-xl border border-stone-200 bg-white px-5 py-2.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50"
+          className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-5 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd]"
         >
           Cancel
         </a>
         <button
           type="submit"
-          className="rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+          className="rounded-xl bg-[#12343b] px-5 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
         >
           {activity ? "Save Changes" : "Create Activity"}
         </button>

@@ -13,8 +13,8 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
   if (value == null || value === "") return null;
   return (
     <div>
-      <span className="text-xs font-medium uppercase tracking-wide text-stone-500">{label}</span>
-      <p className="mt-0.5 text-stone-900 dark:text-stone-50">{value}</p>
+      <span className="text-xs font-medium uppercase tracking-wide text-[#8a9ba1]">{label}</span>
+      <p className="mt-0.5 text-[#11272b]">{value}</p>
     </div>
   );
 }
@@ -47,7 +47,7 @@ export default async function HotelProfilePage({
                 ? `/admin/destinations/${hotel.destinationId}`
                 : "/admin/destinations"
           }
-          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
         >
           <ArrowLeft className="h-5 w-5" />
           {hotel.type === "transport"
@@ -59,7 +59,7 @@ export default async function HotelProfilePage({
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`/admin/hotels/${id}/edit`}
-            className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-white px-4 py-2.5 text-sm font-medium text-teal-600 transition hover:bg-teal-50 dark:bg-stone-900 dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-950"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd]"
           >
             <Pencil className="h-4 w-4" />
             Edit
@@ -68,14 +68,14 @@ export default async function HotelProfilePage({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
+      <div className="paraiso-card rounded-2xl p-6">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-600 dark:bg-teal-900/50 dark:text-teal-400">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#eef4f4] text-[#12343b]">
             <Icon className="h-7 w-7" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">{hotel.name}</h1>
-            <p className="text-stone-500">{typeLabels[hotel.type]}</p>
+            <h1 className="text-2xl font-semibold text-[#11272b]">{hotel.name}</h1>
+            <p className="text-[#5e7279]">{typeLabels[hotel.type]}</p>
           </div>
         </div>
 
@@ -108,15 +108,15 @@ export default async function HotelProfilePage({
 
         {hotel.notes && (
           <div className="mt-6">
-            <span className="text-xs font-medium uppercase tracking-wide text-stone-500">Notes</span>
-            <p className="mt-1 whitespace-pre-wrap text-stone-700 dark:text-stone-300">{hotel.notes}</p>
+            <span className="text-xs font-medium uppercase tracking-wide text-[#8a9ba1]">Notes</span>
+            <p className="mt-1 whitespace-pre-wrap text-[#5e7279]">{hotel.notes}</p>
           </div>
         )}
 
         {hasBanking && (
-          <div className="mt-8 rounded-xl border border-stone-200/60 bg-white/40 p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-stone-700">
-              <Landmark className="h-4 w-4" />
+          <div className="mt-8 rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] p-5">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#11272b]">
+              <Landmark className="h-4 w-4 text-[#8a9ba1]" />
               Banking Details
             </h3>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -134,7 +134,7 @@ export default async function HotelProfilePage({
 
       {/* Meal Plans — only for hotel type */}
       {hotel.type === "hotel" && (
-        <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
+        <div className="paraiso-card rounded-2xl p-6">
           <MealPlanManager
             hotelId={hotel.id}
             hotelCurrency={hotel.currency}

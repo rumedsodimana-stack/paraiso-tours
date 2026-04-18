@@ -156,8 +156,8 @@ function FieldLabel({
 }) {
   return (
     <div className="mb-2">
-      <label className="text-sm font-medium text-stone-800">{label}</label>
-      {hint ? <p className="mt-1 text-xs text-stone-500">{hint}</p> : null}
+      <label className="text-sm font-medium text-[#11272b]">{label}</label>
+      {hint ? <p className="mt-1 text-xs text-[#5e7279]">{hint}</p> : null}
     </div>
   );
 }
@@ -476,17 +476,17 @@ export function AiStudio({
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+      <section className="paraiso-card overflow-hidden rounded-[2rem] p-6">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#e0e4dd] bg-[#fffbf4] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#5e7279]">
               <Bot className="h-3.5 w-3.5" />
               Agent Workspace
             </div>
-            <h1 className="mt-4 text-3xl font-semibold text-stone-900">
+            <h1 className="mt-4 text-3xl font-semibold text-[#11272b]">
               One admin screen, split into workspace and AI chat
             </h1>
-            <p className="mt-3 text-stone-600">
+            <p className="mt-3 text-[#5e7279]">
               The center workspace only shows finalized output. The AI chat on
               the right shows the live thinking summary and task progression
               before the finished result lands in the workspace.
@@ -507,10 +507,10 @@ export function AiStudio({
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
               )}
               <div className="text-sm">
-                <p className="font-semibold text-stone-900">
+                <p className="font-semibold text-[#11272b]">
                   {runtimeReady ? "AI runtime ready" : "AI runtime needs setup"}
                 </p>
-                <p className="mt-1 text-stone-600">
+                <p className="mt-1 text-[#5e7279]">
                   {runtime.providerLabel} · {runtime.model}
                 </p>
                 {!runtimeReady && runtime.missingReason ? (
@@ -522,7 +522,7 @@ export function AiStudio({
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
                   href="/admin/settings?section=ai"
-                  className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
                 >
                   <Settings className="h-4 w-4" />
                   Open AI settings
@@ -542,19 +542,19 @@ export function AiStudio({
 
       <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
         <section className="space-y-6">
-          <div className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/45 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+          <div className="paraiso-card overflow-hidden rounded-[2rem] p-6">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-[#5e7279]">
                 <ActiveToolIcon className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+                <p className="text-xs uppercase tracking-[0.22em] text-[#5e7279]">
                   Workspace setup
                 </p>
-                <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+                <h2 className="mt-2 text-2xl font-semibold text-[#11272b]">
                   {activeMeta.label}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-stone-600">
+                <p className="mt-2 text-sm leading-6 text-[#5e7279]">
                   {activeMeta.description}
                 </p>
               </div>
@@ -572,17 +572,17 @@ export function AiStudio({
                       onClick={() => setTool(key)}
                       className={`rounded-[1.5rem] border px-4 py-4 text-left transition ${
                         isActive
-                          ? "border-teal-300 bg-teal-50/80 shadow-sm"
-                          : "border-white/30 bg-white/50 hover:bg-white/70"
+                          ? "border-[#c9922f] bg-[#fffbf4] shadow-sm"
+                          : "border-[#e0e4dd] bg-[#fffbf4] hover:bg-[#f4ecdd]"
                       }`}
                     >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/80 text-teal-700">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4f4] text-[#12343b]">
                         <Icon className="h-5 w-5" />
                       </div>
-                      <h3 className="mt-4 font-semibold text-stone-900">
+                      <h3 className="mt-4 font-semibold text-[#11272b]">
                         {meta.label}
                       </h3>
-                      <p className="mt-1 text-sm leading-6 text-stone-600">
+                      <p className="mt-1 text-sm leading-6 text-[#5e7279]">
                         {meta.description}
                       </p>
                     </button>
@@ -601,7 +601,7 @@ export function AiStudio({
                   <select
                     value={leadId}
                     onChange={(event) => setLeadId(event.target.value)}
-                    className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                   >
                     <option value="">Select booking</option>
                     {bookings.map((booking) => (
@@ -611,8 +611,8 @@ export function AiStudio({
                     ))}
                   </select>
                   {activeBooking ? (
-                    <div className="mt-3 rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-4 text-sm text-stone-700">
-                      <p className="font-semibold text-stone-900">
+                    <div className="mt-3 rounded-2xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-4 text-sm text-[#11272b]">
+                      <p className="font-semibold text-[#11272b]">
                         {activeBooking.reference || activeBooking.name}
                       </p>
                       <p className="mt-1">
@@ -633,7 +633,7 @@ export function AiStudio({
                   <select
                     value={packageId}
                     onChange={(event) => setPackageId(event.target.value)}
-                    className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                   >
                     <option value="">Select package</option>
                     {packages.map((pkg) => (
@@ -643,8 +643,8 @@ export function AiStudio({
                     ))}
                   </select>
                   {activePackage ? (
-                    <div className="mt-3 rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-4 text-sm text-stone-700">
-                      <p className="font-semibold text-stone-900">
+                    <div className="mt-3 rounded-2xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-4 text-sm text-[#11272b]">
+                      <p className="font-semibold text-[#11272b]">
                         {activePackage.name}
                       </p>
                       <p className="mt-1">
@@ -664,7 +664,7 @@ export function AiStudio({
                       type="date"
                       value={travelDate}
                       onChange={(event) => setTravelDate(event.target.value)}
-                      className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                      className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                     />
                   </div>
                   <div>
@@ -674,25 +674,25 @@ export function AiStudio({
                       min="1"
                       value={pax}
                       onChange={(event) => setPax(event.target.value)}
-                      className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                      className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                     />
                   </div>
                 </div>
               ) : null}
 
               {tool === "workspace_copilot" ? (
-                <label className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-4 text-sm text-stone-700">
+                <label className="flex items-start gap-3 rounded-2xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-4 text-sm text-[#11272b]">
                   <input
                     type="checkbox"
                     checked={executeActions}
                     onChange={(event) => setExecuteActions(event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
+                    className="mt-1 h-4 w-4 rounded border-[#e0e4dd] text-[#12343b] focus:ring-[#c9922f]"
                   />
                   <span>
-                    <span className="block font-medium text-stone-900">
+                    <span className="block font-medium text-[#11272b]">
                       Execute supported actions
                     </span>
-                    <span className="mt-1 block leading-6 text-stone-500">
+                    <span className="mt-1 block leading-6 text-[#5e7279]">
                       The AI can execute one safe supported admin action when
                       the request is clear. Otherwise it falls back to guidance.
                     </span>
@@ -709,18 +709,18 @@ export function AiStudio({
                 : "bg-transparent"
             }`}
           >
-            <div className="overflow-hidden rounded-[calc(2rem-2px)] border border-white/20 bg-white/55 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+            <div className="paraiso-card overflow-hidden rounded-[calc(2rem-2px)] p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+                  <p className="text-xs uppercase tracking-[0.22em] text-[#5e7279]">
                     Workspace
                   </p>
-                  <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+                  <h2 className="mt-2 text-2xl font-semibold text-[#11272b]">
                     Finalized output only
                   </h2>
                 </div>
                 {workspaceArtifact ? (
-                  <div className="rounded-full bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
+                  <div className="rounded-full bg-[#eef4f4] px-4 py-2 text-sm font-medium text-[#12343b]">
                     Finalized by AI
                   </div>
                 ) : null}
@@ -728,16 +728,16 @@ export function AiStudio({
 
               {workspaceArtifact ? (
                 <div className="mt-5 space-y-4">
-                  <div className="rounded-[1.4rem] border border-stone-200 bg-white/85 px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                  <div className="rounded-[1.4rem] border border-[#e0e4dd] bg-[#fffbf4] px-4 py-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[#5e7279]">
                       {workspaceArtifact.title}
                     </p>
-                    <p className="mt-2 text-sm text-stone-500">
+                    <p className="mt-2 text-sm text-[#5e7279]">
                       {workspaceArtifact.message}
                     </p>
                   </div>
-                  <div className="max-h-[36rem] overflow-auto rounded-[1.5rem] border border-stone-200 bg-white px-4 py-4">
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-6 text-stone-800">
+                  <div className="max-h-[36rem] overflow-auto rounded-[1.5rem] border border-[#e0e4dd] bg-[#fffbf4] px-4 py-4">
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-6 text-[#11272b]">
                       {workspaceArtifact.content}
                     </pre>
                   </div>
@@ -817,7 +817,7 @@ export function AiStudio({
                         <button
                           type="submit"
                           disabled={promotePending}
-                          className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-stone-800 disabled:opacity-60"
+                          className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-3 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-60"
                         >
                           <GraduationCap className="h-4 w-4" />
                           Save to knowledge base
@@ -827,7 +827,7 @@ export function AiStudio({
                   ) : null}
                 </div>
               ) : (
-                <div className="mt-5 rounded-[1.5rem] border border-dashed border-stone-300 bg-stone-50/80 px-4 py-10 text-sm leading-6 text-stone-500">
+                <div className="mt-5 rounded-[1.5rem] border border-dashed border-stone-300 bg-stone-50/80 px-4 py-10 text-sm leading-6 text-[#5e7279]">
                   The workspace stays clean until AI finishes. Run a request
                   from the chat and the finalized output will land here with a
                   short glow so you can spot the new result immediately.
@@ -837,18 +837,18 @@ export function AiStudio({
           </div>
         </section>
 
-        <aside className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/50 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
-          <div className="border-b border-stone-200/70 px-5 py-5">
+        <aside className="paraiso-card overflow-hidden rounded-[2rem]">
+          <div className="border-b border-[#e0e4dd] px-5 py-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-900 text-white">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6]">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+                  <p className="text-xs uppercase tracking-[0.22em] text-[#5e7279]">
                     AI chat
                   </p>
-                  <h2 className="mt-1 text-xl font-semibold text-stone-900">
+                  <h2 className="mt-1 text-xl font-semibold text-[#11272b]">
                     Visible plan and live task flow
                   </h2>
                 </div>
@@ -857,19 +857,19 @@ export function AiStudio({
                 <button
                   type="button"
                   onClick={() => setChatSettingsOpen((open) => !open)}
-                  className="rounded-xl border border-white/40 bg-white/80 p-2 text-stone-500 transition hover:bg-white hover:text-stone-800"
+                  className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
                   aria-label="Open AI cowork settings"
                 >
                   <Settings className="h-4 w-4" />
                 </button>
                 {chatSettingsOpen ? (
-                  <div className="absolute right-0 top-12 z-20 w-72 rounded-[1.35rem] border border-stone-200 bg-white p-4 shadow-xl">
-                    <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                  <div className="absolute right-0 top-12 z-20 w-72 rounded-[1.35rem] border border-[#e0e4dd] bg-[#fffbf4] p-4 shadow-xl">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[#5e7279]">
                       Cowork settings
                     </p>
                     <div className="mt-3 space-y-4">
                       <label className="block">
-                        <span className="text-sm font-medium text-stone-800">
+                        <span className="text-sm font-medium text-[#11272b]">
                           Model route
                         </span>
                         <select
@@ -877,7 +877,7 @@ export function AiStudio({
                           onChange={(event) =>
                             setModelMode(event.target.value as ModelMode)
                           }
-                          className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                          className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2.5 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                         >
                           <option value="auto">
                             Auto route ({runtime.defaultModel})
@@ -893,7 +893,7 @@ export function AiStudio({
                           </option>
                         </select>
                       </label>
-                      <label className="flex items-start gap-3 rounded-xl border border-stone-200 bg-stone-50 px-3 py-3">
+                      <label className="flex items-start gap-3 rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] px-3 py-3">
                         <input
                           type="checkbox"
                           checked={superpowerArmed}
@@ -901,13 +901,13 @@ export function AiStudio({
                           onChange={(event) =>
                             setSuperpowerArmed(event.target.checked)
                           }
-                          className="mt-1 h-4 w-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
+                          className="mt-1 h-4 w-4 rounded border-[#e0e4dd] text-[#12343b] focus:ring-[#c9922f]"
                         />
                         <span>
-                          <span className="block text-sm font-medium text-stone-900">
+                          <span className="block text-sm font-medium text-[#11272b]">
                             Superpower
                           </span>
-                          <span className="mt-1 block text-xs leading-5 text-stone-500">
+                          <span className="mt-1 block text-xs leading-5 text-[#5e7279]">
                             Guarded app-build mode. It prepares a coding
                             handoff only when you explicitly arm it.
                           </span>
@@ -923,7 +923,7 @@ export function AiStudio({
           <div className="flex h-[48rem] flex-col">
             <div className="flex-1 space-y-4 overflow-auto px-5 py-5">
               {chatHistory.length === 0 ? (
-                <div className="rounded-[1.5rem] border border-dashed border-stone-300 bg-stone-50/80 px-4 py-8 text-sm leading-6 text-stone-500">
+                <div className="rounded-[1.5rem] border border-dashed border-stone-300 bg-stone-50/80 px-4 py-8 text-sm leading-6 text-[#5e7279]">
                   Prompts live here. The chat will show your message first, then
                   a short AI thinking summary, then the active task list, and
                   finally the reply after the workspace is updated.
@@ -936,7 +936,7 @@ export function AiStudio({
                   className={`rounded-[1.5rem] px-4 py-4 ${
                     entry.role === "user"
                       ? "ml-6 border border-[#12343b]/15 bg-[#12343b] text-[#f7ead7]"
-                      : "mr-6 border border-stone-200 bg-white text-stone-800"
+                      : "mr-6 border border-[#e0e4dd] bg-[#fffbf4] text-[#11272b]"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -959,8 +959,8 @@ export function AiStudio({
               ) : null}
 
               {activeTasks.length > 0 ? (
-                <div className="rounded-[1.5rem] border border-teal-200 bg-teal-50/80 px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-teal-700">
+                <div className="rounded-[1.5rem] border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#5e7279]">
                     Live task flow
                   </p>
                   <div className="mt-3 space-y-3">
@@ -969,13 +969,13 @@ export function AiStudio({
                         key={`${task}_${index}`}
                         className={`rounded-xl px-3 py-3 text-sm ${
                           index === 0
-                            ? "border border-teal-300 bg-white text-teal-900 shadow-sm"
-                            : "border border-teal-100 bg-white/70 text-stone-600"
+                            ? "border border-teal-300 bg-white text-[#11272b] shadow-sm"
+                            : "border border-[#e0e4dd] bg-[#fffbf4] text-[#5e7279]"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-3">
                           <span>{task}</span>
-                          <span className="text-xs uppercase tracking-[0.18em] text-teal-700">
+                          <span className="text-xs uppercase tracking-[0.18em] text-[#5e7279]">
                             {index === 0 ? "Running" : "Queued"}
                           </span>
                         </div>
@@ -994,7 +994,7 @@ export function AiStudio({
 
             <form
               onSubmit={handleAgentRun}
-              className="border-t border-stone-200/70 bg-white/70 px-5 py-5"
+              className="border-t border-[#e0e4dd] bg-[#fffbf4] px-5 py-5"
             >
               {tool === "journey_assistant" ? (
                 <div>
@@ -1006,7 +1006,7 @@ export function AiStudio({
                     value={journeyRequest}
                     onChange={(event) => setJourneyRequest(event.target.value)}
                     rows={5}
-                    className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                     placeholder="Example: Couple arriving in July for 8 nights, scenic hill country, one safari, finish on the south coast, comfortable hotels, private car."
                   />
                 </div>
@@ -1022,15 +1022,15 @@ export function AiStudio({
                     value={workspaceRequest}
                     onChange={(event) => setWorkspaceRequest(event.target.value)}
                     rows={5}
-                    className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                     placeholder="Example: Explain how package snapshots work. Or: Mark invoice INV-0005 as paid. Or, with Superpower armed: add sidebar menu 'Deals'."
                   />
                 </div>
               ) : null}
 
               {tool === "booking_brief" ? (
-                <div className="rounded-[1.35rem] border border-stone-200 bg-stone-50/80 px-4 py-4 text-sm text-stone-700">
-                  <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                <div className="rounded-[1.35rem] border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-4 text-sm text-[#11272b]">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#5e7279]">
                     Prompt preview
                   </p>
                   <p className="mt-2 leading-6">
@@ -1042,8 +1042,8 @@ export function AiStudio({
               ) : null}
 
               {tool === "package_writer" ? (
-                <div className="rounded-[1.35rem] border border-stone-200 bg-stone-50/80 px-4 py-4 text-sm text-stone-700">
-                  <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                <div className="rounded-[1.35rem] border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-4 text-sm text-[#11272b]">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#5e7279]">
                     Prompt preview
                   </p>
                   <p className="mt-2 leading-6">
@@ -1082,12 +1082,12 @@ export function AiStudio({
               ) : null}
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="space-y-1 text-sm text-stone-500">
+                <div className="space-y-1 text-sm text-[#5e7279]">
                   <p>The workspace updates only after the AI fully finishes.</p>
                   {tool === "workspace_copilot" ? (
                     <p>
                       Route:{" "}
-                      <span className="font-medium text-stone-700">
+                      <span className="font-medium text-[#11272b]">
                         {modelMode === "auto"
                           ? `Auto (${runtime.defaultModel})`
                           : modelMode}
@@ -1099,7 +1099,7 @@ export function AiStudio({
                 <button
                   type="submit"
                   disabled={!canSubmit}
-                  className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-5 py-3 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {running ? (
                     <>
@@ -1121,16 +1121,16 @@ export function AiStudio({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.96fr_1.04fr]">
-        <div className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+        <div className="paraiso-card overflow-hidden rounded-[2rem] p-6">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-100 text-[#5e7279]">
               <Database className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-stone-900">
+              <h2 className="text-lg font-semibold text-[#11272b]">
                 Knowledge Base
               </h2>
-              <p className="mt-1 text-sm text-stone-500">
+              <p className="mt-1 text-sm text-[#5e7279]">
                 Add reusable process notes and company rules for retrieval.
               </p>
             </div>
@@ -1141,7 +1141,7 @@ export function AiStudio({
               <FieldLabel label="Title" />
               <input
                 name="title"
-                className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                 placeholder="Supplier escalation checklist"
               />
             </div>
@@ -1153,7 +1153,7 @@ export function AiStudio({
               <textarea
                 name="content"
                 rows={6}
-                className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                 placeholder="Write the knowledge note here..."
               />
             </div>
@@ -1161,7 +1161,7 @@ export function AiStudio({
               <FieldLabel label="Tags" hint="Comma-separated. Example: supplier, email, finance" />
               <input
                 name="tags"
-                className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                 placeholder="supplier, customer care, finance"
               />
             </div>
@@ -1179,7 +1179,7 @@ export function AiStudio({
             <button
               type="submit"
               disabled={knowledgePending}
-              className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-3 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-60"
             >
               {knowledgePending ? (
                 <>
@@ -1193,16 +1193,16 @@ export function AiStudio({
           </form>
         </div>
 
-        <div className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/40 p-6 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
+        <div className="paraiso-card overflow-hidden rounded-[2rem] p-6">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-900 text-white">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6]">
               <Bot className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-stone-900">
+              <h2 className="text-lg font-semibold text-[#11272b]">
                 Recent memory
               </h2>
-              <p className="mt-1 text-sm text-stone-500">
+              <p className="mt-1 text-sm text-[#5e7279]">
                 Useful interactions and stored notes keep improving retrieval quality.
               </p>
             </div>
@@ -1210,48 +1210,48 @@ export function AiStudio({
 
           <div className="mt-5 grid gap-3 lg:grid-cols-2">
             <div className="space-y-3">
-              <p className="text-sm font-medium text-stone-900">
+              <p className="text-sm font-medium text-[#11272b]">
                 Recent knowledge documents
               </p>
               {knowledgeDocuments.length > 0 ? (
                 knowledgeDocuments.slice(0, 4).map((document) => (
                   <div
                     key={document.id}
-                    className="rounded-2xl border border-stone-200 bg-white/70 px-4 py-3"
+                    className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3"
                   >
-                    <p className="font-medium text-stone-900">{document.title}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.16em] text-stone-500">
+                    <p className="font-medium text-[#11272b]">{document.title}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#5e7279]">
                       {document.sourceType}
                     </p>
-                    <p className="mt-2 text-xs text-stone-500">
+                    <p className="mt-2 text-xs text-[#5e7279]">
                       {(document.tags ?? []).join(", ") || "No tags"}
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-stone-500">
+                <p className="text-sm text-[#5e7279]">
                   No stored knowledge documents yet.
                 </p>
               )}
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-stone-900">
+              <p className="text-sm font-medium text-[#11272b]">
                 Learning loop memory
               </p>
               {interactions.length > 0 ? (
                 interactions.slice(0, 4).map((interaction) => (
                   <div
                     key={interaction.id}
-                    className="rounded-2xl border border-stone-200 bg-white/70 px-4 py-3"
+                    className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3"
                   >
-                    <p className="text-sm font-medium text-stone-900">
+                    <p className="text-sm font-medium text-[#11272b]">
                       {interaction.tool.replace(/_/g, " ")}
                     </p>
-                    <p className="mt-1 line-clamp-2 text-sm text-stone-600">
+                    <p className="mt-1 line-clamp-2 text-sm text-[#5e7279]">
                       {interaction.requestText}
                     </p>
-                    <p className="mt-2 text-xs text-stone-500">
+                    <p className="mt-2 text-xs text-[#5e7279]">
                       {interaction.helpful === true
                         ? "Marked useful"
                         : interaction.helpful === false
@@ -1264,7 +1264,7 @@ export function AiStudio({
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-stone-500">
+                <p className="text-sm text-[#5e7279]">
                   No interaction memory yet.
                 </p>
               )}

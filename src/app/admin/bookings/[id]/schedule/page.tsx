@@ -19,7 +19,7 @@ export default async function BookingSchedulePage({
       <div className="space-y-6">
         <Link
           href={`/admin/bookings/${id}`}
-          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
         >
           <ArrowLeft className="h-5 w-5" />
           Back to booking
@@ -41,39 +41,39 @@ export default async function BookingSchedulePage({
     <div className="space-y-6">
       <Link
         href={`/admin/bookings/${id}`}
-        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
       >
         <ArrowLeft className="h-5 w-5" />
         Back to booking
       </Link>
-      <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
-        <h1 className="text-2xl font-semibold text-stone-900">Schedule Tour</h1>
-        <p className="mt-1 text-stone-600">
+      <div className="paraiso-card rounded-2xl p-6">
+        <h1 className="text-2xl font-semibold text-[#11272b]">Schedule Tour</h1>
+        <p className="mt-1 text-[#5e7279]">
           Schedule this booking on the calendar using the details below.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-stone-500">Client</p>
-            <p className="mt-0.5 font-medium text-stone-900">{lead.name}</p>
+            <p className="text-sm font-medium text-[#5e7279]">Client</p>
+            <p className="mt-0.5 font-medium text-[#11272b]">{lead.name}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-stone-500">Package</p>
-            <p className="mt-0.5 flex items-center gap-2 text-stone-900">
-              <MapPin className="h-4 w-4 text-teal-600" />
+            <p className="text-sm font-medium text-[#5e7279]">Package</p>
+            <p className="mt-0.5 flex items-center gap-2 text-[#11272b]">
+              <MapPin className="h-4 w-4 text-[#12343b]" />
               {pkg.name}
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-stone-500">Travelers</p>
-            <p className="mt-0.5 flex items-center gap-2 text-stone-900">
-              <Users className="h-4 w-4 text-teal-600" />
+            <p className="text-sm font-medium text-[#5e7279]">Travelers</p>
+            <p className="mt-0.5 flex items-center gap-2 text-[#11272b]">
+              <Users className="h-4 w-4 text-[#12343b]" />
               {lead.pax ?? 1} pax
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-stone-500">Start date</p>
-            <p className="mt-0.5 flex items-center gap-2 text-stone-900">
-              <Calendar className="h-4 w-4 text-teal-600" />
+            <p className="text-sm font-medium text-[#5e7279]">Start date</p>
+            <p className="mt-0.5 flex items-center gap-2 text-[#11272b]">
+              <Calendar className="h-4 w-4 text-[#12343b]" />
               {lead.travelDate
                 ? new Date(lead.travelDate).toLocaleDateString("en-GB", {
                     weekday: "short",
@@ -86,7 +86,7 @@ export default async function BookingSchedulePage({
           </div>
         </div>
         <div className="mt-8 space-y-4">
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-[#5e7279]">
             Scheduling also checks supplier capacity and missing supplier links.
             If attention is needed, you will be taken to the tour detail page
             with warnings.

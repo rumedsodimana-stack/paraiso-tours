@@ -25,6 +25,12 @@ const DESTINATIONS = [
   { id: "jaffna", name: "Jaffna" },
 ];
 
+const inputCls =
+  "mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20";
+
+const labelCls = "block text-sm font-medium text-[#11272b]";
+const helperCls = "mt-1 text-xs text-[#5e7279]";
+
 export function HotelForm({
   hotel,
   action,
@@ -67,9 +73,11 @@ export function HotelForm({
       {error && (
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
+
+      {/* Name + Type */}
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="name" className={labelCls}>
             Name *
           </label>
           <input
@@ -78,12 +86,12 @@ export function HotelForm({
             type="text"
             required
             defaultValue={hotel?.name}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className={inputCls}
             placeholder="Jetwing Lagoon"
           />
         </div>
         <div>
-          <label htmlFor="type" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="type" className={labelCls}>
             Type
           </label>
           <select
@@ -91,7 +99,7 @@ export function HotelForm({
             name="type"
             value={type}
             onChange={(e) => setType(e.target.value as HotelSupplier["type"])}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className={inputCls}
           >
             <option value="hotel">Hotel</option>
             <option value="transport">Transport</option>
@@ -100,9 +108,11 @@ export function HotelForm({
           </select>
         </div>
       </div>
+
+      {/* Location + Destination + Email + Contact */}
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label htmlFor="location" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="location" className={labelCls}>
             Location
           </label>
           <input
@@ -110,33 +120,33 @@ export function HotelForm({
             name="location"
             type="text"
             defaultValue={hotel?.location}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className={inputCls}
             placeholder="Negombo"
           />
         </div>
         {type === "hotel" && (
           <div>
-            <label htmlFor="destinationId" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="destinationId" className={labelCls}>
               Destination
             </label>
             <select
               id="destinationId"
               name="destinationId"
               defaultValue={hotel?.destinationId ?? defaultDestinationId ?? ""}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
             >
               <option value="">— No destination assigned —</option>
               {DESTINATIONS.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-stone-500">
+            <p className={helperCls}>
               Links this hotel to a destination for catalog filtering.
             </p>
           </div>
         )}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="email" className={labelCls}>
             Email
           </label>
           <input
@@ -144,12 +154,12 @@ export function HotelForm({
             name="email"
             type="email"
             defaultValue={hotel?.email}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className={inputCls}
             placeholder="reservations@hotel.com"
           />
         </div>
         <div>
-          <label htmlFor="contact" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="contact" className={labelCls}>
             Phone / Contact
           </label>
           <input
@@ -157,14 +167,16 @@ export function HotelForm({
             name="contact"
             type="text"
             defaultValue={hotel?.contact}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className={inputCls}
             placeholder="+94 11 234 5678"
           />
         </div>
       </div>
+
+      {/* Pricing + Capacity + Star rating */}
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label htmlFor="defaultPricePerNight" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="defaultPricePerNight" className={labelCls}>
             {type === "meal"
               ? "Default price per person / day"
               : type === "transport"
@@ -178,20 +190,20 @@ export function HotelForm({
             min={0}
             step={0.01}
             defaultValue={hotel?.defaultPricePerNight}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className={inputCls}
             placeholder="120"
           />
         </div>
         {type === "hotel" && (
           <div>
-            <label htmlFor="starRating" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="starRating" className={labelCls}>
               Star rating (1–5)
             </label>
             <select
               id="starRating"
               name="starRating"
               defaultValue={hotel?.starRating ?? ""}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
             >
               <option value="">— Select —</option>
               <option value="5">5 Star</option>
@@ -203,7 +215,7 @@ export function HotelForm({
           </div>
         )}
         <div>
-          <label htmlFor="maxConcurrentBookings" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="maxConcurrentBookings" className={labelCls}>
             {type === "hotel"
               ? "Max concurrent bookings"
               : type === "transport"
@@ -217,16 +229,16 @@ export function HotelForm({
             min={1}
             step={1}
             defaultValue={hotel?.maxConcurrentBookings}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className={inputCls}
             placeholder="Leave empty for unlimited"
           />
-          <p className="mt-1 text-xs text-stone-500">
+          <p className={helperCls}>
             Used by scheduling to flag overlapping tours that exceed this supplier&apos;s capacity.
           </p>
         </div>
         {type === "transport" && (
           <div>
-            <label htmlFor="capacity" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="capacity" className={labelCls}>
               Passenger capacity
             </label>
             <input
@@ -236,23 +248,23 @@ export function HotelForm({
               min={1}
               step={1}
               defaultValue={hotel?.capacity}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
               placeholder="e.g. 3, 6, 18"
             />
-            <p className="mt-1 text-xs text-stone-500">
+            <p className={helperCls}>
               Max passengers this vehicle can carry. Used to filter recommendations in the trip builder.
             </p>
           </div>
         )}
         <div>
-          <label htmlFor="currency" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="currency" className={labelCls}>
             Currency
           </label>
           <select
             id="currency"
             name="currency"
             defaultValue={hotel?.currency ?? "USD"}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className={inputCls}
           >
             <option value="USD">USD</option>
             <option value="EUR">EUR</option>
@@ -261,8 +273,10 @@ export function HotelForm({
           </select>
         </div>
       </div>
+
+      {/* Notes */}
       <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-stone-700">
+        <label htmlFor="notes" className={labelCls}>
           Notes
         </label>
         <textarea
@@ -270,17 +284,18 @@ export function HotelForm({
           name="notes"
           rows={2}
           defaultValue={hotel?.notes}
-          className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+          className={inputCls}
           placeholder="Contract details, special rates..."
         />
       </div>
 
-      <div className="rounded-xl border border-stone-200/60 bg-white/40 p-4">
-        <h3 className="mb-3 text-sm font-medium text-stone-700">Banking Details</h3>
-        <p className="mb-4 text-xs text-stone-500">For bank transfers and payables reporting</p>
+      {/* Banking Details */}
+      <div className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] p-5">
+        <h3 className="mb-1 text-sm font-semibold text-[#11272b]">Banking Details</h3>
+        <p className="mb-4 text-xs text-[#5e7279]">For bank transfers and payables reporting</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="bankName" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="bankName" className={labelCls}>
               Bank name
             </label>
             <input
@@ -288,12 +303,12 @@ export function HotelForm({
               name="bankName"
               type="text"
               defaultValue={hotel?.bankName}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
               placeholder="Commercial Bank of Ceylon"
             />
           </div>
           <div>
-            <label htmlFor="bankBranch" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="bankBranch" className={labelCls}>
               Branch
             </label>
             <input
@@ -301,12 +316,12 @@ export function HotelForm({
               name="bankBranch"
               type="text"
               defaultValue={hotel?.bankBranch}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
               placeholder="Colombo Main"
             />
           </div>
           <div>
-            <label htmlFor="accountName" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="accountName" className={labelCls}>
               Account name
             </label>
             <input
@@ -314,12 +329,12 @@ export function HotelForm({
               name="accountName"
               type="text"
               defaultValue={hotel?.accountName}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
               placeholder="Jetwing Hotels (Pvt) Ltd"
             />
           </div>
           <div>
-            <label htmlFor="accountNumber" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="accountNumber" className={labelCls}>
               Account number
             </label>
             <input
@@ -327,12 +342,12 @@ export function HotelForm({
               name="accountNumber"
               type="text"
               defaultValue={hotel?.accountNumber}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
               placeholder="1234567890"
             />
           </div>
           <div>
-            <label htmlFor="swiftCode" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="swiftCode" className={labelCls}>
               SWIFT / BIC
             </label>
             <input
@@ -340,19 +355,19 @@ export function HotelForm({
               name="swiftCode"
               type="text"
               defaultValue={hotel?.swiftCode}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
               placeholder="CCEYLKLX"
             />
           </div>
           <div>
-            <label htmlFor="bankCurrency" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="bankCurrency" className={labelCls}>
               Bank currency
             </label>
             <select
               id="bankCurrency"
               name="bankCurrency"
               defaultValue={hotel?.bankCurrency ?? ""}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
             >
               <option value="">— Select —</option>
               <option value="USD">USD</option>
@@ -362,7 +377,7 @@ export function HotelForm({
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor="paymentReference" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="paymentReference" className={labelCls}>
               Payment reference (for transfers)
             </label>
             <input
@@ -370,17 +385,18 @@ export function HotelForm({
               name="paymentReference"
               type="text"
               defaultValue={hotel?.paymentReference}
-              className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+              className={inputCls}
               placeholder="Invoice #123, Booking ref"
             />
           </div>
         </div>
       </div>
 
+      {/* Submit */}
       <div className="flex gap-3">
         <button
           type="submit"
-          className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+          className="rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
         >
           {hotel ? "Update" : "Create"}
         </button>

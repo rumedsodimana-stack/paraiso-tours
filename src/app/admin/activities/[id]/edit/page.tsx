@@ -25,13 +25,13 @@ export default async function EditActivityPage({
     <div className="space-y-6">
       <Link
         href="/admin/activities"
-        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
       >
         <ArrowLeft className="h-5 w-5" />
         Back to Activities
       </Link>
-      <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
-        <h1 className="mb-6 text-xl font-semibold text-stone-900 dark:text-stone-50">
+      <div className="paraiso-card rounded-2xl p-6">
+        <h1 className="mb-6 text-xl font-semibold text-[#11272b]">
           Edit Activity
         </h1>
         <ActivityForm

@@ -51,7 +51,7 @@ export default async function InvoiceViewPage({
       <div className="flex items-center justify-between gap-4 print:hidden">
         <Link
           href={`/admin/bookings/${invoice.leadId}`}
-          className="flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
         >
           <ArrowLeft className="h-5 w-5" />
           Back to booking
@@ -67,7 +67,7 @@ export default async function InvoiceViewPage({
         />
       </div>
 
-      <div className="rounded-2xl border border-white/30 bg-white/80 p-8 shadow-lg backdrop-blur-xl print:border-0 print:bg-white print:p-0 print:shadow-none">
+      <div className="paraiso-card rounded-2xl p-8 print:border-0 print:bg-white print:p-0 print:shadow-none">
         <InvoiceDocument
           invoice={invoice}
           letterhead={{

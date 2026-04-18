@@ -48,12 +48,12 @@ export function TodosList({ initialTodos }: { initialTodos: Todo[] }) {
           name="title"
           placeholder="Add a task…"
           disabled={pending}
-          className="flex-1 rounded-xl border border-white/30 bg-white/60 px-4 py-3 backdrop-blur-sm placeholder:text-stone-400 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30 disabled:opacity-50"
+          className="flex-1 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] placeholder:text-[#8a9ba1] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20 disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-teal-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+          className="rounded-xl bg-[#12343b] px-6 py-3 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-50"
         >
           {pending ? "Adding…" : "Add"}
         </button>
@@ -61,7 +61,7 @@ export function TodosList({ initialTodos }: { initialTodos: Todo[] }) {
 
       <div className="space-y-4">
         {pendingTodos.length === 0 && completedTodos.length === 0 ? (
-          <p className="py-8 text-center text-stone-500">
+          <p className="py-8 text-center text-[#5e7279]">
             No tasks yet. Add one above to get started.
           </p>
         ) : (
@@ -69,22 +69,22 @@ export function TodosList({ initialTodos }: { initialTodos: Todo[] }) {
             {pendingTodos.map((todo) => (
               <div
                 key={todo.id}
-                className="flex items-center gap-3 rounded-xl border border-white/30 bg-white/50 px-4 py-3 shadow-sm backdrop-blur-sm"
+                className="flex items-center gap-3 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 shadow-sm"
               >
                 <button
                   type="button"
                   onClick={() => handleToggle(todo.id)}
-                  className="rounded-full p-1 text-stone-400 transition hover:bg-teal-100 hover:text-teal-600"
+                  className="rounded-full p-1 text-[#8a9ba1] transition hover:bg-[#eef4f4] hover:text-[#12343b]"
                   aria-label="Mark complete"
                 >
                   <Circle className="h-5 w-5" />
                 </button>
-                <span className="flex-1 font-medium text-stone-900">{todo.title}</span>
+                <span className="flex-1 font-medium text-[#11272b]">{todo.title}</span>
                 <button
                   type="button"
                   onClick={() => handleDelete(todo.id)}
                   disabled={pending}
-                  className="rounded-lg p-1.5 text-stone-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                  className="rounded-lg p-1.5 text-[#8a9ba1] transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
                   aria-label="Delete"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -94,22 +94,22 @@ export function TodosList({ initialTodos }: { initialTodos: Todo[] }) {
             {completedTodos.map((todo) => (
               <div
                 key={todo.id}
-                className="flex items-center gap-3 rounded-xl border border-white/20 bg-white/30 px-4 py-3 opacity-75"
+                className="flex items-center gap-3 rounded-xl border border-[#e0e4dd] bg-[#f4ecdd]/50 px-4 py-3 opacity-75"
               >
                 <button
                   type="button"
                   onClick={() => handleToggle(todo.id)}
-                  className="rounded-full p-1 text-teal-600 transition hover:bg-teal-100"
+                  className="rounded-full p-1 text-[#12343b] transition hover:bg-[#eef4f4]"
                   aria-label="Mark incomplete"
                 >
                   <Check className="h-5 w-5" />
                 </button>
-                <span className="flex-1 text-stone-500 line-through">{todo.title}</span>
+                <span className="flex-1 text-[#8a9ba1] line-through">{todo.title}</span>
                 <button
                   type="button"
                   onClick={() => handleDelete(todo.id)}
                   disabled={pending}
-                  className="rounded-lg p-1.5 text-stone-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                  className="rounded-lg p-1.5 text-[#8a9ba1] transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
                   aria-label="Delete"
                 >
                   <Trash2 className="h-4 w-4" />

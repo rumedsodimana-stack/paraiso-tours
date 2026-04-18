@@ -26,44 +26,44 @@ export function RunPayrollForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-4 rounded-xl border border-white/30 bg-white/50 p-4">
+    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-4 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-4">
       {error && (
         <div className="w-full rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
       )}
       <div>
-        <label htmlFor="periodStart" className="block text-xs font-medium text-stone-500">Period Start</label>
+        <label htmlFor="periodStart" className="block text-xs font-medium text-[#5e7279]">Period Start</label>
         <input
           id="periodStart"
           name="periodStart"
           type="date"
           required
-          className="mt-0.5 rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm"
+          className="mt-0.5 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm focus:border-[#c9922f] focus:outline-none"
         />
       </div>
       <div>
-        <label htmlFor="periodEnd" className="block text-xs font-medium text-stone-500">Period End</label>
+        <label htmlFor="periodEnd" className="block text-xs font-medium text-[#5e7279]">Period End</label>
         <input
           id="periodEnd"
           name="periodEnd"
           type="date"
           required
-          className="mt-0.5 rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm"
+          className="mt-0.5 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm focus:border-[#c9922f] focus:outline-none"
         />
       </div>
       <div>
-        <label htmlFor="payDate" className="block text-xs font-medium text-stone-500">Pay Date</label>
+        <label htmlFor="payDate" className="block text-xs font-medium text-[#5e7279]">Pay Date</label>
         <input
           id="payDate"
           name="payDate"
           type="date"
           required
-          className="mt-0.5 rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm"
+          className="mt-0.5 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm focus:border-[#c9922f] focus:outline-none"
         />
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-50"
       >
         <Plus className="h-4 w-4" />
         {loading ? "Creating…" : "Run Payroll"}

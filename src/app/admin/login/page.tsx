@@ -51,13 +51,13 @@ export default function AdminLoginPage() {
                 <LockKeyhole className="h-4 w-4" />
                 Secure Login
               </div>
-              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-stone-900">
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-[#11272b]">
                 Sign in to admin
               </h2>
-              <p className="mt-3 text-sm leading-6 text-stone-600">
+              <p className="mt-3 text-sm leading-6 text-[#5e7279]">
                 Use the configured admin password to continue.
               </p>
-              <p className="mt-2 text-xs font-medium uppercase tracking-[0.2em] text-stone-400">
+              <p className="mt-2 text-xs font-medium uppercase tracking-[0.2em] text-[#8a9ba1]">
                 Live version v{APP_RELEASE.version}
               </p>
 
@@ -93,7 +93,7 @@ export default function AdminLoginPage() {
                 <div className="space-y-2">
                   <label
                     htmlFor="password"
-                    className="text-sm font-medium text-stone-700"
+                    className="text-sm font-medium text-[#11272b]"
                   >
                     Admin password
                   </label>
@@ -104,7 +104,7 @@ export default function AdminLoginPage() {
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     required
-                    className="w-full rounded-[1.2rem] border border-[#ddc8b0] bg-white px-4 py-3 text-stone-900 outline-none transition focus:border-[#12343b] focus:ring-4 focus:ring-[#12343b]/10"
+                    className="w-full rounded-[1.2rem] border border-[#ddc8b0] bg-white px-4 py-3 text-[#11272b] outline-none transition focus:border-[#12343b] focus:ring-4 focus:ring-[#12343b]/10"
                   />
                 </div>
 
@@ -123,7 +123,7 @@ export default function AdminLoginPage() {
                   <ArrowRight className="h-4 w-4" />
                 </button>
 
-                <div className="rounded-[1rem] border border-[#e6dac6] bg-[#fbf7f1] px-4 py-3 text-sm text-stone-600">
+                <div className="rounded-[1rem] border border-[#e6dac6] bg-[#fbf7f1] px-4 py-3 text-sm text-[#5e7279]">
                   After login, users are notified about the current deployed
                   version once for this release, and all live booking data stays
                   preserved.

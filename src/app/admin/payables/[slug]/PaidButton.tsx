@@ -42,13 +42,13 @@ export function PaidButton({
   };
 
   return (
-    <div className="mt-8 rounded-xl border-2 border-teal-200 bg-teal-50/50 p-6">
+    <div className="mt-8 rounded-xl border-2 border-[#e0e4dd] bg-[#f4ecdd] p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="font-semibold text-stone-900">
+          <h3 className="font-semibold text-[#11272b]">
             Mark as paid
           </h3>
-          <p className="mt-1 text-sm text-stone-600">
+          <p className="mt-1 text-sm text-[#5e7279]">
             Creates an outgoing payment record and removes this payable from the list.
           </p>
         </div>
@@ -56,13 +56,13 @@ export function PaidButton({
           type="button"
           onClick={handleClick}
           disabled={pending}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-6 py-3 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-50"
         >
           <CheckCircle2 className="h-5 w-5" />
           {pending ? "Processing…" : "Paid"}
         </button>
       </div>
-      <p className="mt-3 text-xs text-stone-500">
+      <p className="mt-3 text-xs text-[#5e7279]">
         You can view the payment and print a voucher from the Payments page.
       </p>
     </div>

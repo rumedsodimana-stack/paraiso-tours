@@ -21,7 +21,7 @@ export function InvoiceButton({ leadId, invoice, canCreate }: InvoiceButtonProps
     return (
       <Link
         href={`/admin/invoices/${invoice.id}`}
-        className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-teal-50 px-4 py-2.5 text-sm font-medium text-teal-700 transition hover:bg-teal-100"
+        className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd]"
       >
         <Receipt className="h-4 w-4" />
         View Invoice
@@ -45,7 +45,7 @@ export function InvoiceButton({ leadId, invoice, canCreate }: InvoiceButtonProps
       type="button"
       onClick={handleCreate}
       disabled={pending}
-      className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-teal-50 px-4 py-2.5 text-sm font-medium text-teal-700 transition hover:bg-teal-100 disabled:opacity-50"
+      className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd] disabled:opacity-50"
     >
       <Receipt className="h-4 w-4" />
       {pending ? "Creating…" : "Create Invoice"}

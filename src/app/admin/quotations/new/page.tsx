@@ -9,7 +9,7 @@ export default function NewQuotationPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/admin/quotations"
-          className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700"
+          className="inline-flex items-center gap-1 text-sm text-[#5e7279] hover:text-[#11272b]"
         >
           <ChevronLeft className="h-4 w-4" />
           Quotations
@@ -17,8 +17,8 @@ export default function NewQuotationPage() {
       </div>
 
       <div>
-        <h1 className="text-2xl font-semibold text-stone-900">New Quotation</h1>
-        <p className="mt-1 text-stone-500">
+        <h1 className="text-2xl font-semibold text-[#11272b]">New Quotation</h1>
+        <p className="mt-1 text-[#5e7279]">
           Build a custom tour proposal for a corporate or group client.
         </p>
       </div>

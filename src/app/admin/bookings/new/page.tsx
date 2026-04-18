@@ -11,15 +11,15 @@ export default async function NewBookingPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/admin/bookings"
-          className="flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
         >
           <ArrowLeft className="h-5 w-5" />
           Back
         </Link>
       </div>
-      <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
-        <h1 className="text-2xl font-semibold text-stone-900">Add New Booking</h1>
-        <p className="mt-1 text-stone-600">
+      <div className="paraiso-card rounded-2xl p-6">
+        <h1 className="text-2xl font-semibold text-[#11272b]">Add New Booking</h1>
+        <p className="mt-1 text-[#5e7279]">
           Create a booking manually or capture client inquiry details
         </p>
         <NewBookingForm packages={packages} />

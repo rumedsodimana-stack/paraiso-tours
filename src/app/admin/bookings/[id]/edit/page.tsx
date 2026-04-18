@@ -28,8 +28,8 @@ export default async function EditLeadPage({
   if (!lead) {
     return (
       <div className="space-y-6">
-        <p className="text-stone-600">Booking not found</p>
-        <Link href="/admin/bookings" className="text-teal-600 hover:text-teal-700 font-medium">
+        <p className="text-[#5e7279]">Booking not found</p>
+        <Link href="/admin/bookings" className="text-[#12343b] hover:text-[#1a474f] font-medium">
           Back to bookings
         </Link>
       </div>
@@ -41,15 +41,15 @@ export default async function EditLeadPage({
       <div className="flex items-center gap-4">
         <Link
           href="/admin/bookings"
-          className="flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
         >
           <ArrowLeft className="h-5 w-5" />
           Back
         </Link>
       </div>
-      <div className="rounded-2xl border border-white/30 bg-white/50 p-6 shadow-lg backdrop-blur-xl">
-        <h1 className="text-2xl font-semibold text-stone-900">Edit Booking</h1>
-        <p className="mt-1 text-stone-600">{lead.name}</p>
+      <div className="paraiso-card rounded-2xl p-6">
+        <h1 className="text-2xl font-semibold text-[#11272b]">Edit Booking</h1>
+        <p className="mt-1 text-[#5e7279]">{lead.name}</p>
         {lead.reference && (
           <div className="mt-4 rounded-xl bg-teal-50 px-4 py-3">
             <p className="text-xs font-medium uppercase tracking-wide text-teal-700">Booking Reference</p>

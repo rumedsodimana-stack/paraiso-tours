@@ -60,7 +60,7 @@ export function CreateTourForm({
       )}
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label htmlFor="leadId" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="leadId" className="block text-sm font-medium text-[#11272b]">
             Client (Booking) *
           </label>
           <select
@@ -68,7 +68,7 @@ export function CreateTourForm({
             name="leadId"
             required
             value={selectedLead?.id ?? ""}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
             onChange={(e) => {
               const lead = leads.find((l) => l.id === e.target.value);
               handleLeadChange(lead ?? null);
@@ -88,7 +88,7 @@ export function CreateTourForm({
           )}
         </div>
         <div>
-          <label htmlFor="packageId" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="packageId" className="block text-sm font-medium text-[#11272b]">
             Package *
           </label>
           <select
@@ -97,7 +97,7 @@ export function CreateTourForm({
             required
             value={selectedPackageId}
             onChange={(e) => setSelectedPackageId(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           >
             <option value="">Select a package...</option>
             {packages.map((pkg) => (
@@ -110,7 +110,7 @@ export function CreateTourForm({
       </div>
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label htmlFor="startDate" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="startDate" className="block text-sm font-medium text-[#11272b]">
             Start Date *
           </label>
           <input
@@ -118,11 +118,11 @@ export function CreateTourForm({
             name="startDate"
             type="date"
             required
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           />
         </div>
         <div>
-          <label htmlFor="pax" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="pax" className="block text-sm font-medium text-[#11272b]">
             Number of Travelers
           </label>
           <input
@@ -132,7 +132,7 @@ export function CreateTourForm({
             min={1}
             value={pax}
             onChange={(e) => setPax(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+            className="mt-1 w-full rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           />
         </div>
       </div>
@@ -140,7 +140,7 @@ export function CreateTourForm({
       <div className="flex gap-3">
         <button
           type="submit"
-          className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+          className="rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
         >
           Schedule Tour
         </button>

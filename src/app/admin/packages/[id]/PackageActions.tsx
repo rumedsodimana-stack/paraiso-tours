@@ -27,7 +27,7 @@ export function PackageActions({
     <div className="flex items-center gap-2">
       <Link
         href={`/admin/packages/${pkgId}/edit`}
-        className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/50 px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-white/70"
+        className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd]"
       >
         <Pencil className="h-4 w-4" />
         Edit

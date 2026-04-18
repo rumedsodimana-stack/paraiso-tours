@@ -42,7 +42,7 @@ export function ScheduleTourButton({ leadId, hasTravelDate }: ScheduleTourButton
           type="button"
           onClick={handleSchedule}
           disabled={pending}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-50"
         >
           <Calendar className="h-4 w-4" />
           {pending ? "Scheduling…" : "Schedule Tour"}
@@ -54,7 +54,7 @@ export function ScheduleTourButton({ leadId, hasTravelDate }: ScheduleTourButton
 
   return (
     <div className="space-y-3">
-      <label htmlFor="startDate" className="block text-sm font-medium text-stone-700">
+      <label htmlFor="startDate" className="block text-sm font-medium text-[#11272b]">
         Start date (booking has no travel date)
       </label>
       <input
@@ -62,13 +62,13 @@ export function ScheduleTourButton({ leadId, hasTravelDate }: ScheduleTourButton
         type="date"
         value={startDate}
         onChange={(e) => setStartDate(e.target.value)}
-        className="rounded-xl border border-white/30 bg-white/60 px-4 py-2.5 backdrop-blur-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+        className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
       />
       <button
         type="button"
         onClick={handleSchedule}
         disabled={pending || !startDate}
-        className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-50"
       >
         <Calendar className="h-4 w-4" />
         {pending ? "Scheduling…" : "Schedule Tour"}

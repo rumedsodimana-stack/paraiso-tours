@@ -27,7 +27,7 @@ export default async function EditQuotationPage({
       <div className="flex items-center gap-3">
         <Link
           href={`/admin/quotations/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700"
+          className="inline-flex items-center gap-1 text-sm text-[#5e7279] hover:text-[#11272b]"
         >
           <ChevronLeft className="h-4 w-4" />
           {quotation.reference}
@@ -35,8 +35,8 @@ export default async function EditQuotationPage({
       </div>
 
       <div>
-        <h1 className="text-2xl font-semibold text-stone-900">Edit Quotation</h1>
-        <p className="mt-1 text-stone-500">{quotation.reference}</p>
+        <h1 className="text-2xl font-semibold text-[#11272b]">Edit Quotation</h1>
+        <p className="mt-1 text-[#5e7279]">{quotation.reference}</p>
       </div>
 
       <QuotationForm mode="edit" initial={quotation} action={action} />

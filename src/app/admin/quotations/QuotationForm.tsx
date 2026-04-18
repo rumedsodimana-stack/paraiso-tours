@@ -167,18 +167,18 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
           {itinerary.map((day, idx) => (
             <div
               key={idx}
-              className="rounded-xl border border-stone-200 bg-stone-50/50 p-4"
+              className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] p-4"
             >
               <div className="mb-3 flex items-center justify-between">
-                <span className="flex items-center gap-2 text-sm font-semibold text-teal-700">
-                  <GripVertical className="h-4 w-4 text-stone-400" />
+                <span className="flex items-center gap-2 text-sm font-semibold text-[#12343b]">
+                  <GripVertical className="h-4 w-4 text-[#8a9ba1]" />
                   Day {day.day}
                 </span>
                 {itinerary.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeDay(idx)}
-                    className="text-stone-400 hover:text-red-500 transition"
+                    className="text-[#8a9ba1] hover:text-red-500 transition"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -186,33 +186,33 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-stone-600">Title *</label>
+                  <label className="mb-1 block text-xs font-medium text-[#5e7279]">Title *</label>
                   <input
                     type="text"
                     value={day.title}
                     onChange={(e) => updateDay(idx, { title: e.target.value })}
                     placeholder="Arrival & Colombo City Tour"
-                    className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-stone-600">Accommodation</label>
+                  <label className="mb-1 block text-xs font-medium text-[#5e7279]">Accommodation</label>
                   <input
                     type="text"
                     value={day.accommodation ?? ""}
                     onChange={(e) => updateDay(idx, { accommodation: e.target.value || undefined })}
                     placeholder="Cinnamon Grand Colombo"
-                    className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-stone-600">Description</label>
+                  <label className="mb-1 block text-xs font-medium text-[#5e7279]">Description</label>
                   <textarea
                     value={day.description}
                     onChange={(e) => updateDay(idx, { description: e.target.value })}
                     rows={2}
                     placeholder="Activities, transfers, meals included…"
-                    className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
                   />
                 </div>
               </div>
@@ -221,7 +221,7 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
           <button
             type="button"
             onClick={addDay}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-stone-300 py-2.5 text-sm text-stone-500 transition hover:border-teal-400 hover:text-teal-600"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#e0e4dd] py-2.5 text-sm text-[#5e7279] transition hover:border-[#c9922f] hover:text-[#12343b]"
           >
             <Plus className="h-4 w-4" />
             Add Day
@@ -236,12 +236,12 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
         onToggle={() => toggleSection("pricing")}
       >
         <div className="mb-4">
-          <label className="mb-1 block text-xs font-medium text-stone-600">Currency</label>
+          <label className="mb-1 block text-xs font-medium text-[#5e7279]">Currency</label>
           <select
             name="currency"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           >
             {CURRENCIES.map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -251,7 +251,7 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
 
         <div className="space-y-2">
           {/* Header */}
-          <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-stone-500">
+          <div className="grid grid-cols-12 gap-2 px-1 text-xs font-medium text-[#8a9ba1]">
             <span className="col-span-5">Description</span>
             <span className="col-span-2 text-right">Qty</span>
             <span className="col-span-2 text-right">Unit Price</span>
@@ -267,7 +267,7 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
                   value={li.label}
                   onChange={(e) => updateLineItem(idx, { label: e.target.value })}
                   placeholder="Accommodation (hotel)"
-                  className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
                 />
               </div>
               <div className="col-span-2">
@@ -277,7 +277,7 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
                   min="1"
                   step="0.5"
                   onChange={(e) => updateLineItem(idx, { quantity: parseFloat(e.target.value) || 1 })}
-                  className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-right text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
                 />
               </div>
               <div className="col-span-2">
@@ -287,10 +287,10 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
                   min="0"
                   step="0.01"
                   onChange={(e) => updateLineItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
-                  className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-right text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
                 />
               </div>
-              <div className="col-span-2 text-right text-sm font-medium text-stone-700">
+              <div className="col-span-2 text-right text-sm font-medium text-[#11272b]">
                 {(li.quantity * li.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="col-span-1 flex justify-end">
@@ -298,7 +298,7 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
                   <button
                     type="button"
                     onClick={() => removeLineItem(idx)}
-                    className="text-stone-400 hover:text-red-500 transition"
+                    className="text-[#8a9ba1] hover:text-red-500 transition"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -310,7 +310,7 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
           <button
             type="button"
             onClick={addLineItem}
-            className="flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700"
+            className="flex items-center gap-1.5 text-sm text-[#12343b] hover:text-[#1a474f]"
           >
             <Plus className="h-4 w-4" />
             Add line item
@@ -318,13 +318,13 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
         </div>
 
         {/* Totals */}
-        <div className="mt-4 space-y-1 border-t border-stone-200 pt-4">
-          <div className="flex justify-between text-sm text-stone-600">
+        <div className="mt-4 space-y-1 border-t border-[#e0e4dd] pt-4">
+          <div className="flex justify-between text-sm text-[#5e7279]">
             <span>Subtotal</span>
             <span>{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} {currency}</span>
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm text-stone-600">Discount</label>
+            <label className="text-sm text-[#5e7279]">Discount</label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -333,12 +333,12 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
                 min="0"
                 step="0.01"
                 onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
-                className="w-32 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-32 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-1.5 text-sm text-right text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
               />
-              <span className="text-sm text-stone-500">{currency}</span>
+              <span className="text-sm text-[#8a9ba1]">{currency}</span>
             </div>
           </div>
-          <div className="flex justify-between border-t border-stone-200 pt-1 text-base font-semibold text-stone-900">
+          <div className="flex justify-between border-t border-[#e0e4dd] pt-1 text-base font-semibold text-[#11272b]">
             <span>Total</span>
             <span>{total.toLocaleString(undefined, { minimumFractionDigits: 2 })} {currency}</span>
           </div>
@@ -353,23 +353,23 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-stone-600">Inclusions (one per line)</label>
+            <label className="mb-1 block text-xs font-medium text-[#5e7279]">Inclusions (one per line)</label>
             <textarea
               name="inclusions"
               rows={5}
               defaultValue={initial?.inclusions?.join("\n")}
               placeholder="Airport transfers&#10;All accommodation&#10;Breakfast daily&#10;English-speaking guide&#10;Government taxes"
-              className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-stone-600">Exclusions (one per line)</label>
+            <label className="mb-1 block text-xs font-medium text-[#5e7279]">Exclusions (one per line)</label>
             <textarea
               name="exclusions"
               rows={5}
               defaultValue={initial?.exclusions?.join("\n")}
               placeholder="International flights&#10;Travel insurance&#10;Personal expenses&#10;Optional activities"
-              className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
             />
           </div>
         </div>
@@ -382,13 +382,13 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
         onToggle={() => toggleSection("terms")}
       >
         <div>
-          <label className="mb-1 block text-xs font-medium text-stone-600">Terms and Conditions</label>
+          <label className="mb-1 block text-xs font-medium text-[#5e7279]">Terms and Conditions</label>
           <textarea
             name="termsAndConditions"
             rows={5}
             defaultValue={initial?.termsAndConditions}
             placeholder="Payment terms, cancellation policy, etc…"
-            className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
           />
         </div>
       </Section>
@@ -398,14 +398,14 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="rounded-xl border border-stone-200 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+          className="rounded-xl border border-[#e0e4dd] px-5 py-2.5 text-sm font-medium text-[#5e7279] hover:bg-[#f4ecdd]"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+          className="rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] hover:bg-[#1a474f] disabled:opacity-50"
         >
           {pending ? "Saving…" : mode === "create" ? "Create Quotation" : "Save Changes"}
         </button>
@@ -426,21 +426,21 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/30 bg-white/50 shadow-sm backdrop-blur-xl">
+    <div className="paraiso-card rounded-2xl">
       <button
         type="button"
         onClick={onToggle}
         className="flex w-full items-center justify-between px-5 py-4 text-left"
       >
-        <span className="font-semibold text-stone-900">{title}</span>
+        <span className="font-semibold text-[#11272b]">{title}</span>
         {open ? (
-          <ChevronUp className="h-4 w-4 text-stone-400" />
+          <ChevronUp className="h-4 w-4 text-[#8a9ba1]" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-stone-400" />
+          <ChevronDown className="h-4 w-4 text-[#8a9ba1]" />
         )}
       </button>
       {/* Always render children so uncontrolled inputs (inclusions, terms) stay in DOM when collapsed */}
-      <div className={`border-t border-stone-100 px-5 pb-5 pt-4${open ? "" : " hidden"}`}>{children}</div>
+      <div className={`border-t border-[#e0e4dd] px-5 pb-5 pt-4${open ? "" : " hidden"}`}>{children}</div>
     </div>
   );
 }
@@ -469,10 +469,10 @@ function Field({
   [key: string]: unknown;
 }) {
   const cls =
-    "w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500";
+    "w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20";
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-stone-600">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-[#5e7279]">{label}</label>
       {as === "textarea" ? (
         <textarea
           name={name}

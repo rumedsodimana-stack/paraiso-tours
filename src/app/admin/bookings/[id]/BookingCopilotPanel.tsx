@@ -159,20 +159,20 @@ export function BookingCopilotPanel({
 
   return (
     <div className="space-y-5 xl:sticky xl:top-24">
-      <section className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/50 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
-        <div className="border-b border-white/20 bg-gradient-to-r from-teal-50/90 via-white/80 to-amber-50/80 px-5 py-5">
+      <section className="paraiso-card overflow-hidden rounded-[2rem]">
+        <div className="border-b border-[#e0e4dd] bg-[#f4ecdd] px-5 py-5">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-900 text-white">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6]">
               <Bot className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+              <p className="text-xs uppercase tracking-[0.22em] text-[#5e7279]">
                 Booking AI
               </p>
-              <h2 className="mt-1 text-xl font-semibold text-stone-900">
+              <h2 className="mt-1 text-xl font-semibold text-[#11272b]">
                 Contextual booking copilot
               </h2>
-              <p className="mt-2 text-sm leading-6 text-stone-600">
+              <p className="mt-2 text-sm leading-6 text-[#5e7279]">
                 Ask about this booking, get a live ops brief, or let AI run one
                 safe next action without leaving the booking page.
               </p>
@@ -195,7 +195,7 @@ export function BookingCopilotPanel({
             </div>
             <Link
               href="/admin/settings"
-              className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-stone-800"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-3 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
             >
               <Settings className="h-4 w-4" />
               Open AI settings
@@ -209,13 +209,13 @@ export function BookingCopilotPanel({
                 onClick={() => setMode("brief")}
                 className={`rounded-[1.4rem] border px-4 py-4 text-left transition ${
                   mode === "brief"
-                    ? "border-teal-300 bg-teal-50/80"
-                    : "border-white/30 bg-white/60 hover:bg-white/80"
+                    ? "border-[#c9922f] bg-[#f4ecdd]"
+                    : "border-[#e0e4dd] bg-[#fffbf4] hover:bg-[#f4ecdd]"
                 }`}
               >
-                <ClipboardList className="h-5 w-5 text-teal-700" />
-                <p className="mt-3 font-semibold text-stone-900">Booking brief</p>
-                <p className="mt-1 text-sm leading-6 text-stone-600">
+                <ClipboardList className="h-5 w-5 text-[#12343b]" />
+                <p className="mt-3 font-semibold text-[#11272b]">Booking brief</p>
+                <p className="mt-1 text-sm leading-6 text-[#5e7279]">
                   Generate a booking-specific internal summary with gaps and next actions.
                 </p>
               </button>
@@ -224,13 +224,13 @@ export function BookingCopilotPanel({
                 onClick={() => setMode("copilot")}
                 className={`rounded-[1.4rem] border px-4 py-4 text-left transition ${
                   mode === "copilot"
-                    ? "border-teal-300 bg-teal-50/80"
-                    : "border-white/30 bg-white/60 hover:bg-white/80"
+                    ? "border-[#c9922f] bg-[#f4ecdd]"
+                    : "border-[#e0e4dd] bg-[#fffbf4] hover:bg-[#f4ecdd]"
                 }`}
               >
-                <Layers3 className="h-5 w-5 text-teal-700" />
-                <p className="mt-3 font-semibold text-stone-900">Ask AI</p>
-                <p className="mt-1 text-sm leading-6 text-stone-600">
+                <Layers3 className="h-5 w-5 text-[#12343b]" />
+                <p className="mt-3 font-semibold text-[#11272b]">Ask AI</p>
+                <p className="mt-1 text-sm leading-6 text-[#5e7279]">
                   Ask questions about this booking or let AI run one supported action.
                 </p>
               </button>
@@ -244,7 +244,7 @@ export function BookingCopilotPanel({
                       key={item}
                       type="button"
                       onClick={() => setPrompt(item)}
-                      className="rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-700 transition hover:border-teal-300 hover:text-teal-700"
+                      className="rounded-full border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-xs font-medium text-[#11272b] transition hover:border-[#c9922f] hover:text-[#12343b]"
                     >
                       {item}
                     </button>
@@ -252,30 +252,30 @@ export function BookingCopilotPanel({
                 </div>
 
                 <label className="block">
-                  <span className="text-sm font-medium text-stone-700">
+                  <span className="text-sm font-medium text-[#11272b]">
                     Ask about this booking
                   </span>
                   <textarea
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
                     rows={5}
-                    className="mt-1 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="mt-1 w-full rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 text-sm text-[#11272b] outline-none transition focus:border-[#c9922f] focus:ring-2 focus:ring-[#c9922f]/20"
                     placeholder="Example: Is this booking ready to schedule now? Or: Create an invoice for this booking."
                   />
                 </label>
 
-                <label className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-4 text-sm text-stone-700">
+                <label className="flex items-start gap-3 rounded-2xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-4 text-sm text-[#11272b]">
                   <input
                     type="checkbox"
                     checked={executeActions}
                     onChange={(event) => setExecuteActions(event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
+                    className="mt-1 h-4 w-4 rounded border-[#e0e4dd] text-[#12343b] focus:ring-[#c9922f]"
                   />
                   <span>
-                    <span className="block font-medium text-stone-900">
+                    <span className="block font-medium text-[#11272b]">
                       Execute supported actions
                     </span>
-                    <span className="mt-1 block leading-6 text-stone-500">
+                    <span className="mt-1 block leading-6 text-[#5e7279]">
                       AI can run one safe supported action for this booking if
                       the request is clear enough. Otherwise it will answer only.
                     </span>
@@ -283,7 +283,7 @@ export function BookingCopilotPanel({
                 </label>
               </div>
             ) : (
-              <div className="rounded-[1.4rem] border border-stone-200 bg-stone-50/80 px-4 py-4 text-sm leading-6 text-stone-600">
+              <div className="rounded-[1.4rem] border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-4 text-sm leading-6 text-[#5e7279]">
                 AI will load this booking, package snapshot, invoice state, and
                 commercial context, then return a focused internal handoff summary.
               </div>
@@ -292,7 +292,7 @@ export function BookingCopilotPanel({
             <div className="flex items-center justify-between gap-3">
               <Link
                 href={`/admin/ai?tool=booking_brief&leadId=${leadId}`}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[#12343b]"
               >
                 Open full AI workspace
                 <ArrowRight className="h-4 w-4" />
@@ -301,7 +301,7 @@ export function BookingCopilotPanel({
                 type="button"
                 onClick={handleRun}
                 disabled={!canRun}
-                className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-5 py-3 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {running ? (
                   <>
@@ -320,19 +320,19 @@ export function BookingCopilotPanel({
         )}
       </section>
 
-      <section className="overflow-hidden rounded-[2rem] border border-white/20 bg-white/50 shadow-lg shadow-stone-200/50 backdrop-blur-xl">
-        <div className="border-b border-white/20 px-5 py-4">
-          <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+      <section className="paraiso-card overflow-hidden rounded-[2rem]">
+        <div className="border-b border-[#e0e4dd] px-5 py-4">
+          <p className="text-xs uppercase tracking-[0.22em] text-[#5e7279]">
             Booking AI activity
           </p>
-          <h3 className="mt-2 text-lg font-semibold text-stone-900">
+          <h3 className="mt-2 text-lg font-semibold text-[#11272b]">
             Live reasoning summary and final output
           </h3>
         </div>
 
         <div className="space-y-4 px-5 py-5">
           {chatHistory.length === 0 ? (
-            <div className="rounded-[1.4rem] border border-dashed border-stone-300 bg-stone-50/80 px-4 py-6 text-sm leading-6 text-stone-500">
+            <div className="rounded-[1.4rem] border border-dashed border-[#e0e4dd] bg-[#f4ecdd] px-4 py-6 text-sm leading-6 text-[#5e7279]">
               Run a booking brief or ask a booking-specific question. The panel
               will show your request, AI thinking summary, active tasks, and the final result.
             </div>
@@ -344,7 +344,7 @@ export function BookingCopilotPanel({
               className={`rounded-[1.4rem] px-4 py-4 ${
                 entry.role === "user"
                   ? "ml-4 border border-[#12343b]/15 bg-[#12343b] text-[#f7ead7]"
-                  : "mr-4 border border-stone-200 bg-white text-stone-800"
+                  : "mr-4 border border-[#e0e4dd] bg-[#fffbf4] text-[#11272b]"
               }`}
             >
               <div className="flex items-center justify-between gap-3">
@@ -367,8 +367,8 @@ export function BookingCopilotPanel({
           ) : null}
 
           {activeTasks.length > 0 ? (
-            <div className="rounded-[1.4rem] border border-teal-200 bg-teal-50/80 px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-teal-700">
+            <div className="rounded-[1.4rem] border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-[#5e7279]">
                 Live task flow
               </p>
               <div className="mt-3 space-y-3">
@@ -377,13 +377,13 @@ export function BookingCopilotPanel({
                     key={`${task}_${index}`}
                     className={`rounded-xl px-3 py-3 text-sm ${
                       index === 0
-                        ? "border border-teal-300 bg-white text-teal-900 shadow-sm"
-                        : "border border-teal-100 bg-white/70 text-stone-600"
+                        ? "border border-[#c9922f] bg-[#fffbf4] text-[#11272b] shadow-sm"
+                        : "border border-[#e0e4dd] bg-[#fffbf4] text-[#5e7279]"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span>{task}</span>
-                      <span className="text-xs uppercase tracking-[0.18em] text-teal-700">
+                      <span className="text-xs uppercase tracking-[0.18em] text-[#8a9ba1]">
                         {index === 0 ? "Running" : "Queued"}
                       </span>
                     </div>
@@ -415,8 +415,8 @@ export function BookingCopilotPanel({
           ) : null}
 
           {latestResult.result ? (
-            <div className="max-h-[26rem] overflow-auto rounded-[1.4rem] border border-stone-200 bg-white px-4 py-4">
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-6 text-stone-800">
+            <div className="max-h-[26rem] overflow-auto rounded-[1.4rem] border border-[#e0e4dd] bg-[#fffbf4] px-4 py-4">
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-6 text-[#11272b]">
                 {latestResult.result}
               </pre>
             </div>

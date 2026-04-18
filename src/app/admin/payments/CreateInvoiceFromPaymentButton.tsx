@@ -36,7 +36,7 @@ export function CreateInvoiceFromPaymentButton({ paymentId }: CreateInvoiceFromP
         type="button"
         onClick={handleCreate}
         disabled={pending}
-        className="inline-flex items-center gap-2 rounded-xl border border-teal-600 bg-teal-50 px-4 py-2.5 text-sm font-medium text-teal-700 transition hover:bg-teal-100 disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#12343b] transition hover:bg-[#f4ecdd] disabled:opacity-50"
       >
         <FileText className="h-4 w-4" />
         {pending ? "Creating…" : "Create Invoice"}

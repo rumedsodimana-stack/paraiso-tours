@@ -130,29 +130,29 @@ export function CostBreakdown({ pkg }: { pkg: TourPackage }) {
   if (!hasAnyOptions) return null;
 
   return (
-    <section className="rounded-xl border border-amber-200/50 bg-amber-50/50 p-4 dark:border-amber-900/30 dark:bg-amber-950/20">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400">
+    <section className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[#5e7279]">
         <Calculator className="h-4 w-4 text-amber-600" />
         Cost Breakdown
       </h2>
-      <p className="mb-3 text-xs text-stone-500">
+      <p className="mb-3 text-xs text-[#5e7279]">
         Sample: {pax} pax × {nights} nights (default options)
       </p>
       <div className="space-y-1.5 text-sm">
         {rows.map((r, i) => (
           <div key={i} className="flex justify-between gap-4">
-            <span className="text-stone-700 dark:text-stone-300">{r.label}</span>
+            <span className="text-[#11272b]">{r.label}</span>
             <span className="tabular-nums">
               {r.sell.toLocaleString()} {pkg.currency}
               {r.cost != null && (
-                <span className="ml-2 text-xs text-stone-500">
+                <span className="ml-2 text-xs text-[#5e7279]">
                   (cost: {r.cost.toLocaleString()})
                 </span>
               )}
             </span>
           </div>
         ))}
-        <div className="mt-2 border-t border-amber-200/50 pt-2 font-medium dark:border-amber-900/30">
+        <div className="mt-2 border-t border-[#e0e4dd] pt-2 font-medium">
           <div className="flex justify-between">
             <span>Total</span>
             <span>
@@ -160,7 +160,7 @@ export function CostBreakdown({ pkg }: { pkg: TourPackage }) {
             </span>
           </div>
           {margin != null && marginPct != null && (
-            <div className="mt-1 flex justify-between text-emerald-600 dark:text-emerald-400">
+            <div className="mt-1 flex justify-between text-emerald-600">
               <span>Margin (options w/ cost)</span>
               <span>
                 {margin.toLocaleString()} {pkg.currency} ({marginPct}%)

@@ -76,7 +76,7 @@ export function EmailSuppliersButton({
       {hasEmails ? (
         <a
           href={buildMailto()}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
         >
           <Mail className="h-4 w-4" />
           Email {emails.length} supplier{emails.length !== 1 ? "s" : ""}
@@ -88,7 +88,7 @@ export function EmailSuppliersButton({
         </div>
       )}
       {missing.length > 0 && (
-        <p className="text-xs text-stone-500">
+        <p className="text-xs text-[#5e7279]">
           {missing.length} supplier(s) without email:{" "}
           {missing.map((m) => `${m.supplierName} (${m.supplierType})`).join(", ")}.{" "}
           Add emails in Hotels & Suppliers.

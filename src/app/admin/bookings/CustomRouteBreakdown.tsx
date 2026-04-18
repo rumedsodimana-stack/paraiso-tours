@@ -19,13 +19,13 @@ export function CustomRouteBreakdown({
   return (
     <section className="space-y-5 rounded-2xl border border-[#ddc8b0] bg-[#fffaf4] p-5">
       <div>
-        <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+        <p className="text-xs uppercase tracking-[0.22em] text-[#5e7279]">
           Custom journey request
         </p>
-        <h2 className="mt-2 text-xl font-semibold text-stone-900">
+        <h2 className="mt-2 text-xl font-semibold text-[#11272b]">
           Full itinerary breakdown
         </h2>
-        <p className="mt-2 text-sm leading-6 text-stone-600">
+        <p className="mt-2 text-sm leading-6 text-[#5e7279]">
           This booking came from the route builder. The route is ready for review, but
           package-linked options are still open so the team can finalize them.
         </p>
@@ -33,20 +33,20 @@ export function CustomRouteBreakdown({
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="text-sm font-semibold text-stone-900">Stay handling</p>
-          <p className="mt-2 text-sm text-stone-600">
+          <p className="text-sm font-semibold text-[#11272b]">Stay handling</p>
+          <p className="mt-2 text-sm text-[#5e7279]">
             {formatAccommodationMode(route.accommodationMode)}
           </p>
         </div>
         <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="text-sm font-semibold text-stone-900">Requested transport</p>
-          <p className="mt-2 text-sm text-stone-600">
+          <p className="text-sm font-semibold text-[#11272b]">Requested transport</p>
+          <p className="mt-2 text-sm text-[#5e7279]">
             {route.transportLabel ?? "Not selected"}
           </p>
         </div>
         <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="text-sm font-semibold text-stone-900">Requested meals</p>
-          <p className="mt-2 text-sm text-stone-600">
+          <p className="text-sm font-semibold text-[#11272b]">Requested meals</p>
+          <p className="mt-2 text-sm text-[#5e7279]">
             {route.mealLabel ?? "No meal plan"}
           </p>
         </div>
@@ -65,17 +65,17 @@ export function CustomRouteBreakdown({
                     {index + 1}
                   </span>
                   <div>
-                    <h3 className="font-semibold text-stone-900">
+                    <h3 className="font-semibold text-[#11272b]">
                       {stop.destinationName ?? "Destination"}
                     </h3>
-                    <p className="text-sm text-stone-500">
+                    <p className="text-sm text-[#5e7279]">
                       {stop.nights ?? 1} night{stop.nights === 1 ? "" : "s"}
                     </p>
                   </div>
                 </div>
               </div>
               {(stop.legDistanceKm != null || stop.legDriveHours != null) && (
-                <div className="rounded-full bg-[#f8f3eb] px-3 py-1.5 text-xs font-medium text-stone-600">
+                <div className="rounded-full bg-[#f8f3eb] px-3 py-1.5 text-xs font-medium text-[#5e7279]">
                   Transfer in: {stop.legDistanceKm ?? 0} km /{" "}
                   {stop.legDriveHours != null ? `${stop.legDriveHours.toFixed(1)} h` : "TBD"}
                 </div>
@@ -84,11 +84,11 @@ export function CustomRouteBreakdown({
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="rounded-xl bg-[#fbf7f1] px-3 py-3">
-                <p className="flex items-center gap-2 text-sm font-medium text-stone-900">
-                  <BedDouble className="h-4 w-4 text-teal-700" />
+                <p className="flex items-center gap-2 text-sm font-medium text-[#11272b]">
+                  <BedDouble className="h-4 w-4 text-[#12343b]" />
                   Stay request
                 </p>
-                <p className="mt-2 text-sm text-stone-600">
+                <p className="mt-2 text-sm text-[#5e7279]">
                   {stop.hotelName
                     ? `${stop.hotelName}${
                         stop.hotelRate != null
@@ -99,11 +99,11 @@ export function CustomRouteBreakdown({
                 </p>
               </div>
               <div className="rounded-xl bg-[#fbf7f1] px-3 py-3">
-                <p className="flex items-center gap-2 text-sm font-medium text-stone-900">
-                  <MapPin className="h-4 w-4 text-teal-700" />
+                <p className="flex items-center gap-2 text-sm font-medium text-[#11272b]">
+                  <MapPin className="h-4 w-4 text-[#12343b]" />
                   Activities
                 </p>
-                <p className="mt-2 text-sm text-stone-600">
+                <p className="mt-2 text-sm text-[#5e7279]">
                   {stop.activities && stop.activities.length > 0
                     ? stop.activities.join(", ")
                     : "No activities selected"}
@@ -116,11 +116,11 @@ export function CustomRouteBreakdown({
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-stone-900">
-            <BedDouble className="h-4 w-4 text-teal-700" />
+          <p className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
+            <BedDouble className="h-4 w-4 text-[#12343b]" />
             Accommodation option
           </p>
-          <p className="mt-2 text-sm text-stone-600">
+          <p className="mt-2 text-sm text-[#5e7279]">
             {lead.selectedAccommodationOptionId ||
             (lead.selectedAccommodationByNight &&
               Object.keys(lead.selectedAccommodationByNight).length > 0)
@@ -129,20 +129,20 @@ export function CustomRouteBreakdown({
           </p>
         </div>
         <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-stone-900">
-            <Car className="h-4 w-4 text-teal-700" />
+          <p className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
+            <Car className="h-4 w-4 text-[#12343b]" />
             Transport option
           </p>
-          <p className="mt-2 text-sm text-stone-600">
+          <p className="mt-2 text-sm text-[#5e7279]">
             {lead.selectedTransportOptionId ? "Selected on booking" : "Not finalized yet"}
           </p>
         </div>
         <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-stone-900">
-            <UtensilsCrossed className="h-4 w-4 text-teal-700" />
+          <p className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
+            <UtensilsCrossed className="h-4 w-4 text-[#12343b]" />
             Meal option
           </p>
-          <p className="mt-2 text-sm text-stone-600">
+          <p className="mt-2 text-sm text-[#5e7279]">
             {lead.selectedMealOptionId ? "Selected on booking" : "Not finalized yet"}
           </p>
         </div>
@@ -150,8 +150,8 @@ export function CustomRouteBreakdown({
 
       {route.mealRequest ? (
         <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="text-sm font-semibold text-stone-900">Guest meal request</p>
-          <p className="mt-2 text-sm leading-6 text-stone-600">{route.mealRequest}</p>
+          <p className="text-sm font-semibold text-[#11272b]">Guest meal request</p>
+          <p className="mt-2 text-sm leading-6 text-[#5e7279]">{route.mealRequest}</p>
         </div>
       ) : null}
     </section>

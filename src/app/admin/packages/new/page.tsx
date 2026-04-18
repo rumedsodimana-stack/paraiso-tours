@@ -12,12 +12,12 @@ export default async function NewPackagePage() {
     <div className="space-y-6">
       <Link
         href="/admin/packages"
-        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-white/50 hover:text-stone-900"
+        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
       >
         <ArrowLeft className="h-5 w-5" />
         Back
       </Link>
-      <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-6 shadow-lg">
+      <div className="paraiso-card rounded-2xl p-6">
         <h1 className="text-2xl font-bold text-[#11272b]">Create Tour Package</h1>
         <p className="mt-1 text-sm text-[#5e7279]">Use the composer to map nights, suppliers, and live pricing in one place.</p>
         <NewPackageForm hotels={hotels} destinations={destinations} allMealPlans={allMealPlans} />

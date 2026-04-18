@@ -61,7 +61,7 @@ export function QuotationStatusActions({ quotationId, status, travelDate, tourId
         {tourId && (
           <a
             href={`/admin/tours/${tourId}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] hover:bg-[#f4ecdd]"
           >
             View Tour →
           </a>
@@ -109,7 +109,7 @@ export function QuotationStatusActions({ quotationId, status, travelDate, tourId
         <button
           disabled={pending}
           onClick={() => setShowAcceptDialog(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:opacity-50"
         >
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
           Accept & Schedule Tour
@@ -123,7 +123,7 @@ export function QuotationStatusActions({ quotationId, status, travelDate, tourId
               run(() => markQuotationRejectedAction(quotationId));
             }
           }}
-          className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd] disabled:opacity-50"
         >
           <XCircle className="h-4 w-4" />
           Reject
@@ -132,23 +132,23 @@ export function QuotationStatusActions({ quotationId, status, travelDate, tourId
 
       {/* Accept Dialog */}
       {showAcceptDialog && (
-        <div className="rounded-2xl border border-teal-200 bg-teal-50/80 p-5">
-          <h3 className="mb-1 font-semibold text-teal-900">Confirm: Accept Quotation</h3>
-          <p className="mb-4 text-sm text-teal-700">
+        <div className="rounded-2xl border border-[#e0e4dd] bg-[#f4ecdd] p-5">
+          <h3 className="mb-1 font-semibold text-[#11272b]">Confirm: Accept Quotation</h3>
+          <p className="mb-4 text-sm text-[#5e7279]">
             This will create a lead, schedule a tour, and generate an invoice and payment record.
           </p>
           <div className="mb-4 flex items-center gap-3">
-            <Calendar className="h-4 w-4 shrink-0 text-teal-600" />
+            <Calendar className="h-4 w-4 shrink-0 text-[#12343b]" />
             <div>
-              <label className="block text-xs font-medium text-teal-800">Travel Start Date</label>
+              <label className="block text-xs font-medium text-[#11272b]">Travel Start Date</label>
               <input
                 type="date"
                 value={acceptDate}
                 onChange={(e) => setAcceptDate(e.target.value)}
-                className="mt-1 rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="mt-1 rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-1.5 text-sm text-[#11272b] focus:border-[#c9922f] focus:outline-none focus:ring-2 focus:ring-[#c9922f]/20"
               />
               {!acceptDate && (
-                <p className="mt-1 text-xs text-teal-600">Required — set a start date for the tour</p>
+                <p className="mt-1 text-xs text-[#5e7279]">Required — set a start date for the tour</p>
               )}
             </div>
           </div>
@@ -156,14 +156,14 @@ export function QuotationStatusActions({ quotationId, status, travelDate, tourId
             <button
               disabled={pending || !acceptDate}
               onClick={() => run(() => acceptQuotationAction(quotationId, acceptDate))}
-              className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2 text-sm font-medium text-[#f6ead6] hover:bg-[#1a474f] disabled:opacity-50"
             >
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Confirm & Schedule
             </button>
             <button
               onClick={() => setShowAcceptDialog(false)}
-              className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+              className="rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2 text-sm font-medium text-[#5e7279] hover:bg-[#f4ecdd]"
             >
               Cancel
             </button>
