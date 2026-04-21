@@ -1067,3 +1067,273 @@ export async function sendItineraryEmail(
     return { ok: false, error: msg };
   }
 }
+
+// ── Additional guest-facing templates ────────────────────────────────────
+
+export interface PreTripReminderParams {
+  clientName: string;
+  clientEmail: string;
+  packageName: string;
+  startDate: string;
+  daysUntil: number;
+  reference?: string;
+}
+
+export async function sendPreTripReminderEmail(
+  params: PreTripReminderParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  const email = params.clientEmail?.trim();
+  if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
+  const startFmt = new Date(params.startDate).toLocaleDateString("en-GB", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+  const html = `
+<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <h2 style="color: #0d9488;">Your trip starts in ${params.daysUntil} day${params.daysUntil === 1 ? "" : "s"}</h2>
+  <p>Hello ${escapeHtml(params.clientName)},</p>
+  <p>This is a friendly reminder that your tour with ${escapeHtml(branding.companyName)} begins on <b>${startFmt}</b>.</p>
+  <p>Package: <b>${escapeHtml(params.packageName)}</b>${params.reference ? ` (ref ${escapeHtml(params.reference)})` : ""}</p>
+  <p>A few things to confirm before you travel:</p>
+  <ul>
+    <li>Valid passport &amp; any visas required</li>
+    <li>Travel insurance</li>
+    <li>Comfortable clothing and appropriate footwear</li>
+    <li>Any medication you need</li>
+  </ul>
+  <p>${escapeHtml(getQuestionsLine(branding))}</p>
+  ${getSignatureHtml(branding)}
+</body></html>`.trim();
+  try {
+    const { error } = await withEmailRetry(() => resend.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject: `Your tour starts soon – ${params.packageName}`,
+      html,
+    }));
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export interface PostTripFollowUpParams {
+  clientName: string;
+  clientEmail: string;
+  packageName: string;
+  reference?: string;
+  reviewLink?: string;
+}
+
+export async function sendPostTripFollowUpEmail(
+  params: PostTripFollowUpParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  const email = params.clientEmail?.trim();
+  if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
+  const html = `
+<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <h2 style="color: #0d9488;">Thank you for traveling with us</h2>
+  <p>Hello ${escapeHtml(params.clientName)},</p>
+  <p>We hope you enjoyed your trip with ${escapeHtml(branding.companyName)}. It was a pleasure to host you${params.packageName ? ` on the <b>${escapeHtml(params.packageName)}</b>` : ""}.</p>
+  <p>We'd love to hear about your experience — what you enjoyed, and anything we can do better. Your feedback helps us serve future travelers.</p>
+  ${params.reviewLink ? `<p><a href="${params.reviewLink}" style="display:inline-block; background:#0d9488; color:#fff; padding:10px 18px; border-radius:8px; text-decoration:none; font-weight:600;">Leave a review</a></p>` : ""}
+  <p>${escapeHtml(getQuestionsLine(branding))}</p>
+  ${getSignatureHtml(branding)}
+</body></html>`.trim();
+  try {
+    const { error } = await withEmailRetry(() => resend.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject: `Thank you – ${params.packageName}`,
+      html,
+    }));
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export interface BookingChangeParams {
+  clientName: string;
+  clientEmail: string;
+  packageName: string;
+  changeType: "revision" | "cancellation";
+  summary: string;
+  reference?: string;
+}
+
+export async function sendBookingChangeEmail(
+  params: BookingChangeParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  const email = params.clientEmail?.trim();
+  if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
+  const title = params.changeType === "cancellation"
+    ? "Your booking has been cancelled"
+    : "Your booking has been updated";
+  const html = `
+<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <h2 style="color: ${params.changeType === "cancellation" ? "#b91c1c" : "#b45309"};">${title}</h2>
+  <p>Hello ${escapeHtml(params.clientName)},</p>
+  <p>We're writing regarding your booking for <b>${escapeHtml(params.packageName)}</b>${params.reference ? ` (ref ${escapeHtml(params.reference)})` : ""}.</p>
+  <div style="background:#f8fafc; border-left:3px solid ${params.changeType === "cancellation" ? "#b91c1c" : "#b45309"}; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
+    <p style="margin:0;">${escapeHtml(params.summary)}</p>
+  </div>
+  <p>If you have any questions or would like to discuss next steps, please reply to this email.</p>
+  <p>${escapeHtml(getQuestionsLine(branding))}</p>
+  ${getSignatureHtml(branding)}
+</body></html>`.trim();
+  try {
+    const { error } = await withEmailRetry(() => resend.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject: `${title} – ${params.packageName}`,
+      html,
+    }));
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ── Supplier-facing templates ─────────────────────────────────────────────
+
+export interface SupplierRemittanceParams {
+  supplierName: string;
+  supplierEmail: string;
+  amount: number;
+  currency: string;
+  reference?: string;
+  date?: string;
+  description?: string;
+}
+
+export async function sendSupplierRemittanceEmail(
+  params: SupplierRemittanceParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  const email = params.supplierEmail?.trim();
+  if (!email) return { ok: false, error: "No supplier email" };
+  const branding = await getEmailBranding();
+  const dateFmt = params.date
+    ? new Date(params.date).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" })
+    : new Date().toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" });
+  const html = `
+<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <h2 style="color: #0d9488;">Payment remittance advice</h2>
+  <p>Dear ${escapeHtml(params.supplierName)},</p>
+  <p>This notice confirms a payment from ${escapeHtml(branding.companyName)}.</p>
+  <table style="width:100%; border-collapse:collapse; margin:20px 0; background:#f8fafc; border-radius:8px; overflow:hidden;">
+    <tr><td style="padding:12px 16px; font-weight:600; color:#475569;">Amount</td><td style="padding:12px 16px; font-weight:600; color:#059669;">${params.amount.toLocaleString()} ${params.currency}</td></tr>
+    <tr><td style="padding:12px 16px; font-weight:600; color:#475569;">Payment date</td><td style="padding:12px 16px;">${dateFmt}</td></tr>
+    ${params.description ? `<tr><td style="padding:12px 16px; font-weight:600; color:#475569;">Description</td><td style="padding:12px 16px;">${escapeHtml(params.description)}</td></tr>` : ""}
+    ${params.reference ? `<tr><td style="padding:12px 16px; font-weight:600; color:#475569;">Reference</td><td style="padding:12px 16px;">${escapeHtml(params.reference)}</td></tr>` : ""}
+  </table>
+  <p>If you have any questions please reply to this email.</p>
+  ${getSignatureHtml(branding)}
+</body></html>`.trim();
+  try {
+    const { error } = await withEmailRetry(() => resend.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject: `Payment remittance – ${params.amount.toLocaleString()} ${params.currency}${params.reference ? ` – ${params.reference}` : ""}`,
+      html,
+    }));
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export interface SupplierScheduleUpdateParams {
+  supplierName: string;
+  supplierEmail: string;
+  clientName: string;
+  reference: string;
+  changeType: "update" | "cancellation";
+  summary: string;
+}
+
+export async function sendSupplierScheduleUpdateEmail(
+  params: SupplierScheduleUpdateParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  const email = params.supplierEmail?.trim();
+  if (!email) return { ok: false, error: "No supplier email" };
+  const branding = await getEmailBranding();
+  const title = params.changeType === "cancellation"
+    ? `Reservation cancelled – ${params.reference}`
+    : `Reservation updated – ${params.reference}`;
+  const html = `
+<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <h2 style="color: ${params.changeType === "cancellation" ? "#b91c1c" : "#b45309"};">${title}</h2>
+  <p>Dear ${escapeHtml(params.supplierName)},</p>
+  <p>Please note the following change to the reservation for <b>${escapeHtml(params.clientName)}</b> (ref <b>${escapeHtml(params.reference)}</b>):</p>
+  <div style="background:#f8fafc; border-left:3px solid ${params.changeType === "cancellation" ? "#b91c1c" : "#b45309"}; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
+    <p style="margin:0;">${escapeHtml(params.summary)}</p>
+  </div>
+  <p>Please confirm receipt of this update. ${escapeHtml(getQuestionsLine(branding))}</p>
+  ${getSignatureHtml(branding)}
+</body></html>`.trim();
+  try {
+    const { error } = await withEmailRetry(() => resend.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject: title,
+      html,
+    }));
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ── Internal / admin alerts ───────────────────────────────────────────────
+
+export interface InternalAlertParams {
+  to: string;
+  subject: string;
+  body: string;
+  severity?: "info" | "warning" | "critical";
+}
+
+export async function sendInternalAlertEmail(
+  params: InternalAlertParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  const email = params.to?.trim();
+  if (!email) return { ok: false, error: "No recipient" };
+  const branding = await getEmailBranding();
+  const accent = params.severity === "critical"
+    ? "#b91c1c"
+    : params.severity === "warning"
+      ? "#b45309"
+      : "#0d9488";
+  const html = `
+<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <h2 style="color: ${accent};">${escapeHtml(params.subject)}</h2>
+  <div style="background:#f8fafc; border-left:3px solid ${accent}; padding: 12px 16px; margin: 16px 0; border-radius: 4px; white-space: pre-wrap;">${escapeHtml(params.body)}</div>
+  <p style="font-size: 12px; color: #9ca3af;">Internal notification from ${escapeHtml(branding.companyName)} admin system.</p>
+</body></html>`.trim();
+  try {
+    const { error } = await withEmailRetry(() => resend.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject: `[${params.severity?.toUpperCase() ?? "INFO"}] ${params.subject}`,
+      html,
+    }));
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}

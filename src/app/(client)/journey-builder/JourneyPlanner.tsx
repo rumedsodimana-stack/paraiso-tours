@@ -402,6 +402,23 @@ export function JourneyPlanner({
   const totalNights = days.length;
   const uniqueDestinations = new Set(days.map((d) => d.destinationId).filter(Boolean));
 
+  // Travel-time feasibility check: warn on long single legs or dense-transit trips.
+  const feasibilityWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    const longLegs = enrichedDays.filter((d) => (d.leg?.driveHours ?? 0) > 6);
+    for (const d of longLegs) {
+      warnings.push(
+        `Day ${d.dayNumber}: ${d.leg?.driveHours.toFixed(1)}h drive — that's a very long transfer. Consider an overnight stop in between.`
+      );
+    }
+    if (totalNights > 0 && totalDriveHours > totalNights * 4) {
+      warnings.push(
+        `This route has ${totalDriveHours.toFixed(1)}h of driving across ${totalNights} night${totalNights === 1 ? "" : "s"} — over 4h of transit per day on average. You may lose time at the destinations.`
+      );
+    }
+    return warnings;
+  }, [enrichedDays, totalDriveHours, totalNights]);
+
   const mapPoints = useMemo(() => {
     const pts: { name: string; shortName: string; coordinates: [number, number]; dayNumbers: number[]; isAirport?: boolean }[] = [];
     // Airport start
@@ -1203,6 +1220,18 @@ export function JourneyPlanner({
         onToggle={() => setOpenSection(openSection === 4 ? 0 : 4)}
       >
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Travel-time feasibility warnings */}
+          {feasibilityWarnings.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">Heads up — the pace may be tight:</p>
+              <ul className="mt-1.5 list-disc pl-5 space-y-1">
+                {feasibilityWarnings.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-xl bg-stone-100 px-3 py-3 text-center">
