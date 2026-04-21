@@ -28,7 +28,6 @@ export default async function HotelsPage({
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/hotels/new?type=hotel"      className={SEC_BTN}><Building2    className="h-4 w-4" />Add Hotel</Link>
           <Link href="/admin/hotels/new?type=transport"  className={SEC_BTN}><Car          className="h-4 w-4" />Add Vehicle</Link>
-          <Link href="/admin/hotels/new?type=meal"       className={SEC_BTN}><UtensilsCrossed className="h-4 w-4" />Add Meal Provider</Link>
           <Link href="/admin/hotels/new?type=supplier"   className={SEC_BTN}><MapPin       className="h-4 w-4" />Add Supplier</Link>
         </div>
       </div>
@@ -57,6 +56,11 @@ export default async function HotelsPage({
                 <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-[#11272b]">
                   <SectionIcon className="h-4 w-4 text-[#8a9ba1]" />
                   {sectionTitle}
+                  {type === "meal" && (
+                    <span className="ml-2 inline-flex items-center rounded-full bg-[#f9f2e3] px-2 py-0.5 text-xs font-medium text-[#7a5a17]">
+                      Legacy — new meal plans go under each hotel
+                    </span>
+                  )}
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((h) => {

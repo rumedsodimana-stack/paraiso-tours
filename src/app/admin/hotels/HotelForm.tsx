@@ -103,8 +103,10 @@ export function HotelForm({
           >
             <option value="hotel">Hotel</option>
             <option value="transport">Transport</option>
-            <option value="meal">Meal Provider</option>
             <option value="supplier">Supplier</option>
+            {hotel?.type === "meal" && (
+              <option value="meal">Meal Provider (legacy)</option>
+            )}
           </select>
         </div>
       </div>

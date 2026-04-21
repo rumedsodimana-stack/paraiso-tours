@@ -132,6 +132,45 @@ export async function createInvoiceFromLead(leadId: string) {
   return { success: true, invoiceId: invoice.id, created: true };
 }
 
+/**
+ * Send the invoice to the guest as an email with PDF attached.
+ */
+export async function sendInvoiceToGuestAction(
+  invoiceId: string,
+  opts?: { note?: string }
+): Promise<{ success?: boolean; error?: string }> {
+  const invoice = await getInvoice(invoiceId);
+  if (!invoice) return { error: "Invoice not found" };
+
+  const email = invoice.clientEmail?.trim();
+  if (!email) return { error: "This invoice has no client email. Edit the booking to add one." };
+
+  const { sendInvoiceEmail } = await import("@/lib/email");
+  const result = await sendInvoiceEmail({
+    clientName: invoice.clientName || "Client",
+    clientEmail: email,
+    invoice,
+    note: opts?.note?.trim() || undefined,
+  });
+
+  await recordAuditEvent({
+    entityType: "invoice",
+    entityId: invoice.id,
+    action: result.ok ? "email_sent" : "email_failed",
+    summary: result.ok
+      ? `Invoice ${invoice.invoiceNumber} emailed to ${email}`
+      : `Invoice ${invoice.invoiceNumber} email failed: ${result.error ?? "unknown error"}`,
+    details: result.ok
+      ? [`Recipient: ${email}`]
+      : [`Recipient: ${email}`, `Error: ${result.error ?? "unknown"}`],
+  });
+
+  if (!result.ok) return { error: result.error ?? "Failed to send invoice" };
+
+  revalidatePath(`/admin/invoices/${invoiceId}`);
+  return { success: true };
+}
+
 export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStatus): Promise<{ success?: boolean; error?: string }> {
   const updates: { status: InvoiceStatus; paidAt?: string } = { status };
   if (status === "paid") {

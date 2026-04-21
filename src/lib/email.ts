@@ -916,3 +916,154 @@ export async function sendPaymentReceiptEmail(
     return { ok: false, error: msg };
   }
 }
+
+export interface InvoiceEmailParams {
+  clientName: string;
+  clientEmail: string;
+  invoice: Invoice;
+  note?: string;
+}
+
+/**
+ * Send an invoice email to the guest with the invoice PDF attached.
+ * Standalone — not tied to scheduling.
+ */
+export async function sendInvoiceEmail(
+  params: InvoiceEmailParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) {
+    return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  }
+
+  const { clientName, clientEmail, invoice, note } = params;
+  const email = clientEmail?.trim();
+  if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
+
+  const statusLabel = invoice.status.replace(/_/g, " ");
+  const totalFmt = `${invoice.totalAmount.toLocaleString()} ${invoice.currency}`;
+  const dueLine = invoice.status === "paid"
+    ? `This invoice is fully paid.`
+    : `Please settle ${totalFmt} at your earliest convenience.`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <h2 style="color: #0d9488;">Invoice ${escapeHtml(invoice.invoiceNumber)}</h2>
+  <p>Hello ${escapeHtml(clientName)},</p>
+  <p>Please find your invoice from ${escapeHtml(branding.companyName)} attached.</p>
+  ${note ? `<p style="padding:12px 16px;background:#f8fafc;border-radius:8px;">${escapeHtml(note)}</p>` : ""}
+  <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
+    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Invoice</td><td style="padding: 12px 16px;">${escapeHtml(invoice.invoiceNumber)}</td></tr>
+    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Status</td><td style="padding: 12px 16px; text-transform: capitalize;">${escapeHtml(statusLabel)}</td></tr>
+    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Amount</td><td style="padding: 12px 16px; font-weight: 600; color: #0d9488;">${totalFmt}</td></tr>
+    ${invoice.reference ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Reference</td><td style="padding: 12px 16px;">${escapeHtml(invoice.reference)}</td></tr>` : ""}
+  </table>
+  <p>${dueLine}</p>
+  <p>${escapeHtml(getQuestionsLine(branding))}</p>
+  ${getSignatureHtml(branding)}
+</body>
+</html>
+  `.trim();
+
+  const { generateInvoicePdf } = await import("./invoice-pdf");
+  const pdfBuffer = await generateInvoicePdf(invoice);
+
+  try {
+    const { error } = await withEmailRetry(() => resend.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject: `Invoice ${invoice.invoiceNumber} – ${branding.companyName}`,
+      html,
+      attachments: [
+        {
+          filename: `Invoice-${invoice.invoiceNumber}.pdf`,
+          content: pdfBuffer,
+        },
+      ],
+    }));
+
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg };
+  }
+}
+
+export interface ItineraryEmailParams {
+  clientName: string;
+  clientEmail: string;
+  packageName: string;
+  startDate: string;
+  endDate: string;
+  reference?: string;
+  pdfBuffer: Buffer;
+  filename: string;
+}
+
+/**
+ * Send the tour itinerary PDF to the guest.
+ */
+export async function sendItineraryEmail(
+  params: ItineraryEmailParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) {
+    return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
+  }
+
+  const { clientName, clientEmail, packageName, startDate, endDate, reference, pdfBuffer, filename } = params;
+  const email = clientEmail?.trim();
+  if (!email) return { ok: false, error: "No client email" };
+  const branding = await getEmailBranding();
+
+  const startFmt = new Date(startDate).toLocaleDateString("en-GB", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+  const endFmt = new Date(endDate).toLocaleDateString("en-GB", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <h2 style="color: #0d9488;">Your itinerary</h2>
+  <p>Hello ${escapeHtml(clientName)},</p>
+  <p>Please find your day-by-day itinerary for <b>${escapeHtml(packageName)}</b> attached as a PDF.</p>
+  <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
+    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Start</td><td style="padding: 12px 16px;">${startFmt}</td></tr>
+    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">End</td><td style="padding: 12px 16px;">${endFmt}</td></tr>
+    ${reference ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Reference</td><td style="padding: 12px 16px;">${escapeHtml(reference)}</td></tr>` : ""}
+  </table>
+  <p>${escapeHtml(getQuestionsLine(branding))}</p>
+  ${getSignatureHtml(branding)}
+</body>
+</html>
+  `.trim();
+
+  try {
+    const { error } = await withEmailRetry(() => resend.emails.send({
+      from: getFromEmail(branding.companyName),
+      to: [email],
+      subject: `Itinerary: ${packageName} – ${branding.companyName}`,
+      html,
+      attachments: [{ filename, content: pdfBuffer }],
+    }));
+
+    if (error) return { ok: false, error };
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg };
+  }
+}

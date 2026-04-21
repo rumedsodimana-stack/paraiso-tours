@@ -722,6 +722,57 @@ export async function scheduleTourFromLeadAction(
   }
 }
 
+/**
+ * Generate the tour itinerary PDF and email it to the guest.
+ */
+export async function sendItineraryToGuestAction(
+  tourId: string
+): Promise<{ success?: boolean; error?: string }> {
+  const tour = await getTour(tourId);
+  if (!tour) return { error: "Tour not found" };
+  const lead = await getLead(tour.leadId);
+  if (!lead) return { error: "Booking not found for this tour" };
+
+  const email = lead.email?.trim();
+  if (!email) return { error: "This booking has no guest email. Edit the booking to add one." };
+
+  const livePackage = await getPackage(tour.packageId);
+  const { resolveTourPackage } = await import("@/lib/package-snapshot");
+  const pkg = resolveTourPackage(tour, livePackage, lead);
+
+  const { generateItineraryPdf } = await import("@/lib/itinerary-pdf");
+  const pdfBuffer = await generateItineraryPdf({ tour, pkg, lead });
+
+  const { sendItineraryEmail } = await import("@/lib/email");
+  const result = await sendItineraryEmail({
+    clientName: lead.name,
+    clientEmail: email,
+    packageName: tour.packageName,
+    startDate: tour.startDate,
+    endDate: tour.endDate,
+    reference: lead.reference,
+    pdfBuffer,
+    filename: `Itinerary-${(tour.confirmationId || tour.id).replace(/[^a-zA-Z0-9_-]/g, "-")}.pdf`,
+  });
+
+  await recordAuditEvent({
+    entityType: "tour",
+    entityId: tour.id,
+    action: result.ok ? "itinerary_emailed" : "itinerary_email_failed",
+    summary: result.ok
+      ? `Itinerary emailed to ${email}`
+      : `Itinerary email failed: ${result.error ?? "unknown error"}`,
+    details: result.ok
+      ? [`Recipient: ${email}`, `Package: ${tour.packageName}`]
+      : [`Recipient: ${email}`, `Error: ${result.error ?? "unknown"}`],
+  });
+
+  if (!result.ok) return { error: result.error ?? "Failed to send itinerary" };
+
+  revalidatePath(`/admin/tours/${tourId}`);
+  return { success: true };
+}
+
 /** Mark tour as completed & paid: update tour status, payment status, invoice status, send receipt email. */
 export async function markTourCompletedPaidAction(
   tourId: string

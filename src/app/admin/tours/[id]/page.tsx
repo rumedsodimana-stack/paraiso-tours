@@ -23,6 +23,7 @@ import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { BookingSupplierBreakdown } from "../../bookings/BookingSupplierBreakdown";
 import { PrintButton } from "../../payables/PrintButton";
 import { CompletedPaidButton } from "./CompletedPaidButton";
+import { ItineraryActions } from "./ItineraryActions";
 import { resolveTourPackage } from "@/lib/package-snapshot";
 import { SaveSuccessBanner } from "../../SaveSuccessBanner";
 import {
@@ -111,7 +112,7 @@ export default async function TourDetailPage({
       {scheduled ? (
         <SaveSuccessBanner message="Tour scheduled successfully. This booking has moved into Scheduled Tours." />
       ) : null}
-      <div className="flex items-center justify-between gap-4 print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
         <Link
           href="/admin/calendar"
           className="flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
@@ -119,7 +120,10 @@ export default async function TourDetailPage({
           <ArrowLeft className="h-5 w-5" />
           Back to Scheduled Tours
         </Link>
-        <PrintButton />
+        <div className="flex flex-wrap items-start gap-3">
+          <ItineraryActions tourId={tour.id} clientEmail={lead?.email} />
+          <PrintButton />
+        </div>
       </div>
 
       <div className="paraiso-card overflow-hidden rounded-2xl print:border-[#e0e4dd] print:shadow-none">
