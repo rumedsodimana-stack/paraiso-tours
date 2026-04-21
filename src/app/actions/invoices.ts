@@ -156,13 +156,21 @@ export async function sendInvoiceToGuestAction(
   await recordAuditEvent({
     entityType: "invoice",
     entityId: invoice.id,
-    action: result.ok ? "email_sent" : "email_failed",
+    action: result.ok ? "invoice_emailed" : "invoice_email_failed",
     summary: result.ok
       ? `Invoice ${invoice.invoiceNumber} emailed to ${email}`
       : `Invoice ${invoice.invoiceNumber} email failed: ${result.error ?? "unknown error"}`,
     details: result.ok
       ? [`Recipient: ${email}`]
       : [`Recipient: ${email}`, `Error: ${result.error ?? "unknown"}`],
+    metadata: {
+      channel: "email",
+      recipient: email,
+      template: "invoice",
+      invoiceNumber: invoice.invoiceNumber,
+      status: result.ok ? "sent" : "failed",
+      ...(result.ok ? {} : { error: result.error ?? "unknown" }),
+    },
   });
 
   if (!result.ok) return { error: result.error ?? "Failed to send invoice" };

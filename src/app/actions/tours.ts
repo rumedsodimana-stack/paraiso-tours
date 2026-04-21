@@ -626,7 +626,7 @@ export async function scheduleTourFromLeadAction(
 
       if (!tour.clientConfirmationSentAt && lead.email?.trim()) {
         try {
-          await sendTourConfirmationWithInvoice({
+          const emailResult = await sendTourConfirmationWithInvoice({
             clientName: lead.name,
             clientEmail: lead.email,
             packageName: pkg.name,
@@ -636,14 +636,59 @@ export async function scheduleTourFromLeadAction(
             reference,
             invoice: invoice ?? undefined,
           });
-          const updatedTour = await updateTour(tour.id, {
-            clientConfirmationSentAt: new Date().toISOString(),
-          });
-          if (updatedTour) tour = updatedTour;
+          if (emailResult.ok) {
+            const updatedTour = await updateTour(tour.id, {
+              clientConfirmationSentAt: new Date().toISOString(),
+            });
+            if (updatedTour) tour = updatedTour;
+            await recordAuditEvent({
+              entityType: "tour",
+              entityId: tour.id,
+              action: "guest_confirmation_emailed",
+              summary: `Tour confirmation emailed to ${lead.email}`,
+              details: [`Package: ${pkg.name}`, `Reference: ${reference}`],
+              metadata: {
+                channel: "email",
+                recipient: lead.email,
+                template: "tour_confirmation_with_invoice",
+                status: "sent",
+              },
+            });
+          } else {
+            await recordAuditEvent({
+              entityType: "tour",
+              entityId: tour.id,
+              action: "guest_confirmation_email_failed",
+              summary: `Guest confirmation email failed: ${emailResult.error ?? "unknown"}`,
+              details: [`Recipient: ${lead.email}`, `Error: ${emailResult.error ?? "unknown"}`],
+              metadata: {
+                channel: "email",
+                recipient: lead.email,
+                template: "tour_confirmation_with_invoice",
+                status: "failed",
+                error: emailResult.error ?? "unknown",
+              },
+            });
+          }
         } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
           debugLog("Tour confirmation email failed", {
-            error: err instanceof Error ? err.message : String(err),
+            error: msg,
             leadId: rollbackLeadId,
+          });
+          await recordAuditEvent({
+            entityType: "tour",
+            entityId: tour.id,
+            action: "guest_confirmation_email_failed",
+            summary: `Guest confirmation email threw: ${msg}`,
+            details: [`Recipient: ${lead.email}`, `Error: ${msg}`],
+            metadata: {
+              channel: "email",
+              recipient: lead.email,
+              template: "tour_confirmation_with_invoice",
+              status: "failed",
+              error: msg,
+            },
           });
         }
       }
@@ -651,7 +696,7 @@ export async function scheduleTourFromLeadAction(
       if (scheduleSuppliers && !tour.supplierNotificationsSentAt) {
         for (const supplier of scheduleSuppliers.withEmail) {
           try {
-            await sendSupplierReservationEmail({
+            const emailResult = await sendSupplierReservationEmail({
               supplierEmail: supplier.email,
               supplierName: supplier.supplierName,
               supplierType: supplier.supplierType as
@@ -668,11 +713,77 @@ export async function scheduleTourFromLeadAction(
               pax,
               duration: pkg.duration,
             });
+            if (emailResult.ok) {
+              await recordAuditEvent({
+                entityType: "tour",
+                entityId: tour.id,
+                action: "supplier_reservation_emailed",
+                summary: `Reservation emailed to ${supplier.supplierName}`,
+                details: [
+                  `Supplier: ${supplier.supplierName} (${supplier.supplierType})`,
+                  `Recipient: ${supplier.email}`,
+                  `Reference: ${reference}`,
+                ],
+                metadata: {
+                  channel: "email",
+                  recipient: supplier.email,
+                  template: "supplier_reservation",
+                  supplierName: supplier.supplierName,
+                  supplierType: supplier.supplierType,
+                  status: "sent",
+                },
+              });
+            } else {
+              await recordAuditEvent({
+                entityType: "tour",
+                entityId: tour.id,
+                action: "supplier_reservation_email_failed",
+                summary: `Supplier email to ${supplier.supplierName} failed: ${emailResult.error ?? "unknown"}`,
+                details: [
+                  `Supplier: ${supplier.supplierName}`,
+                  `Recipient: ${supplier.email}`,
+                  `Error: ${emailResult.error ?? "unknown"}`,
+                ],
+                metadata: {
+                  channel: "email",
+                  recipient: supplier.email,
+                  template: "supplier_reservation",
+                  supplierName: supplier.supplierName,
+                  supplierType: supplier.supplierType,
+                  status: "failed",
+                  error: emailResult.error ?? "unknown",
+                },
+              });
+              await ensureTodo(
+                `Email ${supplier.supplierName} (${supplier.supplierType}) manually for ${clientName} - reservation confirmation ${reference}`
+              );
+            }
           } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
             debugLog("Supplier reservation email failed", {
-              error: err instanceof Error ? err.message : String(err),
+              error: msg,
               supplier: supplier.supplierName,
               leadId: rollbackLeadId,
+            });
+            await recordAuditEvent({
+              entityType: "tour",
+              entityId: tour.id,
+              action: "supplier_reservation_email_failed",
+              summary: `Supplier email to ${supplier.supplierName} threw: ${msg}`,
+              details: [
+                `Supplier: ${supplier.supplierName}`,
+                `Recipient: ${supplier.email}`,
+                `Error: ${msg}`,
+              ],
+              metadata: {
+                channel: "email",
+                recipient: supplier.email,
+                template: "supplier_reservation",
+                supplierName: supplier.supplierName,
+                supplierType: supplier.supplierType,
+                status: "failed",
+                error: msg,
+              },
             });
             await ensureTodo(
               `Email ${supplier.supplierName} (${supplier.supplierType}) manually for ${clientName} - reservation confirmation ${reference}`
@@ -765,6 +876,13 @@ export async function sendItineraryToGuestAction(
     details: result.ok
       ? [`Recipient: ${email}`, `Package: ${tour.packageName}`]
       : [`Recipient: ${email}`, `Error: ${result.error ?? "unknown"}`],
+    metadata: {
+      channel: "email",
+      recipient: email,
+      template: "itinerary",
+      status: result.ok ? "sent" : "failed",
+      ...(result.ok ? {} : { error: result.error ?? "unknown" }),
+    },
   });
 
   if (!result.ok) return { error: result.error ?? "Failed to send itinerary" };
@@ -891,7 +1009,7 @@ export async function markTourCompletedPaidAction(
 
     if (lead.email?.trim() && !tour.paymentReceiptSentAt) {
       try {
-        await sendPaymentReceiptEmail({
+        const emailResult = await sendPaymentReceiptEmail({
           clientEmail: lead.email,
           clientName: lead.name,
           amount: tour.totalValue,
@@ -900,11 +1018,56 @@ export async function markTourCompletedPaidAction(
           reference: lead.reference,
           date: payment.date,
         });
-        await updateTour(tourId, { paymentReceiptSentAt: new Date().toISOString() });
+        if (emailResult.ok) {
+          await updateTour(tourId, { paymentReceiptSentAt: new Date().toISOString() });
+          await recordAuditEvent({
+            entityType: "tour",
+            entityId: tourId,
+            action: "payment_receipt_emailed",
+            summary: `Payment receipt emailed to ${lead.email}`,
+            details: [`Amount: ${tour.totalValue} ${tour.currency}`],
+            metadata: {
+              channel: "email",
+              recipient: lead.email,
+              template: "payment_receipt",
+              status: "sent",
+            },
+          });
+        } else {
+          await recordAuditEvent({
+            entityType: "tour",
+            entityId: tourId,
+            action: "payment_receipt_email_failed",
+            summary: `Payment receipt email failed: ${emailResult.error ?? "unknown"}`,
+            details: [`Recipient: ${lead.email}`, `Error: ${emailResult.error ?? "unknown"}`],
+            metadata: {
+              channel: "email",
+              recipient: lead.email,
+              template: "payment_receipt",
+              status: "failed",
+              error: emailResult.error ?? "unknown",
+            },
+          });
+        }
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
         debugLog("Payment receipt email failed", {
-          error: err instanceof Error ? err.message : String(err),
+          error: msg,
           tourId,
+        });
+        await recordAuditEvent({
+          entityType: "tour",
+          entityId: tourId,
+          action: "payment_receipt_email_failed",
+          summary: `Payment receipt email threw: ${msg}`,
+          details: [`Recipient: ${lead.email}`, `Error: ${msg}`],
+          metadata: {
+            channel: "email",
+            recipient: lead.email,
+            template: "payment_receipt",
+            status: "failed",
+            error: msg,
+          },
         });
       }
     }
