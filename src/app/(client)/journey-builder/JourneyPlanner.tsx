@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -217,7 +217,99 @@ export function JourneyPlanner({
   /* AI */
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiStatus, setAiStatus] = useState("");
+  const [aiStatusKind, setAiStatusKind] = useState<"idle" | "info" | "error" | "success">("idle");
   const [aiGenerating, setAiGenerating] = useState(false);
+  const aiLastCallRef = useRef<number>(0);
+  const draftHydratedRef = useRef(false);
+
+  /* ---- Draft persistence (localStorage) ---- */
+  const DRAFT_KEY = "paraiso.journey-builder.draft.v1";
+
+  // Hydrate once on mount
+  useEffect(() => {
+    if (draftHydratedRef.current) return;
+    draftHydratedRef.current = true;
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(DRAFT_KEY) : null;
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<{
+        travelDate: string;
+        pax: number;
+        days: TripDay[];
+        accommodationMode: AccommodationMode;
+        transportSelectionId: string;
+        mealSelectionId: string;
+        mealRequest: string;
+        guestNames: string[];
+        email: string;
+        phone: string;
+        notes: string;
+        aiPrompt: string;
+      }>;
+      if (draft.travelDate) setTravelDate(draft.travelDate);
+      if (typeof draft.pax === "number") setPax(draft.pax);
+      if (Array.isArray(draft.days) && draft.days.length > 0) setDays(draft.days);
+      if (draft.accommodationMode) setAccommodationMode(draft.accommodationMode);
+      if (draft.transportSelectionId) setTransportSelectionId(draft.transportSelectionId);
+      if (draft.mealSelectionId) setMealSelectionId(draft.mealSelectionId);
+      if (typeof draft.mealRequest === "string") setMealRequest(draft.mealRequest);
+      if (Array.isArray(draft.guestNames)) setGuestNames(draft.guestNames);
+      if (typeof draft.email === "string") setEmail(draft.email);
+      if (typeof draft.phone === "string") setPhone(draft.phone);
+      if (typeof draft.notes === "string") setNotes(draft.notes);
+      if (typeof draft.aiPrompt === "string") setAiPrompt(draft.aiPrompt);
+    } catch {
+      // Corrupt draft — ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save whenever anything meaningful changes (debounced by React's batching)
+  useEffect(() => {
+    if (!draftHydratedRef.current) return;
+    try {
+      const draft = {
+        travelDate,
+        pax,
+        days,
+        accommodationMode,
+        transportSelectionId,
+        mealSelectionId,
+        mealRequest,
+        guestNames,
+        email,
+        phone,
+        notes,
+        aiPrompt,
+      };
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      }
+    } catch {
+      // Quota or serialization errors — ignore
+    }
+  }, [
+    travelDate,
+    pax,
+    days,
+    accommodationMode,
+    transportSelectionId,
+    mealSelectionId,
+    mealRequest,
+    guestNames,
+    email,
+    phone,
+    notes,
+    aiPrompt,
+  ]);
+
+  function clearDraft() {
+    try {
+      if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // ignore
+    }
+  }
 
   /* ---- derived ---- */
   const transportOptions = useMemo(
@@ -474,18 +566,57 @@ export function JourneyPlanner({
   }
 
   async function handleAiDraft() {
-    if (!aiConciergeEnabled) { setAiStatus("AI concierge is not configured."); return; }
-    if (!aiPrompt.trim()) { setError("Describe your trip first."); return; }
-    setError(""); setAiStatus(""); setAiGenerating(true);
-    const result = await generateClientJourneyPlanAction({
-      prompt: aiPrompt, travelDate, pax,
-      routeStops: getRouteStopsForSubmit().map((s) => ({ destinationId: s.destinationId as Exclude<PlannerDestinationId, "airport">, nights: s.nights, hotelId: s.hotelId ?? "" })),
-      accommodationMode, transportSelectionId, mealSelectionId, mealRequest,
-    });
-    setAiGenerating(false);
-    if (!result.ok || !result.plan) { setAiStatus(result.message); return; }
-    applyAiPlan(result.plan);
-    setAiStatus(result.message);
+    if (!aiConciergeEnabled) {
+      setAiStatusKind("error");
+      setAiStatus("AI concierge is not configured.");
+      return;
+    }
+    if (!aiPrompt.trim()) {
+      setError("Describe your trip first.");
+      return;
+    }
+    // Debounce: block rapid repeat calls within 1.5s
+    const now = Date.now();
+    if (now - aiLastCallRef.current < 1500) return;
+    aiLastCallRef.current = now;
+
+    setError("");
+    setAiStatus("Drafting your journey…");
+    setAiStatusKind("info");
+    setAiGenerating(true);
+    try {
+      const result = await generateClientJourneyPlanAction({
+        prompt: aiPrompt,
+        travelDate,
+        pax,
+        routeStops: getRouteStopsForSubmit().map((s) => ({
+          destinationId: s.destinationId as Exclude<PlannerDestinationId, "airport">,
+          nights: s.nights,
+          ...(s.hotelId ? { hotelId: s.hotelId } : {}),
+        })),
+        accommodationMode,
+        transportSelectionId,
+        mealSelectionId,
+        mealRequest,
+      });
+      setAiGenerating(false);
+      if (!result.ok || !result.plan) {
+        setAiStatusKind("error");
+        setAiStatus(result.message || "The AI could not draft a journey. Try rephrasing your request.");
+        return;
+      }
+      applyAiPlan(result.plan);
+      setAiStatusKind("success");
+      setAiStatus(result.message);
+    } catch (err) {
+      setAiGenerating(false);
+      setAiStatusKind("error");
+      setAiStatus(
+        err instanceof Error
+          ? `AI error: ${err.message}. Please try again.`
+          : "AI concierge failed unexpectedly. Please try again."
+      );
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -514,6 +645,7 @@ export function JourneyPlanner({
     });
     if (!result || result.error) { setError(result?.error ?? "Something went wrong. Please try again."); setSubmitting(false); return; }
     if (!result.reference) { setError("Booking saved but no reference returned. Please contact us."); setSubmitting(false); return; }
+    clearDraft();
     router.push(`/booking-confirmed?ref=${encodeURIComponent(result.reference)}`);
     router.refresh();
   }
@@ -572,7 +704,29 @@ export function JourneyPlanner({
               {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {aiGenerating ? "Building..." : "Build my trip"}
             </button>
-            {aiStatus && <p className="mt-3 text-sm text-stone-600">{aiStatus}</p>}
+            {aiStatus && (
+              <div
+                className={`mt-3 rounded-xl px-4 py-3 text-sm ${
+                  aiStatusKind === "error"
+                    ? "border border-rose-200 bg-rose-50 text-rose-700"
+                    : aiStatusKind === "success"
+                      ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border border-stone-200 bg-stone-50 text-stone-700"
+                }`}
+              >
+                <p>{aiStatus}</p>
+                {aiStatusKind === "error" && (
+                  <button
+                    type="button"
+                    onClick={handleAiDraft}
+                    disabled={aiGenerating}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-semibold underline disabled:opacity-50"
+                  >
+                    Try again
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </details>
       )}
