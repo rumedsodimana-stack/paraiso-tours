@@ -24,8 +24,6 @@ import { BookingSupplierBreakdown } from "../../bookings/BookingSupplierBreakdow
 import { PrintButton } from "../../payables/PrintButton";
 import { CompletedPaidButton } from "./CompletedPaidButton";
 import { ItineraryActions } from "./ItineraryActions";
-import { TourMap } from "./TourMap";
-import { buildTourRoutePoints } from "@/lib/tour-route-points";
 import { resolveTourPackage } from "@/lib/package-snapshot";
 import { SaveSuccessBanner } from "../../SaveSuccessBanner";
 import {
@@ -81,17 +79,6 @@ export default async function TourDetailPage({
     [{ entityType: "tour", entityId: tour.id }],
     10
   );
-  const leadAuditLogs = lead
-    ? await getAuditLogsForEntities(
-        [{ entityType: "lead", entityId: lead.id }],
-        30
-      )
-    : [];
-  const routePoints = buildTourRoutePoints({
-    tour,
-    pkg,
-    auditLogs: leadAuditLogs,
-  });
   const isSnapshotBackedTour =
     !!lead &&
     !!pkg &&
@@ -235,20 +222,6 @@ export default async function TourDetailPage({
 
           {pkg ? (
             <>
-              {/* Route map */}
-              <section>
-                <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[#8a9ba1]">
-                  <MapPin className="h-3.5 w-3.5" />
-                  Route map
-                  {routePoints.length > 0 && (
-                    <span className="text-[#5e7279] normal-case font-normal tracking-normal">
-                      — {routePoints.length} stop{routePoints.length === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </h2>
-                <TourMap points={routePoints} />
-              </section>
-
               {/* Package description */}
               {pkg.description && (
                 <section className="rounded-xl border border-[#e0e4dd] bg-[#faf6ef] px-4 py-3">
