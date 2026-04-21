@@ -163,6 +163,50 @@ export async function createClientBookingAction(
     });
   });
 
+  // Fire-and-forget internal admin alert for the new booking
+  (async () => {
+    try {
+      const { getAppSettings } = await import("@/lib/app-config");
+      const { sendInternalAlertEmail } = await import("@/lib/email");
+      const settings = await getAppSettings();
+      const adminEmail = settings.company.email?.trim();
+      if (!adminEmail) return;
+      await sendInternalAlertEmail({
+        to: adminEmail,
+        subject: `New booking: ${lead.name} — ${pkg.name}`,
+        body: [
+          `A new booking has arrived from the client portal.`,
+          ``,
+          `Guest: ${lead.name} <${lead.email}>`,
+          `Package: ${pkg.name}`,
+          `Travel date: ${lead.travelDate ?? "TBD"}`,
+          `Travelers: ${lead.pax ?? 1}`,
+          `Total: ${pricing.totalPrice.toLocaleString()} ${pkg.currency}`,
+          ``,
+          `Review & approve in the admin portal.`,
+        ].join("\n"),
+        severity: "info",
+      });
+      await recordAuditEvent({
+        entityType: "lead",
+        entityId: lead.id,
+        action: "admin_new_booking_alert_sent",
+        summary: `New-booking alert sent to ${adminEmail}`,
+        metadata: {
+          channel: "email",
+          recipient: adminEmail,
+          template: "internal_new_booking",
+          status: "sent",
+        },
+      });
+    } catch (err) {
+      debugLog("Internal new-booking alert failed", {
+        error: err instanceof Error ? err.message : String(err),
+        leadId: lead.id,
+      });
+    }
+  })();
+
   // Send WhatsApp confirmation if configured and client provided phone
   if (isWhatsAppConfigured() && lead.phone?.trim()) {
     sendWhatsAppBookingConfirmation({
