@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { assessTourAvailability } from "./tour-availability";
+import { createPackageSnapshot } from "./package-snapshot";
 import type { HotelSupplier, Lead, Tour, TourPackage } from "./types";
 
 const now = new Date().toISOString();
@@ -124,4 +125,36 @@ test("assessTourAvailability flags custom options that cannot be checked", () =>
 
   assert.equal(result.status, "attention_needed");
   assert.match(result.warnings[0], /not linked to a supplier record/);
+});
+
+test("assessTourAvailability does not flag snapshot-backed custom tours as mismatched", () => {
+  const snapshotBackedLead: Lead = {
+    id: "lead_snapshot_custom",
+    name: "Snapshot Guest",
+    email: "snapshot@example.com",
+    phone: "",
+    source: "Client Route Builder",
+    status: "won",
+    pax: 2,
+    totalPrice: 200,
+    packageSnapshot: createPackageSnapshot({
+      pkg: sharedPackage,
+      totalPrice: 200,
+    }),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const result = assessTourAvailability({
+    lead: snapshotBackedLead,
+    pkg: sharedPackage,
+    suppliers: [capacitySupplier],
+    tours: [],
+    startDate: "2026-04-11",
+    endDate: "2026-04-13",
+    getTourContext: () => null,
+  });
+
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.warnings, []);
 });

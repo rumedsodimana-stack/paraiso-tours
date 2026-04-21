@@ -54,9 +54,18 @@ export function CalendarView({ tours }: { tours: Tour[] }) {
   const nextMonth = () => setCurrentDate(new Date(year, month + 1));
 
   const today = new Date().toISOString().slice(0, 10);
-  const upcomingTours = tours
-    .filter((t) => t.status !== "cancelled" && t.startDate >= today)
-    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const activeTours = tours
+    .filter((t) => t.status !== "cancelled")
+    .sort((a, b) => {
+      // Upcoming first (asc), then past (desc of startDate so recent-past first)
+      const aUpcoming = a.startDate >= today;
+      const bUpcoming = b.startDate >= today;
+      if (aUpcoming && !bUpcoming) return -1;
+      if (!aUpcoming && bUpcoming) return 1;
+      if (aUpcoming) return a.startDate.localeCompare(b.startDate);
+      return b.startDate.localeCompare(a.startDate);
+    });
+  const upcomingTours = activeTours;
 
   return (
     <>
@@ -137,14 +146,14 @@ export function CalendarView({ tours }: { tours: Tour[] }) {
 
       <div>
         <h3 className="mb-4 text-sm font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">
-          Upcoming Tours ({upcomingTours.length})
+          Active Tours ({upcomingTours.length})
         </h3>
         <div className="space-y-3">
           {upcomingTours.length === 0 ? (
-            <p className="text-sm text-[#8a9ba1]">No upcoming tours</p>
+            <p className="text-sm text-[#8a9ba1]">No active tours yet. Schedule a booking to see it here.</p>
           ) : (
             upcomingTours.map((tour) => (
-              <TourCard key={tour.id} tour={tour} />
+              <TourCard key={tour.id} tour={tour} isPast={tour.startDate < today} />
             ))
           )}
         </div>
@@ -153,7 +162,7 @@ export function CalendarView({ tours }: { tours: Tour[] }) {
   );
 }
 
-function TourCard({ tour }: { tour: Tour }) {
+function TourCard({ tour, isPast }: { tour: Tour; isPast?: boolean }) {
   return (
     <Link
       href={`/admin/tours/${tour.id}`}
@@ -165,6 +174,11 @@ function TourCard({ tour }: { tour: Tour }) {
           {tour.confirmationId && (
             <span className="rounded bg-[#eef4f4] px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-[#12343b] ring-1 ring-[#d6e2e5]">
               {tour.confirmationId}
+            </span>
+          )}
+          {isPast && (
+            <span className="rounded-full bg-[#eed9cf] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#7c3a24]">
+              Past
             </span>
           )}
         </div>

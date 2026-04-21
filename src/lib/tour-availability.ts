@@ -7,6 +7,16 @@ const ACTIVE_TOUR_STATUSES = new Set<Tour["status"]>([
   "in-progress",
 ]);
 
+export const SUPPLIER_AVAILABILITY_UNVERIFIED_WARNING =
+  "Supplier availability could not be verified because the booking selections no longer match the selected package.";
+
+export function isSnapshotBackedPackageSelection(
+  lead: Pick<Lead, "packageId" | "packageSnapshot">,
+  pkg: Pick<TourPackage, "id">
+): boolean {
+  return !lead.packageId && lead.packageSnapshot?.packageId === pkg.id;
+}
+
 function datesOverlap(
   startA: string,
   endA: string,
@@ -30,9 +40,10 @@ function collectSupplierUsage(
   const supplierMap = new Map(suppliers.map((supplier) => [supplier.id, supplier]));
 
   if (!breakdown) {
-    warnings.add(
-      "Supplier availability could not be verified because the booking selections no longer match the selected package."
-    );
+    if (isSnapshotBackedPackageSelection(lead, pkg)) {
+      return { supplierIds, warnings: [] };
+    }
+    warnings.add(SUPPLIER_AVAILABILITY_UNVERIFIED_WARNING);
     return { supplierIds, warnings: [...warnings] };
   }
 

@@ -24,6 +24,11 @@ import { BookingSupplierBreakdown } from "../../bookings/BookingSupplierBreakdow
 import { PrintButton } from "../../payables/PrintButton";
 import { CompletedPaidButton } from "./CompletedPaidButton";
 import { resolveTourPackage } from "@/lib/package-snapshot";
+import { SaveSuccessBanner } from "../../SaveSuccessBanner";
+import {
+  isSnapshotBackedPackageSelection,
+  SUPPLIER_AVAILABILITY_UNVERIFIED_WARNING,
+} from "@/lib/tour-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -50,12 +55,18 @@ const tourStatusLabel: Record<string, string> = {
 
 export default async function TourDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ scheduled?: string }> | { scheduled?: string };
 }) {
   const { id } = await params;
+  const resolvedSearchParams = searchParams
+    ? await Promise.resolve(searchParams)
+    : {};
   const tour = await getTour(id);
   if (!tour) notFound();
+  const scheduled = resolvedSearchParams?.scheduled === "1";
 
   const [lead, livePackage, suppliers] = await Promise.all([
     getLead(tour.leadId),
@@ -66,6 +77,17 @@ export default async function TourDetailPage({
   const auditLogs = await getAuditLogsForEntities(
     [{ entityType: "tour", entityId: tour.id }],
     10
+  );
+  const isSnapshotBackedTour =
+    !!lead &&
+    !!pkg &&
+    isSnapshotBackedPackageSelection(lead, pkg);
+  const availabilityWarnings = (tour.availabilityWarnings ?? []).filter(
+    (warning) =>
+      !(
+        isSnapshotBackedTour &&
+        warning === SUPPLIER_AVAILABILITY_UNVERIFIED_WARNING
+      )
   );
 
   const getSelectedHotelForDay = (dayIndex: number): string => {
@@ -86,6 +108,9 @@ export default async function TourDetailPage({
 
   return (
     <div className="space-y-6">
+      {scheduled ? (
+        <SaveSuccessBanner message="Tour scheduled successfully. This booking has moved into Scheduled Tours." />
+      ) : null}
       <div className="flex items-center justify-between gap-4 print:hidden">
         <Link
           href="/admin/calendar"
@@ -175,15 +200,14 @@ export default async function TourDetailPage({
 
         <div className="space-y-6 p-6">
           {/* Availability warnings */}
-          {tour.availabilityStatus === "attention_needed" &&
-          (tour.availabilityWarnings?.length ?? 0) > 0 ? (
+          {availabilityWarnings.length > 0 ? (
             <section className="rounded-2xl border border-[#f3e8ce] bg-[#f9f2e3] px-4 py-4 text-[#7a5a17]">
               <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
                 <AlertTriangle className="h-4 w-4" />
                 Supplier Attention Needed
               </div>
               <ul className="mt-3 space-y-2 text-sm">
-                {tour.availabilityWarnings?.map((warning) => (
+                {availabilityWarnings.map((warning) => (
                   <li key={warning} className="rounded-xl bg-[#fffbf4] px-3 py-2 border border-[#e0d4bc]">
                     {warning}
                   </li>

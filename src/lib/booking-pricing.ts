@@ -157,8 +157,12 @@ export function getLeadBookingFinancials(
     ? getBookingBreakdownBySupplier(lead, pkg, suppliers)
     : null;
   const fallbackTotal = pkg.price * Math.max(1, lead.pax ?? 1);
+  const canUseStoredTotal =
+    selectionsMatchPackage ||
+    (!!lead.packageSnapshot && lead.packageSnapshot.packageId === pkg.id) ||
+    (!lead.packageId && !!lead.packageSnapshot);
   const storedTotal =
-    selectionsMatchPackage &&
+    canUseStoredTotal &&
     typeof lead.totalPrice === "number" &&
     Number.isFinite(lead.totalPrice)
       ? roundCurrency(lead.totalPrice)

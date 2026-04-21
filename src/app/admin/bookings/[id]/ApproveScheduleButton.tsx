@@ -1,23 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { scheduleTourFromLeadAction } from "@/app/actions/tours";
 
 interface ApproveScheduleButtonProps {
   leadId: string;
   hasTravelDate: boolean;
-  travelDate?: string;
 }
 
-export function ApproveScheduleButton({ leadId, hasTravelDate, travelDate }: ApproveScheduleButtonProps) {
-  const router = useRouter();
+export function ApproveScheduleButton({ leadId, hasTravelDate }: ApproveScheduleButtonProps) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [manualDate, setManualDate] = useState("");
-
-  const startDateToUse = hasTravelDate ? undefined : manualDate.trim() || undefined;
 
   const handleApproveSchedule = () => {
     setError(null);
@@ -32,8 +27,7 @@ export function ApproveScheduleButton({ leadId, hasTravelDate, travelDate }: App
           hasTravelDate ? undefined : manualDate.trim()
         );
         if (result?.id) {
-          router.refresh();
-          router.push("/admin/bookings?scheduled=1");
+          window.location.href = `/admin/tours/${result.id}?scheduled=1`;
         } else if (result?.error) {
           setError(result.error);
         } else {

@@ -253,7 +253,7 @@ export default async function DashboardPage() {
   ).length;
 
   const upcomingTours = tours
-    .filter((t) => t.status !== "cancelled" && t.status !== "completed" && t.startDate > today)
+    .filter((t) => t.status !== "cancelled" && t.status !== "completed" && t.startDate >= today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate))
     .slice(0, 6);
 

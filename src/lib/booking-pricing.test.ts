@@ -5,6 +5,7 @@ import {
   getLeadBookingFinancials,
   normalizeSelectedAccommodationByNight,
 } from "./booking-pricing";
+import { createCustomRoutePackageSnapshot } from "./custom-route-booking";
 import { calcOptionCost, calcOptionPrice } from "./package-price";
 import type { HotelSupplier, Lead, TourPackage } from "./types";
 
@@ -116,6 +117,71 @@ test("getLeadBookingFinancials respects stored total as booking snapshot", () =>
   assert.equal(result.totalPrice, 445);
   assert.equal(result.adjustmentAmount, 15);
   assert.ok(result.breakdown);
+});
+
+test("getLeadBookingFinancials keeps stored total for snapshot-only custom routes", () => {
+  const customLead: Lead = {
+    id: "lead_custom",
+    name: "Custom Lead",
+    email: "custom@example.com",
+    phone: "",
+    source: "Client Route Builder",
+    status: "new",
+    destination: "Sigiriya -> Kandy",
+    pax: 2,
+    totalPrice: 1200,
+    packageSnapshot: createCustomRoutePackageSnapshot(
+      {
+        id: "lead_custom",
+        destination: "Sigiriya -> Kandy",
+        pax: 2,
+        totalPrice: 1200,
+      },
+      {
+        routeStops: [
+          {
+            destinationName: "Sigiriya",
+            nights: 2,
+            hotelName: "Rock View Hotel",
+            hotelCurrency: "USD",
+          },
+          {
+            destinationName: "Kandy",
+            nights: 1,
+            hotelName: "Lake Kandy Hotel",
+            hotelCurrency: "USD",
+          },
+        ],
+        transportLabel: "Private Car",
+        mealLabel: "Half Board",
+        desiredNights: 3,
+      }
+    ),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const customPkg = customLead.packageSnapshot
+    ? {
+        id: customLead.packageSnapshot.packageId ?? "custom_route_lead_custom",
+        name: customLead.packageSnapshot.name,
+        duration: customLead.packageSnapshot.duration,
+        destination: customLead.packageSnapshot.destination,
+        price: customLead.packageSnapshot.price,
+        currency: customLead.packageSnapshot.currency,
+        description: customLead.packageSnapshot.description,
+        itinerary: customLead.packageSnapshot.itinerary,
+        inclusions: customLead.packageSnapshot.inclusions,
+        exclusions: customLead.packageSnapshot.exclusions,
+        createdAt: customLead.packageSnapshot.capturedAt,
+      }
+    : null;
+
+  assert.ok(customPkg);
+  const result = getLeadBookingFinancials(customLead, customPkg!, suppliers);
+  assert.equal(result.totalPrice, 1200);
+  assert.equal(result.adjustmentAmount, 0);
+  assert.equal(result.breakdown, null);
 });
 
 test("capacity-based option pricing uses rooms and vehicles instead of raw pax", () => {

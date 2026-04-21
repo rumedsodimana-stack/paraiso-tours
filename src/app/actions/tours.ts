@@ -23,7 +23,6 @@ import {
   updateInvoice,
   deleteInvoice,
 } from "@/lib/db";
-import { recordAuditEvent } from "@/lib/audit";
 import { createInvoiceFromLead } from "@/app/actions/invoices";
 import { getLeadBookingFinancials } from "@/lib/booking-pricing";
 import { getSuppliersForSchedule, getBookingBreakdownBySupplier } from "@/lib/booking-breakdown";
@@ -34,11 +33,16 @@ import {
   sendSupplierReservationEmail,
   sendPaymentReceiptEmail,
 } from "@/lib/email";
+import { getAuditLogsForEntities, recordAuditEvent } from "@/lib/audit";
 import {
   createPackageSnapshotFromLead,
   resolveLeadPackage,
   resolveTourPackage,
 } from "@/lib/package-snapshot";
+import {
+  createCustomRoutePackageSnapshot,
+  getCustomRouteMetaFromAuditLogs,
+} from "@/lib/custom-route-booking";
 import type { Lead, TourPackage, TourStatus } from "@/lib/types";
 
 function addDays(dateStr: string, days: number): string {
@@ -74,6 +78,21 @@ function toTourRollbackData(tour: NonNullable<Awaited<ReturnType<typeof getTour>
     availabilityStatus: tour.availabilityStatus,
     availabilityWarnings: tour.availabilityWarnings,
   };
+}
+
+async function hydrateCustomRouteSnapshot(lead: Lead): Promise<Lead> {
+  if (lead.packageSnapshot || lead.packageId) return lead;
+
+  const auditLogs = await getAuditLogsForEntities(
+    [{ entityType: "lead", entityId: lead.id }],
+    30
+  );
+  const customRoute = getCustomRouteMetaFromAuditLogs(auditLogs);
+  if (!customRoute) return lead;
+
+  const packageSnapshot = createCustomRoutePackageSnapshot(lead, customRoute);
+  const snappedLead = await updateLead(lead.id, { packageSnapshot });
+  return snappedLead ?? { ...lead, packageSnapshot };
 }
 
 export async function createTourAction(formData: FormData) {
@@ -177,14 +196,17 @@ export async function scheduleTourFromLeadAction(
   try {
     let lead = await getLead(leadId);
     if (!lead) return { error: "Booking not found" };
-    if (!lead.packageId) {
+
+    lead = await hydrateCustomRouteSnapshot(lead);
+
+    if (!lead.packageId && !lead.packageSnapshot) {
       return {
         error:
-          "Booking has no package selected. Edit the booking to add a package.",
+          "Booking has no package or saved custom route details. Edit the booking to add one before scheduling.",
       };
     }
 
-    const livePackage = await getPackage(lead.packageId);
+    const livePackage = lead.packageId ? await getPackage(lead.packageId) : null;
     if (!lead.packageSnapshot && livePackage) {
       const packageSnapshot = createPackageSnapshotFromLead(lead, livePackage);
       const snappedLead = await updateLead(lead.id, { packageSnapshot });
@@ -205,6 +227,10 @@ export async function scheduleTourFromLeadAction(
     let createdTourId: string | null = null;
     let createdInvoiceId: string | null = null;
     let createdPaymentId: string | null = null;
+    let existingTourSnapshot: {
+      id: string;
+      data: ReturnType<typeof toTourRollbackData>;
+    } | null = null;
     const createdTodoIds: string[] = [];
     let rollbackApplied = false;
 
@@ -265,7 +291,7 @@ export async function scheduleTourFromLeadAction(
     const existingTour = allTours.find(
       (tour) => tour.leadId === lead.id && tour.status !== "cancelled"
     );
-    const existingTourSnapshot = existingTour
+    existingTourSnapshot = existingTour
       ? {
           id: existingTour.id,
           data: toTourRollbackData(existingTour),

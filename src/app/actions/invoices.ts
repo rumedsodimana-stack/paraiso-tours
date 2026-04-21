@@ -15,24 +15,45 @@ import {
   updateLead,
   updatePayment,
 } from "@/lib/db";
-import { recordAuditEvent } from "@/lib/audit";
+import { getAuditLogsForEntities, recordAuditEvent } from "@/lib/audit";
 import { getLeadBookingFinancials } from "@/lib/booking-pricing";
 import { generateDocumentNumber } from "@/lib/document-number";
 import {
   createPackageSnapshotFromLead,
   resolveLeadPackage,
 } from "@/lib/package-snapshot";
-import type { InvoiceStatus } from "@/lib/types";
+import {
+  createCustomRoutePackageSnapshot,
+  getCustomRouteMetaFromAuditLogs,
+} from "@/lib/custom-route-booking";
+import type { InvoiceStatus, Lead } from "@/lib/types";
+
+async function hydrateCustomRouteSnapshot(lead: Lead): Promise<Lead> {
+  if (lead.packageSnapshot || lead.packageId) return lead;
+
+  const auditLogs = await getAuditLogsForEntities(
+    [{ entityType: "lead", entityId: lead.id }],
+    30
+  );
+  const customRoute = getCustomRouteMetaFromAuditLogs(auditLogs);
+  if (!customRoute) return lead;
+
+  const packageSnapshot = createCustomRoutePackageSnapshot(lead, customRoute);
+  const snappedLead = await updateLead(lead.id, { packageSnapshot });
+  return snappedLead ?? { ...lead, packageSnapshot };
+}
 
 export async function createInvoiceFromLead(leadId: string) {
-  const lead = await getLead(leadId);
+  let lead = await getLead(leadId);
   if (!lead) return { error: "Lead not found" };
 
   const existing = await getInvoiceByLeadId(leadId);
   if (existing) return { success: true, invoiceId: existing.id, created: false };
 
+  lead = await hydrateCustomRouteSnapshot(lead);
+
   if (!lead.packageId && !lead.packageSnapshot) {
-    return { error: "Lead has no package selected" };
+    return { error: "Lead has no package or saved custom route details" };
   }
 
   const [livePackage, suppliers] = await Promise.all([
