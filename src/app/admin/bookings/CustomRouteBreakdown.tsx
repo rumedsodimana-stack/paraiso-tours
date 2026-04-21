@@ -114,39 +114,57 @@ export function CustomRouteBreakdown({
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
-            <BedDouble className="h-4 w-4 text-[#12343b]" />
-            Accommodation option
-          </p>
-          <p className="mt-2 text-sm text-[#5e7279]">
-            {lead.selectedAccommodationOptionId ||
-            (lead.selectedAccommodationByNight &&
-              Object.keys(lead.selectedAccommodationByNight).length > 0)
-              ? "Selected on booking"
-              : "Not finalized yet"}
-          </p>
-        </div>
-        <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
-            <Car className="h-4 w-4 text-[#12343b]" />
-            Transport option
-          </p>
-          <p className="mt-2 text-sm text-[#5e7279]">
-            {lead.selectedTransportOptionId ? "Selected on booking" : "Not finalized yet"}
-          </p>
-        </div>
-        <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
-            <UtensilsCrossed className="h-4 w-4 text-[#12343b]" />
-            Meal option
-          </p>
-          <p className="mt-2 text-sm text-[#5e7279]">
-            {lead.selectedMealOptionId ? "Selected on booking" : "Not finalized yet"}
-          </p>
-        </div>
-      </div>
+      {(() => {
+        const accommodationFinalized =
+          !!lead.selectedAccommodationOptionId ||
+          (lead.selectedAccommodationByNight &&
+            Object.keys(lead.selectedAccommodationByNight).length > 0) ||
+          route.routeStops.some((stop) => !!stop.hotelName?.trim());
+        const transportFinalized =
+          !!lead.selectedTransportOptionId || !!route.transportLabel?.trim();
+        const mealFinalized =
+          !!lead.selectedMealOptionId ||
+          !!route.mealLabel?.trim() ||
+          !!route.mealRequest?.trim();
+
+        const accommodationLabel = accommodationFinalized
+          ? route.routeStops.every((stop) => stop.hotelName?.trim())
+            ? "Hotels selected per stop"
+            : "Selected on booking"
+          : "Admin to finalize hotel selection";
+        const transportLabel = transportFinalized
+          ? route.transportLabel || "Selected on booking"
+          : "Not finalized yet";
+        const mealLabel = mealFinalized
+          ? route.mealLabel || (route.mealRequest ? "Custom meal request" : "Selected on booking")
+          : "Not finalized yet";
+
+        return (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
+                <BedDouble className="h-4 w-4 text-[#12343b]" />
+                Accommodation option
+              </p>
+              <p className="mt-2 text-sm text-[#5e7279]">{accommodationLabel}</p>
+            </div>
+            <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
+                <Car className="h-4 w-4 text-[#12343b]" />
+                Transport option
+              </p>
+              <p className="mt-2 text-sm text-[#5e7279]">{transportLabel}</p>
+            </div>
+            <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-[#11272b]">
+                <UtensilsCrossed className="h-4 w-4 text-[#12343b]" />
+                Meal option
+              </p>
+              <p className="mt-2 text-sm text-[#5e7279]">{mealLabel}</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {route.mealRequest ? (
         <div className="rounded-xl border border-[#eadfce] bg-white px-4 py-4">

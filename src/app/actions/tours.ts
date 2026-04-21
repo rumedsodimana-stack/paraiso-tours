@@ -464,20 +464,40 @@ export async function scheduleTourFromLeadAction(
 
     let payment = await getPaymentByTourId(tour.id);
     if (!payment) {
-      payment = await createPayment({
-        type: "incoming",
-        amount: totalValue,
-        currency: pkg.currency,
-        description: `Tour: ${pkg.name} – ${clientName}`,
-        clientName: lead.name,
-        reference,
-        leadId: lead.id,
-        tourId: tour.id,
-        invoiceId: invoice?.id,
-        status: guestPaidOnline ? "completed" : "pending",
-        date: new Date().toISOString().slice(0, 10),
-      });
-      createdPaymentId = payment.id;
+      try {
+        payment = await createPayment({
+          type: "incoming",
+          amount: totalValue,
+          currency: pkg.currency,
+          description: `Tour: ${pkg.name} – ${clientName}`,
+          clientName: lead.name,
+          reference,
+          leadId: lead.id,
+          tourId: tour.id,
+          invoiceId: invoice?.id,
+          status: guestPaidOnline ? "completed" : "pending",
+          date: new Date().toISOString().slice(0, 10),
+        });
+        createdPaymentId = payment.id;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        debugLog("createPayment failed during scheduling", {
+          error: msg,
+          leadId: rollbackLeadId,
+          tourId: tour.id,
+        });
+        await rollback?.();
+        await recordAuditEvent({
+          entityType: "lead",
+          entityId: lead.id,
+          action: "schedule_failed",
+          summary: "Tour scheduling failed and changes were rolled back",
+          details: [`Payment could not be created: ${msg}`],
+        });
+        return {
+          error: `Payment could not be created: ${msg}. Check booking totals and try again.`,
+        };
+      }
     } else {
       const updatedPayment = await updatePayment(payment.id, {
         amount: totalValue,
@@ -509,86 +529,105 @@ export async function scheduleTourFromLeadAction(
       payment = updatedPayment;
     }
 
-    await recordAuditEvent({
-      entityType: "lead",
-      entityId: lead.id,
-      action: "tour_scheduled",
-      summary: `Tour scheduled from booking for ${lead.name}`,
-      details: [
-        `Package: ${pkg.name}`,
-        `Dates: ${date} to ${endDate}`,
-        `Total: ${totalValue} ${pkg.currency}`,
-      ],
-    });
+    // Tour + invoice + payment all persisted. From here on, NEVER roll back —
+    // audit events and supplier payables are best-effort. Any error after this
+    // line should not delete the successfully-scheduled tour.
+    rollback = null;
 
-    await recordAuditEvent({
-      entityType: "tour",
-      entityId: tour.id,
-      action: createdTourId ? "created" : "updated",
-      summary: `Tour scheduled for ${clientName}`,
-      details: [
-        `Package: ${pkg.name}`,
-        `Travel window: ${date} to ${endDate}`,
-        `Availability: ${availabilityStatus.replace(/_/g, " ")}`,
-      ],
-    });
+    // Best-effort audit events (recordAuditEvent already catches internally,
+    // but wrap defensively in case of unexpected throws).
+    try {
+      await recordAuditEvent({
+        entityType: "lead",
+        entityId: lead.id,
+        action: "tour_scheduled",
+        summary: `Tour scheduled from booking for ${lead.name}`,
+        details: [
+          `Package: ${pkg.name}`,
+          `Dates: ${date} to ${endDate}`,
+          `Total: ${totalValue} ${pkg.currency}`,
+        ],
+      });
 
-    await recordAuditEvent({
-      entityType: "payment",
-      entityId: payment.id,
-      action: createdPaymentId ? "created" : "updated",
-      summary: `Incoming payment ${createdPaymentId ? "created" : "updated"} for scheduled tour`,
-      details: [
-        `Amount: ${payment.amount} ${payment.currency}`,
-        `Status: ${payment.status}`,
-        `Reference: ${payment.reference ?? reference}`,
-      ],
-    });
+      await recordAuditEvent({
+        entityType: "tour",
+        entityId: tour.id,
+        action: createdTourId ? "created" : "updated",
+        summary: `Tour scheduled for ${clientName}`,
+        details: [
+          `Package: ${pkg.name}`,
+          `Travel window: ${date} to ${endDate}`,
+          `Availability: ${availabilityStatus.replace(/_/g, " ")}`,
+        ],
+      });
 
-    // Create outgoing payable records per supplier (group by supplierId, sum costAmounts)
-    const breakdown = getBookingBreakdownBySupplier(lead, pkg, suppliers);
-    if (breakdown && breakdown.supplierItems.length > 0) {
-      const bySupplier = new Map<string, { name: string; amount: number; currency: string }>();
-      for (const item of breakdown.supplierItems) {
-        if (item.supplierId.startsWith("custom_")) continue;
-        const cost = item.costAmount ?? item.amount;
-        const existing = bySupplier.get(item.supplierId);
-        if (existing) {
-          existing.amount += cost;
-        } else {
-          bySupplier.set(item.supplierId, {
-            name: item.supplierName,
-            amount: cost,
-            currency: item.currency,
-          });
-        }
-      }
-      const today = new Date().toISOString().slice(0, 10);
-      for (const [supplierId, info] of bySupplier) {
-        try {
-          await createPayment({
-            type: "outgoing",
-            amount: info.amount,
-            currency: info.currency,
-            description: `Supplier payable – ${info.name} – ${pkg.name} (${reference})`,
-            supplierId,
-            supplierName: info.name,
-            tourId: tour.id,
-            leadId: lead.id,
-            status: "pending",
-            date: today,
-          });
-        } catch (err) {
-          debugLog("Supplier payable creation failed", {
-            error: err instanceof Error ? err.message : String(err),
-            supplierId,
-            tourId: tour.id,
-          });
-        }
-      }
+      await recordAuditEvent({
+        entityType: "payment",
+        entityId: payment.id,
+        action: createdPaymentId ? "created" : "updated",
+        summary: `Incoming payment ${createdPaymentId ? "created" : "updated"} for scheduled tour`,
+        details: [
+          `Amount: ${payment.amount} ${payment.currency}`,
+          `Status: ${payment.status}`,
+          `Reference: ${payment.reference ?? reference}`,
+        ],
+      });
+    } catch (err) {
+      debugLog("Audit events after scheduling failed", {
+        error: err instanceof Error ? err.message : String(err),
+        tourId: tour.id,
+      });
     }
 
-    rollback = null;
+    // Best-effort supplier payables (outgoing records per supplier).
+    try {
+      const breakdown = getBookingBreakdownBySupplier(lead, pkg, suppliers);
+      if (breakdown && breakdown.supplierItems.length > 0) {
+        const bySupplier = new Map<string, { name: string; amount: number; currency: string }>();
+        for (const item of breakdown.supplierItems) {
+          if (item.supplierId.startsWith("custom_")) continue;
+          const cost = item.costAmount ?? item.amount;
+          const existing = bySupplier.get(item.supplierId);
+          if (existing) {
+            existing.amount += cost;
+          } else {
+            bySupplier.set(item.supplierId, {
+              name: item.supplierName,
+              amount: cost,
+              currency: item.currency,
+            });
+          }
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        for (const [supplierId, info] of bySupplier) {
+          try {
+            await createPayment({
+              type: "outgoing",
+              amount: info.amount,
+              currency: info.currency,
+              description: `Supplier payable – ${info.name} – ${pkg.name} (${reference})`,
+              supplierId,
+              supplierName: info.name,
+              tourId: tour.id,
+              leadId: lead.id,
+              status: "pending",
+              date: today,
+            });
+          } catch (err) {
+            debugLog("Supplier payable creation failed", {
+              error: err instanceof Error ? err.message : String(err),
+              supplierId,
+              tourId: tour.id,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      debugLog("Supplier payables block threw", {
+        error: err instanceof Error ? err.message : String(err),
+        tourId: tour.id,
+      });
+    }
 
     try {
       const scheduleSuppliers = getSuppliersForSchedule(lead, pkg, suppliers);
