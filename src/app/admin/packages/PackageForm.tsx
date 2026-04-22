@@ -806,9 +806,19 @@ export function PackageForm({
               const isOvernight = idx < nights;
               const destObj = destinations.find((d) => d.id === day.destinationId);
 
-              // Hotels for this destination
+              // Hotels for this destination.
+              // STRICT: if the hotel has destinationId set, only show it
+              // when it matches. Hotels with no destinationId set appear
+              // everywhere (legacy data) — admin should tag each hotel
+              // with a destination in Hotels & Suppliers to fix that.
               const destHotels = day.destinationId
-                ? hotels.filter((h) => h.type === "hotel" && (h.destinationId === day.destinationId || !h.destinationId))
+                ? hotels.filter(
+                    (h) =>
+                      h.type === "hotel" &&
+                      (h.destinationId
+                        ? h.destinationId === day.destinationId
+                        : true)
+                  )
                 : [];
 
               // Meal plans for hotels already added to this night

@@ -79,7 +79,7 @@ const Search = z.string().max(200).optional();
 // Leads / bookings
 const SearchLeads = z.object({
   query: Search,
-  status: z.enum(["new", "hold", "cancelled", "won"]).optional(),
+  status: z.enum(["new", "scheduled", "cancelled", "completed"]).optional(),
   limit: LimitS,
 });
 const LeadRef = z.object({ id: Id });
@@ -97,7 +97,7 @@ const CreateLead = z.object({
 const UpdateLead = CreateLead.partial().extend({ id: Id });
 const UpdateLeadStatus = z.object({
   id: Id,
-  status: z.enum(["new", "hold", "cancelled", "won"]),
+  status: z.enum(["new", "scheduled", "cancelled", "completed"]),
 });
 
 // Tours
@@ -294,7 +294,7 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
   {
     name: "update_lead_status",
     category: "update",
-    summary: "Approve or cancel a booking (status: new|hold|won|cancelled).",
+    summary: "Change a booking's status (new/scheduled/completed/cancelled).",
     inputSchema: UpdateLeadStatus,
     handler: async (raw) => {
       const input = UpdateLeadStatus.parse(raw);

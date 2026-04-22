@@ -16,7 +16,10 @@ export default async function LeadsPage({
   const [leads, packages, tours] = await Promise.all([getLeads(), getPackages(), getTours()]);
   const scheduledLeadIds = new Set(tours.map((t) => t.leadId));
   const unscheduledLeads = leads.filter(
-    (lead) => lead.status !== "won" && !scheduledLeadIds.has(lead.id)
+    (lead) =>
+      lead.status !== "scheduled" &&
+      lead.status !== "completed" &&
+      !scheduledLeadIds.has(lead.id)
   );
   const packageNames: Record<string, string> = Object.fromEntries(
     packages.map((p) => [p.id, p.name])

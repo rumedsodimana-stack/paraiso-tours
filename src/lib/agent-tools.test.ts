@@ -105,7 +105,7 @@ test("update_lead_status: schema enforces status enum", () => {
   const t = getTool("update_lead_status");
   const bad = t!.inputSchema.safeParse({ id: "l", status: "approved" });
   assert.equal(bad.success, false);
-  const good = t!.inputSchema.safeParse({ id: "l", status: "won" });
+  const good = t!.inputSchema.safeParse({ id: "l", status: "scheduled" });
   assert.equal(good.success, true);
 });
 

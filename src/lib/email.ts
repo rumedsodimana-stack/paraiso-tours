@@ -785,7 +785,7 @@ export interface BookingStatusChangeParams {
   clientEmail: string;
   packageName: string;
   reference: string;
-  status: "hold" | "cancelled";
+  status: "cancelled";
   notes?: string;
 }
 
@@ -806,15 +806,11 @@ export async function sendBookingStatusChangeEmail(
 
   const bookingLink = `${getBaseUrl()}/booking/${encodeURIComponent(reference)}?email=${encodeURIComponent(email)}`;
 
-  const isHold = status === "hold";
-  const titleColor = isHold ? "#c9922f" : "#7c3a24";
-  const statusLabel = isHold ? "On Hold" : "Cancelled";
-  const headingText = isHold
-    ? "Your booking has been placed on hold"
-    : "Your booking has been cancelled";
-  const bodyText = isHold
-    ? "Your booking is temporarily on hold while we confirm availability. Our team will be in touch shortly."
-    : "Unfortunately, your booking has been cancelled. Please contact us if you have any questions or would like to make a new booking.";
+  const titleColor = "#7c3a24";
+  const statusLabel = "Cancelled";
+  const headingText = "Your booking has been cancelled";
+  const bodyText =
+    "Unfortunately, your booking has been cancelled. Please contact us if you have any questions or would like to make a new booking.";
 
   const html = `
 <!DOCTYPE html>

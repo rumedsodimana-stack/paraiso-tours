@@ -299,8 +299,13 @@ export async function getMarginByTour(input: {
 }
 
 export function getConversionFunnel(leads: { status: string }[]): ConversionFunnelStep[] {
-  const statusOrder = ["new", "contacted", "quoted", "negotiating", "won", "lost"];
-  const labels: Record<string, string> = { new: "New", contacted: "Contacted", quoted: "Quoted", negotiating: "Negotiating", won: "Won", lost: "Lost" };
+  const statusOrder = ["new", "scheduled", "completed", "cancelled"];
+  const labels: Record<string, string> = {
+    new: "New",
+    scheduled: "Scheduled",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  };
   const byStatus = new Map<string, number>();
   for (const s of statusOrder) byStatus.set(s, 0);
   for (const l of leads) {

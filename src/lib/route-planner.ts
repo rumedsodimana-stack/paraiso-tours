@@ -1698,6 +1698,16 @@ function matchesDestinationHotel(
   destination: PlannerDestination,
   hotel: HotelSupplier
 ) {
+  // STRICT match first. If the hotel has an explicit destinationId, only
+  // include it for that destination — no fuzzy keyword bleed. A hotel in
+  // Negombo must not appear under Kandy just because "kandy" is in its
+  // notes.
+  if (hotel.destinationId && hotel.destinationId.trim()) {
+    return hotel.destinationId === destination.id;
+  }
+  // Legacy / unclassified hotels fall back to keyword heuristic so we
+  // don't silently hide them. Admins should set destinationId on every
+  // hotel — once that's done this branch stops being used.
   return (
     textMatchesKeywords(hotel.location, destination.hotelKeywords) ||
     textMatchesKeywords(hotel.name, destination.hotelKeywords) ||

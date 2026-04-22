@@ -306,7 +306,7 @@ export async function acceptQuotationAction(
       email: quotation.contactEmail,
       phone: quotation.contactPhone || "",
       source: "Quotation",
-      status: "won",
+      status: "scheduled",
       destination: quotation.destination,
       travelDate,
       pax,

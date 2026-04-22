@@ -103,7 +103,7 @@ export default async function BookingDetailPage({
   };
 
   const currentStatus = lead.status ?? "new";
-  const isScheduled = currentStatus === "won";
+  const isScheduled = currentStatus === "scheduled" || currentStatus === "completed";
 
   return (
     <div className="space-y-6">

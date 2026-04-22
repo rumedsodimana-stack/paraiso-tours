@@ -49,9 +49,9 @@ function formatTodayHeading() {
 
 const STATUS_LABEL: Record<string, string> = {
   new: "New",
-  hold: "On Hold",
+  scheduled: "Scheduled",
+  completed: "Completed",
   cancelled: "Cancelled",
-  won: "Scheduled",
 };
 
 const TOUR_STATUS_STYLE: Record<string, string> = {
@@ -63,7 +63,7 @@ const TOUR_STATUS_STYLE: Record<string, string> = {
 };
 
 function PipelineBar({ leads }: { leads: Lead[] }) {
-  const statuses = ["new", "hold", "cancelled", "won"] as const;
+  const statuses = ["new", "scheduled", "completed", "cancelled"] as const;
   const counts = Object.fromEntries(
     statuses.map((s) => [s, leads.filter((l) => l.status === s).length])
   );
@@ -179,7 +179,6 @@ function AttentionItems({
       l.status === "new" &&
       hoursAgo(l.updatedAt || l.createdAt) > 48
   );
-  const onHoldLeads = leads.filter((l) => l.status === "hold");
   const items = [
     ...staleLeads.map((l) => ({
       key: l.id,
@@ -188,9 +187,6 @@ function AttentionItems({
     })),
     ...(overdueInvoices > 0
       ? [{ key: "inv", text: `${overdueInvoices} overdue invoice${overdueInvoices > 1 ? "s" : ""}`, href: "/admin/invoices" }]
-      : []),
-    ...(onHoldLeads.length > 0
-      ? [{ key: "hld", text: `${onHoldLeads.length} booking${onHoldLeads.length > 1 ? "s" : ""} on hold`, href: "/admin/bookings" }]
       : []),
   ];
 
@@ -245,11 +241,15 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const activeLeads = leads.filter((l) => l.status !== "won" && l.status !== "cancelled").length;
+  const activeLeads = leads.filter((l) => l.status === "new").length;
   const scheduledTours = tours.filter((t) => t.status !== "cancelled" && t.status !== "completed").length;
   const totalRevenue = tours.filter((t) => t.status !== "cancelled").reduce((s, t) => s + t.totalValue, 0);
   const conversion = leads.length > 0
-    ? Math.round((leads.filter((l) => l.status === "won").length / leads.length) * 100)
+    ? Math.round(
+        (leads.filter((l) => l.status === "scheduled" || l.status === "completed").length /
+          leads.length) *
+          100
+      )
     : 0;
   const overdueInvoices = invoices.filter((i) => i.status === "overdue").length;
   const newLeadsToday = leads.filter(
@@ -290,7 +290,7 @@ export default async function DashboardPage() {
     { label: "Active Bookings", value: activeLeads, sub: newLeadsToday > 0 ? `+${newLeadsToday} today` : null, icon: Users, href: "/admin/bookings" },
     { label: "Scheduled Tours", value: scheduledTours, sub: null, icon: Calendar, href: "/admin/calendar" },
     { label: "Revenue", value: `$${(totalRevenue / 1000).toFixed(1)}k`, sub: null, icon: TrendingUp, href: "/admin/finance" },
-    { label: "Conversion", value: `${conversion}%`, sub: `${leads.filter((l) => l.status === "won").length} won`, icon: null, href: "/admin/bookings" },
+    { label: "Conversion", value: `${conversion}%`, sub: `${leads.filter((l) => l.status === "scheduled" || l.status === "completed").length} scheduled`, icon: null, href: "/admin/bookings" },
     {
       label: "Emails today",
       value: emailsSentToday,
@@ -439,9 +439,9 @@ export default async function DashboardPage() {
                   <span className="font-mono text-xs text-[#8a9ba1]">{lead.reference}</span>
                 )}
                 <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                  lead.status === "won"       ? "bg-[#12343b] text-[#f6ead6]"
+                  lead.status === "scheduled"  ? "bg-[#12343b] text-[#f6ead6]"
                   : lead.status === "new"      ? "bg-[#f3e8ce] text-[#7a5a17]"
-                  : lead.status === "hold"     ? "bg-[#d6e2e5] text-[#294b55]"
+                  : lead.status === "completed" ? "bg-[#dce8dc] text-[#375a3f]"
                   : lead.status === "cancelled"? "bg-[#eed9cf] text-[#7c3a24]"
                   :                             "bg-[#e2e3dd] text-[#545a54]"
                 }`}>

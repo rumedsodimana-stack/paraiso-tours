@@ -3,6 +3,7 @@ import path from "path";
 import { supabase } from "./supabase";
 import { generateDocumentNumber } from "./document-number";
 import { resolveLeadPackage, resolveTourPackage } from "./package-snapshot";
+import { normalizeLeadStatus } from "./types";
 import type {
   AuditEntityType,
   AuditLog,
@@ -223,6 +224,8 @@ export async function getLeads(): Promise<Lead[]> {
   }
   leads = await maybeBackfillReferences(leads);
   leads = leads.filter((lead) => !lead.archivedAt);
+  // Normalize legacy "won" / "hold" statuses to the simplified 4-status model.
+  leads = leads.map((l) => ({ ...l, status: normalizeLeadStatus(l.status) }));
   if (!IS_VERCEL) {
     localCache = localCache ?? {};
     localCache.leads = leads;

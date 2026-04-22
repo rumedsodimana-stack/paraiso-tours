@@ -7,11 +7,10 @@ import { CreateTourForm } from "./CreateTourForm";
 export default async function NewTourPage() {
   const [leads, packages] = await Promise.all([getLeads(), getPackages()]);
 
+  // Any booking that isn't cancelled is bookable (new or already scheduled
+  // — re-scheduling is supported and just updates the tour).
   const bookableLeads = leads.filter(
-    (l) =>
-      l.status === "won" ||
-      l.status === "hold" ||
-      l.status === "new"
+    (l) => l.status !== "cancelled" && l.status !== "completed"
   );
 
   return (

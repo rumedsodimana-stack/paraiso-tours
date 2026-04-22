@@ -315,8 +315,8 @@ export async function executeDecision(state: BookingProcessorStateType) {
 
   // 1. Update lead status to confirmed
   try {
-    await updateLead(state.leadId, { status: "won" });
-    results.push("Lead status → won");
+    await updateLead(state.leadId, { status: "scheduled" });
+    results.push("Lead status → scheduled");
   } catch (err) {
     debugLog("Agent: lead update failed", { error: err instanceof Error ? err.message : String(err) });
     results.push("Lead update failed");

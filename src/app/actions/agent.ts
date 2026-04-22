@@ -227,7 +227,7 @@ async function buildLiveDataContext(): Promise<string> {
     const today = new Date().toISOString().slice(0, 10);
 
     const pendingLeads = leads
-      .filter((l) => l.status === "new" || l.status === "hold")
+      .filter((l) => l.status === "new")
       .slice(0, 8);
     const upcomingTours = tours
       .filter((t) => t.status !== "cancelled" && t.startDate >= today)

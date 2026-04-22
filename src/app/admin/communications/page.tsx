@@ -14,7 +14,7 @@ import { ResendEmailButton } from "./ResendEmailButton";
 
 export const dynamic = "force-dynamic";
 
-type MessageStatus = "sent" | "failed";
+type MessageStatus = "sent" | "failed" | "skipped";
 type MessageTemplate =
   | "tour_confirmation_with_invoice"
   | "supplier_reservation"
@@ -45,12 +45,19 @@ const EMAIL_ACTIONS = new Set([
   "guest_confirmation_email_failed",
   "supplier_reservation_emailed",
   "supplier_reservation_email_failed",
+  "supplier_reservation_email_skipped",
   "payment_receipt_emailed",
   "payment_receipt_email_failed",
   "invoice_emailed",
   "invoice_email_failed",
   "itinerary_emailed",
   "itinerary_email_failed",
+  "pre_trip_reminder_emailed",
+  "pre_trip_reminder_email_failed",
+  "post_trip_followup_emailed",
+  "post_trip_followup_email_failed",
+  "booking_change_notice_emailed",
+  "booking_change_notice_email_failed",
 ]);
 
 function templateFromMetadata(meta: Record<string, unknown> | undefined): MessageTemplate {
@@ -84,7 +91,11 @@ function templateLabel(t: MessageTemplate) {
 function toMessageRow(log: AuditLog): MessageRow | null {
   if (!EMAIL_ACTIONS.has(log.action)) return null;
   const meta = log.metadata ?? {};
-  const status: MessageStatus = log.action.endsWith("_failed") ? "failed" : "sent";
+  const status: MessageStatus = log.action.endsWith("_failed")
+    ? "failed"
+    : log.action.endsWith("_skipped")
+      ? "skipped"
+      : "sent";
   const recipient =
     typeof meta.recipient === "string" && meta.recipient.trim()
       ? meta.recipient.trim()
@@ -243,10 +254,15 @@ export default async function CommunicationsPage({
                           <CheckCircle2 className="h-3 w-3" />
                           Sent
                         </span>
-                      ) : (
+                      ) : m.status === "failed" ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-[#eed9cf] px-2.5 py-1 text-xs font-semibold text-[#7c3a24]">
                           <AlertTriangle className="h-3 w-3" />
                           Failed
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#f3e8ce] px-2.5 py-1 text-xs font-semibold text-[#7a5a17]">
+                          <AlertTriangle className="h-3 w-3" />
+                          Skipped
                         </span>
                       )}
                     </td>

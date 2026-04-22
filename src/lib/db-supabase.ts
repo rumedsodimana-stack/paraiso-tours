@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { mockPackages } from "./mock-data";
 import { generateDocumentNumber } from "./document-number";
 import { resolveLeadPackage, resolveTourPackage } from "./package-snapshot";
+import { normalizeLeadStatus } from "./types";
 import type {
   AuditEntityType,
   AuditLog,
@@ -47,6 +48,8 @@ function asObject<T>(value: unknown): T | undefined {
 }
 
 function toLead(row: Record<string, unknown>): Lead {
+  // Use the shared normalizer so legacy "won" / "hold" values in Supabase
+  // surface as the new simplified status names to all callers.
   return {
     id: String(row.id),
     reference: (row.reference as string | null) ?? undefined,
@@ -54,7 +57,7 @@ function toLead(row: Record<string, unknown>): Lead {
     email: String(row.email),
     phone: (row.phone as string | null) ?? "",
     source: String(row.source),
-    status: row.status as Lead["status"],
+    status: normalizeLeadStatus(row.status),
     destination: (row.destination as string | null) ?? undefined,
     travelDate: (row.travel_date as string | null) ?? undefined,
     pax: (row.pax as number | null) ?? undefined,

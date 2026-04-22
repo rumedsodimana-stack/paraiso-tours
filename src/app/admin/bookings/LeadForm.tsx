@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Lead } from "@/lib/types";
 
 const SOURCES = ["Client Portal", "Manual", "Website", "Referral", "Instagram", "Facebook", "Google", "Email", "Phone", "Walk-in", "Other"];
-const STATUSES = ["new", "contacted", "quoted", "negotiating", "won", "lost"] as const;
+const STATUSES = ["new", "scheduled", "completed", "cancelled"] as const;
 
 export function LeadForm({
   lead,

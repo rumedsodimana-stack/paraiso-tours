@@ -47,7 +47,7 @@ function makeLead(id: string, name: string): Lead {
     email: `${id}@example.com`,
     phone: "",
     source: "Manual",
-    status: "won",
+    status: "scheduled",
     packageId: sharedPackage.id,
     pax: 2,
     selectedAccommodationOptionId: "acc_shared",
@@ -134,7 +134,7 @@ test("assessTourAvailability does not flag snapshot-backed custom tours as misma
     email: "snapshot@example.com",
     phone: "",
     source: "Client Route Builder",
-    status: "won",
+    status: "scheduled",
     pax: 2,
     totalPrice: 200,
     packageSnapshot: createPackageSnapshot({

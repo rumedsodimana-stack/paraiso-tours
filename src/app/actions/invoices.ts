@@ -251,7 +251,7 @@ export async function createInvoiceFromPayment(paymentId: string) {
     email,
     phone: "",
     source: payment.type === "outgoing" ? "Supplier payment" : "Payment record",
-    status: "won",
+    status: "scheduled",
   });
 
   const description =

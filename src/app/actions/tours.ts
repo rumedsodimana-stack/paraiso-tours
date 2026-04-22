@@ -265,9 +265,9 @@ export async function scheduleTourFromLeadAction(
       ]);
     };
 
-    if (lead.status !== "won") {
+    if (lead.status !== "scheduled") {
       const updatedLead = await updateLead(lead.id, {
-        status: "won",
+        status: "scheduled",
         travelDate: date,
       });
       if (!updatedLead) {
@@ -756,6 +756,62 @@ export async function scheduleTourFromLeadAction(
         }
       }
 
+      // Visibility: if no suppliers to email, still log an audit event so
+      // the admin can see in /admin/communications that nothing went out
+      // and why — otherwise it looks like a silent failure.
+      if (!scheduleSuppliers) {
+        await recordAuditEvent({
+          entityType: "tour",
+          entityId: tour.id,
+          action: "supplier_reservation_email_skipped",
+          summary: "No supplier reservation emails sent — booking options are not linked to catalog suppliers.",
+          details: [
+            "Package options (hotel / transport / meal) don't have supplierId set, so the system can't look up contact emails.",
+            "Fix: link package options to real entries in Hotels & Suppliers, or send manually.",
+          ],
+          metadata: {
+            channel: "email",
+            template: "supplier_reservation",
+            status: "skipped",
+            reason: "breakdown_missing",
+          },
+        });
+      } else if (
+        !tour.supplierNotificationsSentAt &&
+        scheduleSuppliers.withEmail.length === 0
+      ) {
+        const missingList = scheduleSuppliers.missing
+          .map((m) => `${m.supplierName} (${m.supplierType})`)
+          .join(", ");
+        await recordAuditEvent({
+          entityType: "tour",
+          entityId: tour.id,
+          action: "supplier_reservation_email_skipped",
+          summary:
+            scheduleSuppliers.missing.length > 0
+              ? `Suppliers identified but have no email on file: ${missingList}`
+              : "No supplier reservation emails to send for this booking.",
+          details:
+            scheduleSuppliers.missing.length > 0
+              ? [
+                  "Fix: open each supplier in Hotels & Suppliers and add an email, then resend from /admin/communications.",
+                ]
+              : [],
+          metadata: {
+            channel: "email",
+            template: "supplier_reservation",
+            status: "skipped",
+            reason: scheduleSuppliers.missing.length > 0 ? "no_email_on_supplier" : "no_suppliers_linked",
+            missing: scheduleSuppliers.missing.map((m) => m.supplierName),
+          },
+        });
+        // Mark so we don't re-log on every repeated schedule attempt.
+        const updatedTour = await updateTour(tour.id, {
+          supplierNotificationsSentAt: new Date().toISOString(),
+        });
+        if (updatedTour) tour = updatedTour;
+      }
+
       if (scheduleSuppliers && !tour.supplierNotificationsSentAt) {
         for (const supplier of scheduleSuppliers.withEmail) {
           try {
@@ -1030,6 +1086,18 @@ export async function markTourCompletedPaidAction(
     if (!updatedTour) {
       await rollback?.();
       return { error: "Tour could not be updated" };
+    }
+
+    // Keep the booking status in sync — a tour marked completed means the
+    // booking itself is completed (simplified 4-status model).
+    try {
+      await updateLead(tour.leadId, { status: "completed" });
+    } catch (err) {
+      debugLog("Failed to mark lead completed after tour completion", {
+        tourId,
+        leadId: tour.leadId,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
 
     const invoice = existingInvoice;

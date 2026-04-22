@@ -1,4 +1,20 @@
-export type LeadStatus = "new" | "hold" | "cancelled" | "won";
+export type LeadStatus = "new" | "scheduled" | "cancelled" | "completed";
+
+/**
+ * Normalize legacy status values to the simplified 4-status model.
+ * Old data may have:
+ *   - "won"  → bookings that were accepted; now "scheduled"
+ *   - "hold" → bookings on hold; collapse to "new" (still awaiting review)
+ */
+export function normalizeLeadStatus(raw: unknown): LeadStatus {
+  const v = typeof raw === "string" ? raw.toLowerCase().trim() : "";
+  if (v === "won") return "scheduled";
+  if (v === "hold") return "new";
+  if (v === "scheduled" || v === "cancelled" || v === "completed" || v === "new") {
+    return v;
+  }
+  return "new";
+}
 
 export interface PackageSnapshot {
   packageId?: string;

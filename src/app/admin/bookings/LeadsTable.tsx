@@ -30,12 +30,12 @@ const statusColors: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   new: "New",
-  hold: "On Hold",
+  scheduled: "Scheduled",
+  completed: "Completed",
   cancelled: "Cancelled",
-  won: "Scheduled",
 };
 
-const STATUSES: LeadStatus[] = ["new", "hold", "cancelled"];
+const STATUSES: LeadStatus[] = ["new", "scheduled", "completed", "cancelled"];
 
 export function LeadsTable({
   initialLeads,
@@ -203,9 +203,9 @@ export function LeadsTable({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {lead.status === "won" ? (
-                        <span className="rounded-full px-3 py-1 text-xs font-semibold bg-[#12343b] text-[#f6ead6]">
-                          Scheduled
+                      {lead.status === "scheduled" || lead.status === "completed" ? (
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${lead.status === "completed" ? "bg-[#e2e3dd] text-[#545a54]" : "bg-[#12343b] text-[#f6ead6]"}`}>
+                          {lead.status === "completed" ? "Completed" : "Scheduled"}
                         </span>
                       ) : (
                         <select

@@ -13,7 +13,7 @@ import { HitlBookingRowActions } from "./HitlBookingRowActions";
 
 export const dynamic = "force-dynamic";
 
-const REVIEWABLE_STATUSES: Lead["status"][] = ["new", "hold"];
+const REVIEWABLE_STATUSES: Lead["status"][] = ["new"];
 
 function shortenText(text: string, max = 140) {
   if (!text) return "";
@@ -134,7 +134,7 @@ export default async function HitlPage() {
                       className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
                         lead.status === "new"
                           ? "bg-[#f3e8ce] text-[#7a5a17]"
-                          : lead.status === "hold"
+                          : lead.status === "cancelled"
                             ? "bg-[#eed9cf] text-[#7c3a24]"
                             : "bg-[#eef4f4] text-[#12343b]"
                       }`}

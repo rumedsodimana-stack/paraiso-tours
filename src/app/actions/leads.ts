@@ -222,7 +222,7 @@ export async function updateLeadStatusAction(id: string, status: LeadStatus) {
     details: [`Client: ${updated.name}`],
   });
 
-  if ((status === "hold" || status === "cancelled") && updated.email?.trim()) {
+  if (status === "cancelled" && updated.email?.trim()) {
     const pkgName = lead.packageSnapshot?.name ?? updated.packageId ?? "your tour";
     const ref = updated.reference ?? updated.id;
     try {

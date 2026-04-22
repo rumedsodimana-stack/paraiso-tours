@@ -10,7 +10,7 @@ export function HitlBookingRowActions({ leadId }: { leadId: string }) {
   const [pending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
 
-  const run = (status: "won" | "cancelled", label: string) => {
+  const run = (status: "scheduled" | "cancelled", label: string) => {
     if (!confirm(`${label} this booking?`)) return;
     setToast(null);
     startTransition(async () => {
@@ -32,10 +32,10 @@ export function HitlBookingRowActions({ leadId }: { leadId: string }) {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          run("won", "Approve");
+          run("scheduled", "Approve");
         }}
         className="inline-flex items-center gap-1 rounded-lg border border-[#dce8dc] bg-[#dce8dc]/40 px-2 py-1 text-xs font-semibold text-[#375a3f] transition hover:bg-[#dce8dc] disabled:opacity-50"
-        title="Approve & mark as won"
+        title="Approve & schedule"
       >
         <CheckCircle2 className="h-3 w-3" />
         Approve
