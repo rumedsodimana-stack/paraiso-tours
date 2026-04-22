@@ -19,7 +19,7 @@ import {
 import { useAdminWorkspace } from "@/stores/admin-workspace.store";
 import { AgentClarification } from "@/components/agent/AgentClarification";
 import { AgentProposals } from "@/components/agent/AgentProposals";
-import { decideAgentAction } from "@/app/actions/agent";
+import { decideAgentAction, executeProposalAction } from "@/app/actions/agent";
 
 /**
  * Client surface for the OODA agent loop. Pulls observation from Zustand
@@ -51,6 +51,45 @@ export function AgentSurface() {
   const [input, setInput] = useState("");
   const [, startTransition] = useTransition();
 
+  // Build an OODA observation from the current store state, appending the
+  // next user utterance. Shared between the initial send and the
+  // continue-after-execute loop so both see the same snapshot shape.
+  const buildObservation = (
+    priorMessages: typeof messages,
+    nextUserText: string
+  ) => ({
+    recentDialogue: priorMessages
+      .slice(-10)
+      .map((m) => ({
+        role: m.role === "tool" ? ("tool" as const) : m.role,
+        content: m.content,
+        toolName: m.toolName,
+      }))
+      .concat([
+        { role: "user" as const, content: nextUserText, toolName: undefined },
+      ]),
+    currentEntity: currentEntity
+      ? {
+          kind: currentEntity.kind,
+          id: currentEntity.id,
+          label: currentEntity.label,
+        }
+      : undefined,
+    recent: recent.map((r) => ({
+      kind: r.kind,
+      id: r.id,
+      label: r.label,
+    })),
+    workingMemory: workingMemory.map((e) => ({
+      kind: e.kind,
+      text: e.text,
+    })),
+    longTermMemory: longTermMemory.map((e) => ({
+      kind: e.kind,
+      text: e.text,
+    })),
+  });
+
   const send = () => {
     const text = input.trim();
     if (!text) return;
@@ -62,33 +101,7 @@ export function AgentSurface() {
     startTransition(async () => {
       try {
         setPhase("orient");
-        const observation = {
-          recentDialogue: messages.slice(-10).map((m) => ({
-            role: m.role === "tool" ? ("tool" as const) : m.role,
-            content: m.content,
-            toolName: m.toolName,
-          })).concat([{ role: "user" as const, content: text, toolName: undefined }]),
-          currentEntity: currentEntity
-            ? {
-                kind: currentEntity.kind,
-                id: currentEntity.id,
-                label: currentEntity.label,
-              }
-            : undefined,
-          recent: recent.map((r) => ({
-            kind: r.kind,
-            id: r.id,
-            label: r.label,
-          })),
-          workingMemory: workingMemory.map((e) => ({
-            kind: e.kind,
-            text: e.text,
-          })),
-          longTermMemory: longTermMemory.map((e) => ({
-            kind: e.kind,
-            text: e.text,
-          })),
-        };
+        const observation = buildObservation(messages, text);
 
         setPhase("decide");
         const result = await decideAgentAction({
@@ -159,13 +172,102 @@ export function AgentSurface() {
     });
   };
 
+  const markProposalExecuted = useAgent((s) => s.markProposalExecuted);
+  const markProposalFailed = useAgent((s) => s.markProposalFailed);
+  const allProposals = useAgent((s) => s.proposals);
+
   const handleProposalApprove = async (proposalId: string) => {
-    // Execution is out of scope for this UI pass — host apps can hook in
-    // a tool-dispatch here. For now we just mark approved in-store.
-    addMessage({
-      role: "assistant",
-      content: `Proposal ${proposalId} approved. Wire a tool dispatcher to execute it.`,
-    });
+    const proposal = allProposals[proposalId];
+    if (!proposal) return;
+
+    setBusy(true);
+    setPhase("act");
+    try {
+      const result = await executeProposalAction({
+        tool: proposal.tool,
+        input: proposal.input,
+        proposalId,
+      });
+
+      if (result.ok) {
+        markProposalExecuted(proposalId, result.data);
+        addMessage({
+          role: "tool",
+          content: result.summary,
+          toolName: proposal.tool,
+        });
+        rememberWorking({
+          kind: "learning",
+          text: `${proposal.tool} succeeded: ${result.summary}`,
+        });
+
+        // Auto-continue the loop: feed the tool result back to the agent
+        // so it can announce the outcome or propose a follow-up.
+        setPhase("observe");
+        const observation = buildObservation(
+          messages,
+          `Tool ${proposal.tool} executed successfully. Summary: ${result.summary}`
+        );
+        setPhase("decide");
+        const follow = await decideAgentAction({
+          request: `I just ran ${proposal.tool}. Result: ${result.summary}. What's the next step, if any?`,
+          observation,
+        });
+        if (follow.ok && follow.decision) {
+          if (follow.decision.kind === "answer") {
+            addMessage({ role: "assistant", content: follow.decision.response });
+          } else if (follow.decision.kind === "propose") {
+            const next = addProposal({
+              title: follow.decision.title,
+              summary: follow.decision.summary,
+              tool: follow.decision.tool,
+              input: follow.decision.input,
+              entityRefs: follow.decision.entityRefs,
+              confidence: follow.decision.confidence,
+            });
+            addMessage({
+              role: "assistant",
+              content: `Done. Next I'd like to run **${follow.decision.title}** (${Math.round(
+                follow.decision.confidence * 100
+              )}% confidence) — approve below.`,
+              proposalId: next.id,
+            });
+          } else if (follow.decision.kind === "clarify" && follow.clarification) {
+            const cr = addClarification({
+              question: follow.clarification.question,
+              suggestions: follow.clarification.suggestions,
+              allowCustomText: true,
+              customPlaceholder: follow.clarification.customPlaceholder,
+            });
+            addMessage({
+              role: "assistant",
+              content: follow.clarification.question,
+              clarificationId: cr.id,
+            });
+          }
+        }
+      } else {
+        markProposalFailed(proposalId, result.error ?? result.summary);
+        addMessage({
+          role: "assistant",
+          content: `⚠️ ${proposal.tool} failed: ${result.error ?? result.summary}`,
+        });
+        rememberWorking({
+          kind: "learning",
+          text: `${proposal.tool} failed: ${result.error ?? result.summary}`,
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      markProposalFailed(proposalId, msg);
+      addMessage({
+        role: "assistant",
+        content: `⚠️ Unexpected execution error: ${msg}`,
+      });
+    } finally {
+      setBusy(false);
+      setPhase("idle");
+    }
   };
 
   const handleProposalReject = async (proposalId: string, reason?: string) => {
