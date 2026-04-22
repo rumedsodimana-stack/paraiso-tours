@@ -245,12 +245,31 @@ async function buildLiveDataContext(): Promise<string> {
     lines.push(
       `Summary: ${leads.length} bookings total, ${pendingLeads.length} pending review, ${upcomingTours.length} upcoming tours, ${overdueInvoices.length} overdue invoices, ${unpaidInvoices.length} unpaid invoices, ${openTodos.length} open todos.`
     );
+    lines.push(
+      "Reminder: this snapshot is a summary. For a full or filtered list, call the matching read tool (search_leads, list_tours, list_invoices, list_payments, list_packages, list_hotels, list_todos)."
+    );
 
     if (pendingLeads.length > 0) {
-      lines.push("\nPending bookings awaiting admin review:");
+      lines.push("\nPending bookings awaiting admin review (sample):");
       for (const l of pendingLeads) {
         lines.push(
           `  - id=${l.id} ref=${l.reference ?? "—"} name="${l.name}" status=${l.status} travel=${l.travelDate ?? "TBD"} pax=${l.pax ?? "—"}`
+        );
+      }
+    }
+
+    // Always include a broader sample of recent leads so the agent has
+    // names to work with even when no status-new bookings exist.
+    const recentLeads = [...leads]
+      .sort((a, b) =>
+        (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")
+      )
+      .slice(0, 10);
+    if (recentLeads.length > 0) {
+      lines.push("\nMost recently updated bookings (any status):");
+      for (const l of recentLeads) {
+        lines.push(
+          `  - id=${l.id} ref=${l.reference ?? "—"} name="${l.name}" status=${l.status} email=${l.email} travel=${l.travelDate ?? "TBD"}`
         );
       }
     }

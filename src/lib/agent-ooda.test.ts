@@ -139,3 +139,16 @@ test("OODA_SYSTEM_PROMPT includes the three decision kinds", () => {
   assert.match(OODA_SYSTEM_PROMPT, /propose/);
   assert.match(OODA_SYSTEM_PROMPT, /JSON/);
 });
+
+test("OODA_SYSTEM_PROMPT forbids I-cannot-retrieve refusals and maps common asks to read tools", () => {
+  // Defensive regression — the agent was caught saying "I cannot retrieve
+  // a list of guest names for pending bookings" when search_leads would
+  // have answered trivially. The prompt must push read-tool proposals.
+  assert.match(OODA_SYSTEM_PROMPT, /NEVER say/i);
+  assert.match(OODA_SYSTEM_PROMPT, /I cannot retrieve/);
+  assert.match(OODA_SYSTEM_PROMPT, /search_leads/);
+  assert.match(OODA_SYSTEM_PROMPT, /list_tours/);
+  assert.match(OODA_SYSTEM_PROMPT, /list_invoices/);
+  assert.match(OODA_SYSTEM_PROMPT, /list_packages/);
+  assert.match(OODA_SYSTEM_PROMPT, /Refusing to fetch available data is a policy violation/);
+});
