@@ -13,7 +13,9 @@ export type AiFeature =
   | "workspace_copilot"
   | "client_concierge"
   | "booking_processor"
-  | "admin_assistant";
+  | "admin_assistant"
+  | "agent_clarifier"
+  | "agent_decide";
 
 export interface AiTextRequest {
   feature: AiFeature;

@@ -84,6 +84,7 @@ const OPERATIONS: NavItem[] = [
   { href: "/admin/bookings", label: "Bookings", icon: Users },
   { href: "/admin/quotations", label: "Quotations", icon: FileText },
   { href: "/admin/calendar", label: "Scheduled Tours", icon: Calendar },
+  { href: "/admin/agent", label: "Agent", icon: Bot },
   { href: "/admin/hitl", label: "Approval Queue", icon: ShieldCheck },
   { href: "/admin/communications", label: "Communications", icon: Inbox },
   { href: "/admin/todos", label: "Todos", icon: ListTodo },
