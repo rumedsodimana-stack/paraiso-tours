@@ -10,7 +10,6 @@ import {
   getPackage,
   getLead,
   updateLead,
-  getInvoice,
   getHotels,
   getTodos,
   createTodo,
@@ -430,46 +429,55 @@ export async function scheduleTourFromLeadAction(
     const clientName = lead.name ?? "Client";
 
     let invoice = await getInvoiceByLeadId(leadId);
+    let invoiceIdForPayment = invoice?.id;
+    let invoiceWarning: string | null = null;
     if (!invoice) {
-      const invResult = await createInvoiceFromLead(leadId);
-      if (invResult.error) {
-        await rollback?.();
-        await recordAuditEvent({
-          entityType: "lead",
-          entityId: lead.id,
-          action: "schedule_failed",
-          summary: "Tour scheduling failed and changes were rolled back",
-          details: [invResult.error],
-        });
-        return { error: invResult.error };
-      }
-      if (invResult.success && invResult.invoiceId) {
-        if (invResult.created) {
-          createdInvoiceId = invResult.invoiceId;
+      try {
+        const invResult = await createInvoiceFromLead(leadId);
+        if (invResult.error) {
+          invoiceWarning = `Invoice was not created automatically: ${invResult.error}`;
+        } else if (invResult.success && invResult.invoiceId) {
+          invoiceIdForPayment = invResult.invoiceId;
+          if (invResult.created) {
+            createdInvoiceId = invResult.invoiceId;
+          }
+          invoice = invResult.invoice;
+          if (!invoice) {
+            invoiceWarning =
+              "Invoice was created, but could not be loaded immediately. You can open it from Invoices after refresh.";
+          }
+        } else {
+          invoiceWarning =
+            "Invoice was not confirmed automatically. You can create it from the booking later.";
         }
-        invoice = await getInvoice(invResult.invoiceId);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        invoiceWarning = `Invoice was not created automatically: ${msg}`;
       }
     }
-    if (!invoice) {
-      await rollback?.();
+
+    if (invoiceWarning) {
+      debugLog("Invoice creation skipped during scheduling", {
+        warning: invoiceWarning,
+        leadId: lead.id,
+        tourId: tour.id,
+      });
       await recordAuditEvent({
         entityType: "lead",
         entityId: lead.id,
-        action: "schedule_failed",
-        summary: "Tour scheduling failed and changes were rolled back",
-        details: [
-          "Invoice could not be created for this booking. Fix the booking data and try again.",
-        ],
+        action: "invoice_followup_needed",
+        summary: "Tour scheduled, but invoice needs follow-up",
+        details: [invoiceWarning],
       });
-      return {
-        error:
-          "Invoice could not be created for this booking. Fix the booking data and try again.",
-      };
     }
 
     // Denormalize tour confirmationId onto the invoice so reconciliation
     // can chain invoice → tour in a single lookup. Best-effort.
-    if (tour.confirmationId && invoice.confirmationId !== tour.confirmationId) {
+    if (
+      invoice &&
+      tour.confirmationId &&
+      invoice.confirmationId !== tour.confirmationId
+    ) {
       try {
         const updatedInv = await updateInvoice(invoice.id, {
           confirmationId: tour.confirmationId,
@@ -497,7 +505,7 @@ export async function scheduleTourFromLeadAction(
           confirmationId: tour.confirmationId,
           leadId: lead.id,
           tourId: tour.id,
-          invoiceId: invoice?.id,
+          invoiceId: invoiceIdForPayment,
           status: guestPaidOnline ? "completed" : "pending",
           date: new Date().toISOString().slice(0, 10),
         });
@@ -529,7 +537,7 @@ export async function scheduleTourFromLeadAction(
         clientName: lead.name,
         reference,
         leadId: lead.id,
-        invoiceId: invoice?.id,
+        invoiceId: invoiceIdForPayment,
         status:
           guestPaidOnline && payment.status !== "completed"
             ? "completed"
@@ -933,7 +941,9 @@ export async function scheduleTourFromLeadAction(
     revalidatePath("/");
     return {
       id: tour.id,
-      warnings: availabilityWarnings,
+      warnings: invoiceWarning
+        ? [...availabilityWarnings, invoiceWarning]
+        : availabilityWarnings,
       availabilityStatus,
     };
   } catch (err) {

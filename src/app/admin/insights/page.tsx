@@ -1,26 +1,36 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  CheckCircle2,
   Info,
+  PackageOpen,
   Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react";
-import { getHotels, getInvoices, getPayments, getTours } from "@/lib/db";
+import {
+  getHotels,
+  getInvoices,
+  getPackages,
+  getPayments,
+  getTours,
+} from "@/lib/db";
 import {
   detectAnomalies,
   getRevenueTrend,
   getSupplierSpend,
 } from "@/lib/finance-insights";
+import { analyzeCatalogHealth } from "@/lib/catalog-health";
 
 export const dynamic = "force-dynamic";
 
 export default async function InsightsPage() {
-  const [tours, invoices, payments, hotels] = await Promise.all([
+  const [tours, invoices, payments, hotels, packages] = await Promise.all([
     getTours(),
     getInvoices(),
     getPayments(),
     getHotels(),
+    getPackages(),
   ]);
 
   const revenueTrend = getRevenueTrend(tours, 6);
@@ -31,6 +41,7 @@ export default async function InsightsPage() {
     .slice(0, 3)
     .reduce((s, r) => s + r.shareOfOutbound, 0);
   const anomalies = detectAnomalies({ tours, invoices, payments });
+  const catalogHealth = analyzeCatalogHealth(hotels, packages);
 
   const trendDelta = (() => {
     if (revenueTrend.length < 2) return null;
@@ -103,6 +114,65 @@ export default async function InsightsPage() {
                 </li>
               );
             })}
+          </ul>
+        )}
+      </section>
+
+      {/* Catalog health — untagged hotels / missing emails / missing supplier IDs */}
+      <section className="paraiso-card rounded-2xl p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <PackageOpen className="h-5 w-5 text-[#c9922f]" />
+          <h2 className="text-lg font-semibold text-[#11272b]">
+            Catalog health ({catalogHealth.gaps.length})
+          </h2>
+          <span className="ml-auto text-xs text-[#8a9ba1]">
+            {catalogHealth.stats.hotelsWithDestination}/{catalogHealth.stats.totalHotels} hotels tagged ·
+            {" "}{catalogHealth.stats.hotelsWithEmail}/{catalogHealth.stats.totalHotels} have email ·
+            {" "}{catalogHealth.stats.optionsWithSupplier}/{catalogHealth.stats.optionsChecked} package options linked
+          </span>
+        </div>
+        {catalogHealth.gaps.length === 0 ? (
+          <div className="flex items-start gap-3 rounded-xl border border-[#dce8dc] bg-[#ebf4ea] px-4 py-3 text-sm text-[#375a3f]">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Everything looks clean. Hotels are all tagged to destinations,
+              suppliers have emails, and every package option is linked to a
+              catalog supplier.
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {catalogHealth.gaps.slice(0, 20).map((g) => {
+              const tone =
+                g.severity === "critical"
+                  ? "border-rose-200 bg-rose-50 text-rose-800"
+                  : g.severity === "warning"
+                    ? "border-amber-200 bg-amber-50 text-amber-900"
+                    : "border-[#e0e4dd] bg-[#f4ecdd] text-[#5e7279]";
+              const Icon = g.severity === "info" ? Info : AlertTriangle;
+              return (
+                <li key={g.id}>
+                  <Link
+                    href={g.fixHref}
+                    className={`flex items-start gap-3 rounded-xl border px-4 py-3 transition hover:-translate-y-px hover:shadow-sm ${tone}`}
+                  >
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{g.title}</p>
+                      <p className="mt-0.5 text-xs opacity-80">{g.detail}</p>
+                    </div>
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-wider opacity-70">
+                      Fix →
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+            {catalogHealth.gaps.length > 20 && (
+              <li className="text-center text-xs text-[#8a9ba1]">
+                …and {catalogHealth.gaps.length - 20} more. Fix the ones above first and refresh.
+              </li>
+            )}
           </ul>
         )}
       </section>

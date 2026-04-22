@@ -50,7 +50,14 @@ export async function createInvoiceFromLead(leadId: string) {
   if (!lead) return { error: "Lead not found" };
 
   const existing = await getInvoiceByLeadId(leadId);
-  if (existing) return { success: true, invoiceId: existing.id, created: false };
+  if (existing) {
+    return {
+      success: true,
+      invoiceId: existing.id,
+      invoice: existing,
+      created: false,
+    };
+  }
 
   lead = await hydrateCustomRouteSnapshot(lead);
 
@@ -131,7 +138,7 @@ export async function createInvoiceFromLead(leadId: string) {
   revalidatePath("/admin/invoices");
   revalidatePath(`/admin/invoices/${invoice.id}`);
   revalidatePath(`/admin/bookings/${leadId}`);
-  return { success: true, invoiceId: invoice.id, created: true };
+  return { success: true, invoiceId: invoice.id, invoice, created: true };
 }
 
 /**
