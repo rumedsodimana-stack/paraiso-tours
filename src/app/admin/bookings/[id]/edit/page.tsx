@@ -3,7 +3,6 @@ import { ArrowLeft, DollarSign, Building2, Car, UtensilsCrossed } from "lucide-r
 import { getLead, getPackages, getPackage, getHotels } from "@/lib/db";
 import { getAuditLogsForEntities } from "@/lib/audit";
 import { getCustomRouteMetaFromAuditLogs } from "@/lib/custom-route-booking";
-import { LeadForm } from "../../LeadForm";
 import { UpdateLeadForm } from "./UpdateLeadForm";
 import { BookingSupplierBreakdown } from "../../BookingSupplierBreakdown";
 import { CustomRouteBreakdown } from "../../CustomRouteBreakdown";
@@ -51,9 +50,9 @@ export default async function EditLeadPage({
         <h1 className="text-2xl font-semibold text-[#11272b]">Edit Booking</h1>
         <p className="mt-1 text-[#5e7279]">{lead.name}</p>
         {lead.reference && (
-          <div className="mt-4 rounded-xl bg-teal-50 px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-teal-700">Booking Reference</p>
-            <p className="mt-1 font-mono text-lg font-semibold text-teal-900">{lead.reference}</p>
+          <div className="mt-4 rounded-xl border border-[#e0e4dd] bg-[#eef4f4] px-4 py-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-[#5e7279]">Booking Reference</p>
+            <p className="mt-1 font-mono text-lg font-semibold text-[#12343b]">{lead.reference}</p>
           </div>
         )}
         {!pkg && customRoute ? (
@@ -63,8 +62,8 @@ export default async function EditLeadPage({
         ) : null}
         {lead.totalPrice != null && pkg && (lead.selectedAccommodationOptionId || (lead.selectedAccommodationByNight && Object.keys(lead.selectedAccommodationByNight).length > 0) || lead.selectedTransportOptionId || lead.selectedMealOptionId) && (
           <div className="mt-4 space-y-4">
-            <div className="rounded-xl border border-teal-200 bg-teal-50/50 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-teal-700">Selected options</p>
+            <div className="rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-[#5e7279]">Selected options</p>
               <div className="mt-2 space-y-1 text-sm">
                 {lead.selectedAccommodationByNight && Object.keys(lead.selectedAccommodationByNight).length > 0 ? (
                   <div className="space-y-1">
@@ -93,7 +92,7 @@ export default async function EditLeadPage({
                     Meal: {pkg.mealOptions?.find((o) => o.id === lead.selectedMealOptionId)?.label ?? "—"}
                   </p>
                 )}
-                <p className="mt-2 flex items-center gap-2 font-semibold text-teal-800">
+                <p className="mt-2 flex items-center gap-2 font-semibold text-[#12343b]">
                   <DollarSign className="h-4 w-4" />
                   Total: {lead.totalPrice.toLocaleString()} {pkg.currency}
                 </p>

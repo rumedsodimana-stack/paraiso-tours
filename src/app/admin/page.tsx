@@ -280,8 +280,9 @@ export default async function DashboardPage() {
           <div>
             <p className="font-semibold">Data persistence not configured</p>
             <p className="mt-0.5 text-[#9a7230]">
-              Set <code className="rounded bg-[#f3e8ce] px-1 font-mono text-xs">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-              <code className="rounded bg-[#f3e8ce] px-1 font-mono text-xs">SUPABASE_SERVICE_ROLE_KEY</code> in Vercel.
+              Your hosting environment is missing the database credentials.
+              Ask your technical administrator to configure them before
+              creating bookings — changes will not be saved until then.
             </p>
           </div>
         </div>

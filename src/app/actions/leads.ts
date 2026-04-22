@@ -91,7 +91,7 @@ export async function createLeadAction(formData: FormData) {
     if (err instanceof Error && "digest" in err && String(err.message).includes("NEXT_REDIRECT")) {
       throw err;
     }
-    console.error("createLeadAction error:", err);
+    debugLog("createLeadAction error", { error: err instanceof Error ? err.message : String(err) });
     return { error: err instanceof Error ? err.message : "Failed to create booking. Please try again." };
   }
 }

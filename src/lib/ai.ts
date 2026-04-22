@@ -754,6 +754,11 @@ export async function generateAiText(request: AiTextRequest): Promise<AiTextResp
   if (!runtime.configured) {
     throw new Error(runtime.missingReason || "AI is not configured.");
   }
+
+  // Hard budget cap — refuse further requests once today's spend exceeds
+  // 1.5× the configured alert threshold. The alert threshold is a soft
+  // warning; this is a hard stop. Admins can raise the budget in settings.
+  await enforceDailyBudgetCap(settings.ai.dailyBudgetAlertUsd);
   if (!isFeatureEnabled(request.feature, settings)) {
     throw new Error("This AI tool is disabled in settings.");
   }
@@ -838,6 +843,31 @@ export async function generateAiJson<T>(request: AiTextRequest): Promise<T> {
 
 function getTodayDateKey() {
   return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Hard daily spend cap. When set budget > 0, refuses to make new AI calls
+ * once today's spend exceeds 1.5× the alert threshold (which is the soft
+ * warning tier). Throws a friendly, admin-readable error so callers can
+ * surface it in the UI. No-op if budget is 0 or AI is disabled.
+ */
+async function enforceDailyBudgetCap(dailyBudgetAlertUsd: number): Promise<void> {
+  if (!dailyBudgetAlertUsd || dailyBudgetAlertUsd <= 0) return;
+  const hardCap = dailyBudgetAlertUsd * 1.5;
+  const interactions = await getAiInteractions(1000);
+  const todayKey = getTodayDateKey();
+  let todaySpend = 0;
+  for (const i of interactions) {
+    if (i.createdAt.startsWith(todayKey)) {
+      todaySpend += i.estimatedCostUsd ?? 0;
+    }
+  }
+  if (todaySpend >= hardCap) {
+    throw new Error(
+      `AI daily budget cap reached (est. $${todaySpend.toFixed(2)} ≥ $${hardCap.toFixed(2)}). ` +
+        "Raise the budget in admin settings or wait until tomorrow."
+    );
+  }
 }
 
 export async function maybeRaiseAiBudgetAlert() {

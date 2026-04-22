@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { getAiInteractions, getLeads, getTours } from "@/lib/db";
 import type { Lead } from "@/lib/types";
+import { HitlBookingRowActions } from "./HitlBookingRowActions";
 
 export const dynamic = "force-dynamic";
 
@@ -110,25 +111,25 @@ export default async function HitlPage() {
         ) : (
           <ul className="divide-y divide-[#e0e4dd]">
             {awaitingApproval.slice(0, 20).map((lead) => (
-              <li key={lead.id}>
+              <li key={lead.id} className="flex items-start justify-between gap-4 py-3 px-3 -mx-3">
                 <Link
                   href={`/admin/bookings/${lead.id}`}
-                  className="flex items-start justify-between gap-4 py-3 transition hover:bg-[#f4ecdd] rounded-xl px-3 -mx-3"
+                  className="min-w-0 flex-1 transition rounded-xl hover:bg-[#f4ecdd] -mx-2 px-2 py-1"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-[#11272b]">{lead.name}</p>
-                    <p className="mt-0.5 text-xs text-[#5e7279]">
-                      {lead.email}
-                      {lead.travelDate && ` · travel ${lead.travelDate}`}
-                      {lead.pax != null && ` · ${lead.pax} pax`}
+                  <p className="font-medium text-[#11272b]">{lead.name}</p>
+                  <p className="mt-0.5 text-xs text-[#5e7279]">
+                    {lead.email}
+                    {lead.travelDate && ` · travel ${lead.travelDate}`}
+                    {lead.pax != null && ` · ${lead.pax} pax`}
+                  </p>
+                  {lead.notes && (
+                    <p className="mt-1 text-xs text-[#8a9ba1]">
+                      {shortenText(lead.notes)}
                     </p>
-                    {lead.notes && (
-                      <p className="mt-1 text-xs text-[#8a9ba1]">
-                        {shortenText(lead.notes)}
-                      </p>
-                    )}
-                  </div>
-                  <div className="shrink-0 text-right">
+                  )}
+                </Link>
+                <div className="shrink-0 flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
                         lead.status === "new"
@@ -140,12 +141,13 @@ export default async function HitlPage() {
                     >
                       {lead.status}
                     </span>
-                    <p className="mt-1 text-xs text-[#8a9ba1]">
+                    <span className="text-xs text-[#8a9ba1]">
                       <Clock className="inline h-3 w-3 mr-0.5" />
                       {timeAgo(lead.updatedAt || lead.createdAt)}
-                    </p>
+                    </span>
                   </div>
-                </Link>
+                  <HitlBookingRowActions leadId={lead.id} />
+                </div>
               </li>
             ))}
           </ul>
