@@ -75,6 +75,162 @@ function getSignatureHtml(
   )}<br>${escapeHtml(branding.tagline || branding.companyName)}</p>`;
 }
 
+// ── Paraiso-branded email shell ────────────────────────────────────────
+//
+// All guest-facing templates should use buildBrandedEmail() for a
+// consistent, on-brand look. Design tokens map to the admin palette so
+// the emails feel like they come from the same product.
+//
+//   cream   #fdf7ea  page background
+//   cream2  #f7ebd0  card background
+//   navy    #12343b  header + primary accent
+//   gold    #c9922f  secondary accent / CTAs
+//   ink     #11272b  headings
+//   slate   #5e7279  body text
+//   muted   #8a9ba1  labels / meta
+//   border  #e0d4bc  dividers
+//
+// Everything uses inline styles (email clients strip <style>).
+
+export interface BrandedEmailSection {
+  /** Optional heading shown above the content in muted uppercase. */
+  label?: string;
+  /** Either free HTML (body) or structured rows (for key/value tables). */
+  body?: string;
+  rows?: Array<{ label: string; value: string; emphasis?: boolean }>;
+  /** Visual treatment. "callout" highlights the section, "card" boxes it. */
+  variant?: "card" | "callout-warm" | "callout-ok" | "callout-warn" | "plain";
+}
+
+export interface BrandedEmailOpts {
+  preheader?: string;
+  eyebrow?: string; // small uppercase label above title, e.g. "Booking received"
+  title: string;
+  greeting?: string; // "Hello Jane,"
+  intro?: string; // opening paragraph
+  sections?: BrandedEmailSection[];
+  primaryCta?: { label: string; href: string };
+  secondaryCta?: { label: string; href: string };
+  closing?: string; // closing paragraph before sign-off
+}
+
+function renderSection(s: BrandedEmailSection): string {
+  const variant = s.variant ?? "plain";
+  const wrap = {
+    card: "background:#ffffff;border:1px solid #e0d4bc;border-radius:12px;padding:18px 20px;",
+    "callout-warm":
+      "background:#f7ebd0;border-left:4px solid #c9922f;border-radius:8px;padding:14px 18px;",
+    "callout-ok":
+      "background:#e7f0e3;border-left:4px solid #4a7c47;border-radius:8px;padding:14px 18px;",
+    "callout-warn":
+      "background:#fde8d7;border-left:4px solid #c9502f;border-radius:8px;padding:14px 18px;",
+    plain: "",
+  }[variant];
+
+  const pieces: string[] = [];
+  if (s.label) {
+    pieces.push(
+      `<p style="margin:0 0 10px 0;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8a9ba1;font-weight:600;">${escapeHtml(s.label)}</p>`
+    );
+  }
+  if (s.rows && s.rows.length > 0) {
+    const trs = s.rows
+      .map(
+        (r) =>
+          `<tr><td style="padding:10px 0;font-size:14px;color:#8a9ba1;width:40%;border-bottom:1px solid #f0e4c8;">${escapeHtml(
+            r.label
+          )}</td><td style="padding:10px 0;font-size:14px;color:#11272b;${r.emphasis ? "font-weight:700;" : ""}border-bottom:1px solid #f0e4c8;">${r.value}</td></tr>`
+      )
+      .join("");
+    pieces.push(
+      `<table style="width:100%;border-collapse:collapse;">${trs}</table>`
+    );
+  }
+  if (s.body) pieces.push(s.body);
+  const inner = pieces.join("");
+  return wrap
+    ? `<div style="${wrap}margin:18px 0;">${inner}</div>`
+    : `<div style="margin:18px 0;">${inner}</div>`;
+}
+
+function renderButton(
+  cta: { label: string; href: string },
+  kind: "primary" | "secondary"
+): string {
+  const styles =
+    kind === "primary"
+      ? "background:#12343b;color:#f6ead6;"
+      : "background:#ffffff;color:#12343b;border:1px solid #12343b;";
+  return `<a href="${cta.href}" style="display:inline-block;padding:12px 22px;border-radius:999px;font-weight:600;text-decoration:none;font-size:14px;letter-spacing:0.3px;${styles}">${escapeHtml(cta.label)}</a>`;
+}
+
+/**
+ * Build a branded HTML email. Inline styles only, tested in common clients.
+ */
+export function buildBrandedEmail(
+  opts: BrandedEmailOpts,
+  branding: Awaited<ReturnType<typeof getEmailBranding>>
+): string {
+  const sectionsHtml = (opts.sections ?? []).map(renderSection).join("");
+  const ctaRow =
+    opts.primaryCta || opts.secondaryCta
+      ? `<div style="margin:28px 0;text-align:left;">
+          ${opts.primaryCta ? renderButton(opts.primaryCta, "primary") : ""}
+          ${opts.secondaryCta ? ` <span style="display:inline-block;width:8px;"></span>${renderButton(opts.secondaryCta, "secondary")}` : ""}
+         </div>`
+      : "";
+  const preheader = opts.preheader
+    ? `<div style="display:none;max-height:0;overflow:hidden;color:transparent;font-size:1px;line-height:1px;">${escapeHtml(opts.preheader)}</div>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#fdf7ea;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;color:#11272b;line-height:1.6;">
+${preheader}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fdf7ea;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px -16px rgba(17,39,43,0.18);">
+        <!-- Header band -->
+        <tr>
+          <td style="background:#12343b;padding:22px 28px;">
+            <div style="font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#c9922f;font-weight:700;">${escapeHtml(branding.companyName)}</div>
+            <div style="margin-top:4px;font-size:12px;color:#e5dccd;">${escapeHtml(branding.tagline || "Sri Lanka travel, shaped around your route")}</div>
+          </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+          <td style="padding:32px 28px 12px 28px;">
+            ${opts.eyebrow ? `<p style="margin:0 0 8px 0;font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:#c9922f;font-weight:700;">${escapeHtml(opts.eyebrow)}</p>` : ""}
+            <h1 style="margin:0 0 18px 0;font-size:22px;line-height:1.3;color:#11272b;font-weight:700;">${escapeHtml(opts.title)}</h1>
+            ${opts.greeting ? `<p style="margin:0 0 12px 0;font-size:15px;color:#11272b;">${escapeHtml(opts.greeting)}</p>` : ""}
+            ${opts.intro ? `<p style="margin:0 0 16px 0;font-size:15px;color:#11272b;">${escapeHtml(opts.intro)}</p>` : ""}
+            ${sectionsHtml}
+            ${ctaRow}
+            ${opts.closing ? `<p style="margin:20px 0 4px 0;font-size:15px;color:#11272b;">${escapeHtml(opts.closing)}</p>` : ""}
+            <p style="margin:24px 0 0 0;font-size:13px;color:#5e7279;">${escapeHtml(getQuestionsLine(branding))}</p>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 28px 28px 28px;border-top:1px solid #f0e4c8;">
+            <p style="margin:0;font-size:13px;color:#11272b;font-weight:700;">— ${escapeHtml(branding.companyName)}</p>
+            <p style="margin:2px 0 0 0;font-size:12px;color:#5e7279;">${escapeHtml(branding.tagline || branding.companyName)}</p>
+            <p style="margin:8px 0 0 0;font-size:11px;color:#8a9ba1;">${escapeHtml(branding.email)} · you received this because you interacted with ${escapeHtml(branding.companyName)}.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+}
+
 function getBaseUrl(): string {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (configuredUrl) return configuredUrl;
@@ -124,30 +280,38 @@ export async function sendTourConfirmationEmail(
     ? `${getBaseUrl()}/booking/${encodeURIComponent(reference)}?email=${encodeURIComponent(email)}`
     : null;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0d9488;">Your tour has been scheduled</h2>
-  <p>Hello ${escapeHtml(clientName)},</p>
-  <p>We're excited to confirm your tour with ${escapeHtml(branding.companyName)}.</p>
-  <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Package</td><td style="padding: 12px 16px;">${escapeHtml(packageName)}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Start date</td><td style="padding: 12px 16px;">${startFmt}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">End date</td><td style="padding: 12px 16px;">${endFmt}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Travelers</td><td style="padding: 12px 16px;">${pax} ${pax === 1 ? "person" : "people"}</td></tr>
-    ${reference ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Reference</td><td style="padding: 12px 16px; font-mono: monospace;">${escapeHtml(reference)}</td></tr>` : ""}
-  </table>
-  ${bookingLink ? `<p><a href="${bookingLink}" style="color: #0d9488; font-weight: 600;">View your booking online</a></p>` : ""}
-  <p>${escapeHtml(getQuestionsLine(branding))}</p>
-  ${getSignatureHtml(branding)}
-</body>
-</html>
-  `.trim();
+  const html = buildBrandedEmail(
+    {
+      preheader: `Your tour is scheduled. ${startFmt} to ${endFmt}.`,
+      eyebrow: "Tour scheduled",
+      title: `You're booked, ${clientName.split(/\s+/)[0] || clientName}`,
+      intro: `Great news — we've locked in your dates for ${packageName}. The details below, and the full itinerary to follow shortly.`,
+      sections: [
+        {
+          label: "Your trip",
+          variant: "card",
+          rows: [
+            { label: "Package", value: escapeHtml(packageName), emphasis: true },
+            { label: "Start", value: startFmt },
+            { label: "End", value: endFmt },
+            {
+              label: "Travelers",
+              value: `${pax} ${pax === 1 ? "person" : "people"}`,
+            },
+            ...(reference
+              ? [{ label: "Reference", value: escapeHtml(reference) }]
+              : []),
+          ],
+        },
+      ],
+      ...(bookingLink
+        ? { primaryCta: { label: "View my booking online", href: bookingLink } }
+        : {}),
+      closing:
+        "Any last updates — flight info, dietary needs, pickup points — just reply. We'll re-confirm everything the week before travel.",
+    },
+    branding
+  );
 
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
@@ -205,55 +369,49 @@ export async function sendBookingRequestConfirmation(
         day: "numeric",
       })
     : null;
-  const bookingLink = `${getBaseUrl()}/my-bookings?email=${encodeURIComponent(email)}`;
   const viewByRefLink = `${getBaseUrl()}/booking/${encodeURIComponent(reference)}?email=${encodeURIComponent(email)}`;
+  const bookingsLink = `${getBaseUrl()}/my-bookings?email=${encodeURIComponent(email)}`;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 32px; background: #fafaf9;">
-  <div style="border-left: 4px solid #0d9488; padding-left: 24px; margin-bottom: 28px;">
-    <p style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #0d9488; font-weight: 600;">Booking received</p>
-    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">${escapeHtml(branding.companyName)}</p>
-  </div>
-
-  <p style="margin: 0 0 20px 0;">Hello ${escapeHtml(clientName)},</p>
-
-  <p style="margin: 0 0 20px 0;">
-    Thank you for your booking request. We have received it and will get back to you shortly.
-  </p>
-
-  <table style="width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-    <tr><td colspan="2" style="padding: 14px 18px; background: #f1f5f9; font-weight: 600; color: #334155;">Your booking request</td></tr>
-    <tr><td style="padding: 12px 18px; color: #64748b; width: 42%;">Booking reference</td><td style="padding: 12px 18px; font-family: monospace; font-weight: 600;">${escapeHtml(reference)}</td></tr>
-    <tr><td style="padding: 12px 18px; color: #64748b;">Package</td><td style="padding: 12px 18px;">${escapeHtml(packageName)}</td></tr>
-    ${travelDateFmt ? `<tr><td style="padding: 12px 18px; color: #64748b;">Travel date</td><td style="padding: 12px 18px;">${travelDateFmt}</td></tr>` : ""}
-    <tr><td style="padding: 12px 18px; color: #64748b;">Travelers</td><td style="padding: 12px 18px;">${pax} ${pax === 1 ? "person" : "people"}</td></tr>
-  </table>
-
-  <p style="margin: 0 0 20px 0;">
-    <strong>What happens next?</strong><br>
-    Our team will review your request and confirm availability. You will receive a confirmation email with your full itinerary and invoice once everything is set.
-  </p>
-
-  <p style="margin: 0 0 24px 0;">
-    <a href="${bookingLink}" style="color: #0d9488; font-weight: 600;">View your bookings</a> &middot; <a href="${viewByRefLink}" style="color: #0d9488; font-weight: 600;">View by reference</a>
-  </p>
-
-  <p style="margin: 0 0 8px 0;">${escapeHtml(getQuestionsLine(branding))}</p>
-
-  <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 28px;">
-    <tr><td style="font-size: 15px; font-weight: 700; color: #0d9488;">${escapeHtml(branding.companyName)}</td></tr>
-    <tr><td style="font-size: 13px; color: #64748b;">${escapeHtml(branding.tagline || branding.companyName)}</td></tr>
-    <tr><td style="font-size: 12px; color: #94a3b8;">${escapeHtml(branding.email)}</td></tr>
-  </table>
-</body>
-</html>
-  `.trim();
+  const html = buildBrandedEmail(
+    {
+      preheader: `We received your request for ${packageName} (ref ${reference}). Our team will confirm shortly.`,
+      eyebrow: "Booking received",
+      title: `We've got your request, ${clientName.split(/\s+/)[0] || clientName}`,
+      intro:
+        "Thank you for choosing us to shape this trip. Your request is in — a specialist will review it and come back to you with confirmed availability, an itinerary, and an invoice.",
+      sections: [
+        {
+          label: "Your booking",
+          variant: "card",
+          rows: [
+            { label: "Reference", value: escapeHtml(reference), emphasis: true },
+            { label: "Package", value: escapeHtml(packageName) },
+            ...(travelDateFmt
+              ? [{ label: "Travel date", value: travelDateFmt }]
+              : []),
+            {
+              label: "Travelers",
+              value: `${pax} ${pax === 1 ? "person" : "people"}`,
+            },
+          ],
+        },
+        {
+          label: "What happens next",
+          variant: "callout-warm",
+          body: `<ol style="margin:0;padding-left:18px;font-size:14px;color:#11272b;">
+            <li style="margin-bottom:6px;">Our team checks availability across your selected hotels, transport, and meal plan.</li>
+            <li style="margin-bottom:6px;">We confirm (or suggest alternatives) by email within 24 hours on business days.</li>
+            <li style="margin-bottom:6px;">Once you approve, you'll receive a detailed itinerary, invoice, and payment link.</li>
+          </ol>`,
+        },
+      ],
+      primaryCta: { label: "View this booking", href: viewByRefLink },
+      secondaryCta: { label: "All my bookings", href: bookingsLink },
+      closing:
+        "If anything has changed since you submitted — dates, travelers, dietary needs — just reply to this email and we'll update your request.",
+    },
+    branding
+  );
 
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
@@ -303,31 +461,47 @@ export async function sendTourConfirmationWithInvoice(
     ? `${getBaseUrl()}/booking/${encodeURIComponent(reference)}?email=${encodeURIComponent(email)}`
     : null;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0d9488;">Your tour has been scheduled</h2>
-  <p>Hello ${escapeHtml(clientName)},</p>
-  <p>We're excited to confirm your tour with ${escapeHtml(branding.companyName)}.</p>
-  <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Package</td><td style="padding: 12px 16px;">${escapeHtml(packageName)}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Start date</td><td style="padding: 12px 16px;">${startFmt}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">End date</td><td style="padding: 12px 16px;">${endFmt}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Travelers</td><td style="padding: 12px 16px;">${pax} ${pax === 1 ? "person" : "people"}</td></tr>
-    ${reference ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Reference</td><td style="padding: 12px 16px; font-mono: monospace;">${escapeHtml(reference)}</td></tr>` : ""}
-  </table>
-  ${invoice ? `<p>Please find your invoice attached.</p>` : ""}
-  ${bookingLink ? `<p><a href="${bookingLink}" style="color: #0d9488; font-weight: 600;">View your booking online</a></p>` : ""}
-  <p>${escapeHtml(getQuestionsLine(branding))}</p>
-  ${getSignatureHtml(branding)}
-</body>
-</html>
-  `.trim();
+  const html = buildBrandedEmail(
+    {
+      preheader: `Your ${packageName} is confirmed. Travel ${startFmt} to ${endFmt}.`,
+      eyebrow: "Tour confirmed",
+      title: `You're booked, ${clientName.split(/\s+/)[0] || clientName}`,
+      intro: `We've locked in your tour. Here's everything at a glance — your full itinerary${invoice ? " and invoice are" : " is"} attached.`,
+      sections: [
+        {
+          label: "Your trip",
+          variant: "card",
+          rows: [
+            { label: "Package", value: escapeHtml(packageName), emphasis: true },
+            { label: "Start", value: startFmt },
+            { label: "End", value: endFmt },
+            {
+              label: "Travelers",
+              value: `${pax} ${pax === 1 ? "person" : "people"}`,
+            },
+            ...(reference
+              ? [{ label: "Reference", value: escapeHtml(reference) }]
+              : []),
+          ],
+        },
+        ...(invoice
+          ? [
+              {
+                label: "Payment",
+                variant: "callout-warm" as const,
+                body: `<p style="margin:0;font-size:14px;color:#11272b;">Your invoice for <b>${invoice.totalAmount.toLocaleString()} ${escapeHtml(invoice.currency)}</b> (status: ${escapeHtml(invoice.status.replace(/_/g, " "))}) is attached as a PDF. We'll follow up with payment instructions and reminders before travel.</p>`,
+              },
+            ]
+          : []),
+      ],
+      ...(bookingLink
+        ? { primaryCta: { label: "View my booking online", href: bookingLink } }
+        : {}),
+      closing:
+        "Any last tweaks — flight times, dietary needs, pickup details — just reply to this email. We'll confirm everything again a few days before you travel.",
+    },
+    branding
+  );
 
   const attachments: { filename: string; content: Buffer }[] = [];
   if (invoice) {
@@ -877,29 +1051,35 @@ export async function sendPaymentReceiptEmail(
 
   const dateFmt = date ? new Date(date).toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0d9488;">Payment received – thank you</h2>
-  <p>Hello ${escapeHtml(clientName)},</p>
-  <p>We have received your payment for the following:</p>
-  <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Description</td><td style="padding: 12px 16px;">${escapeHtml(description)}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Amount paid</td><td style="padding: 12px 16px; font-weight: 600; color: #059669;">${amount.toLocaleString()} ${currency}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Date</td><td style="padding: 12px 16px;">${dateFmt}</td></tr>
-    ${reference ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Reference</td><td style="padding: 12px 16px; font-mono: monospace;">${escapeHtml(reference)}</td></tr>` : ""}
-  </table>
-  <p>Your journey is now marked as completed and paid. We look forward to welcoming you.</p>
-  <p>${escapeHtml(getQuestionsLine(branding))}</p>
-  ${getSignatureHtml(branding)}
-</body>
-</html>
-  `.trim();
+  const html = buildBrandedEmail(
+    {
+      preheader: `Payment of ${amount.toLocaleString()} ${currency} received. Thank you.`,
+      eyebrow: "Payment received",
+      title: `Thank you, ${clientName.split(/\s+/)[0] || clientName}`,
+      intro: "We've received your payment. Keep this email as your receipt.",
+      sections: [
+        {
+          label: "Receipt",
+          variant: "card",
+          rows: [
+            { label: "For", value: escapeHtml(description) },
+            {
+              label: "Amount",
+              value: `${amount.toLocaleString()} ${escapeHtml(currency)}`,
+              emphasis: true,
+            },
+            { label: "Date", value: dateFmt },
+            ...(reference
+              ? [{ label: "Reference", value: escapeHtml(reference) }]
+              : []),
+          ],
+        },
+      ],
+      closing:
+        "Your tour is now marked completed and paid. We'd love to hear how the trip went — a short reply is always welcome.",
+    },
+    branding
+  );
 
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
@@ -946,30 +1126,42 @@ export async function sendInvoiceEmail(
     ? `This invoice is fully paid.`
     : `Please settle ${totalFmt} at your earliest convenience.`;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0d9488;">Invoice ${escapeHtml(invoice.invoiceNumber)}</h2>
-  <p>Hello ${escapeHtml(clientName)},</p>
-  <p>Please find your invoice from ${escapeHtml(branding.companyName)} attached.</p>
-  ${note ? `<p style="padding:12px 16px;background:#f8fafc;border-radius:8px;">${escapeHtml(note)}</p>` : ""}
-  <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Invoice</td><td style="padding: 12px 16px;">${escapeHtml(invoice.invoiceNumber)}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Status</td><td style="padding: 12px 16px; text-transform: capitalize;">${escapeHtml(statusLabel)}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Amount</td><td style="padding: 12px 16px; font-weight: 600; color: #0d9488;">${totalFmt}</td></tr>
-    ${invoice.reference ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Reference</td><td style="padding: 12px 16px;">${escapeHtml(invoice.reference)}</td></tr>` : ""}
-  </table>
-  <p>${dueLine}</p>
-  <p>${escapeHtml(getQuestionsLine(branding))}</p>
-  ${getSignatureHtml(branding)}
-</body>
-</html>
-  `.trim();
+  const html = buildBrandedEmail(
+    {
+      preheader: `Invoice ${invoice.invoiceNumber} — ${totalFmt} — ${statusLabel}`,
+      eyebrow: `Invoice ${invoice.invoiceNumber}`,
+      title: `Your invoice, ${clientName.split(/\s+/)[0] || clientName}`,
+      intro: `Your invoice from ${branding.companyName} is attached as a PDF. The key details are below.`,
+      sections: [
+        ...(note
+          ? [
+              {
+                label: "From the team",
+                variant: "callout-warm" as const,
+                body: `<p style="margin:0;font-size:14px;color:#11272b;">${escapeHtml(note)}</p>`,
+              },
+            ]
+          : []),
+        {
+          label: "Invoice",
+          variant: "card",
+          rows: [
+            { label: "Number", value: escapeHtml(invoice.invoiceNumber), emphasis: true },
+            { label: "Status", value: escapeHtml(statusLabel) },
+            { label: "Amount", value: totalFmt, emphasis: true },
+            ...(invoice.reference
+              ? [{ label: "Reference", value: escapeHtml(invoice.reference) }]
+              : []),
+          ],
+        },
+        {
+          variant: invoice.status === "paid" ? "callout-ok" : "callout-warm",
+          body: `<p style="margin:0;font-size:14px;color:#11272b;">${dueLine}</p>`,
+        },
+      ],
+    },
+    branding
+  );
 
   const { generateInvoicePdf } = await import("./invoice-pdf");
   const pdfBuffer = await generateInvoicePdf(invoice);
@@ -1029,27 +1221,34 @@ export async function sendItineraryEmail(
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0d9488;">Your itinerary</h2>
-  <p>Hello ${escapeHtml(clientName)},</p>
-  <p>Please find your day-by-day itinerary for <b>${escapeHtml(packageName)}</b> attached as a PDF.</p>
-  <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 8px; overflow: hidden;">
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Start</td><td style="padding: 12px 16px;">${startFmt}</td></tr>
-    <tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">End</td><td style="padding: 12px 16px;">${endFmt}</td></tr>
-    ${reference ? `<tr><td style="padding: 12px 16px; font-weight: 600; color: #475569;">Reference</td><td style="padding: 12px 16px;">${escapeHtml(reference)}</td></tr>` : ""}
-  </table>
-  <p>${escapeHtml(getQuestionsLine(branding))}</p>
-  ${getSignatureHtml(branding)}
-</body>
-</html>
-  `.trim();
+  const html = buildBrandedEmail(
+    {
+      preheader: `Your day-by-day itinerary for ${packageName}.`,
+      eyebrow: "Itinerary",
+      title: `Your day-by-day, ${clientName.split(/\s+/)[0] || clientName}`,
+      intro: `Attached is your complete itinerary for <b>${escapeHtml(packageName)}</b>. Save the PDF for offline use — it works without Wi-Fi.`,
+      sections: [
+        {
+          label: "Travel window",
+          variant: "card",
+          rows: [
+            { label: "Start", value: startFmt, emphasis: true },
+            { label: "End", value: endFmt, emphasis: true },
+            ...(reference
+              ? [{ label: "Reference", value: escapeHtml(reference) }]
+              : []),
+          ],
+        },
+        {
+          variant: "callout-warm",
+          body: `<p style="margin:0;font-size:14px;color:#11272b;"><b>Tip:</b> download the PDF to your phone before you fly. It works offline and saves you from chasing signal.</p>`,
+        },
+      ],
+      closing:
+        "If anything in the itinerary looks off, reply to this email and we'll adjust.",
+    },
+    branding
+  );
 
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
@@ -1089,22 +1288,42 @@ export async function sendPreTripReminderEmail(
   const startFmt = new Date(params.startDate).toLocaleDateString("en-GB", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
-  const html = `
-<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0d9488;">Your trip starts in ${params.daysUntil} day${params.daysUntil === 1 ? "" : "s"}</h2>
-  <p>Hello ${escapeHtml(params.clientName)},</p>
-  <p>This is a friendly reminder that your tour with ${escapeHtml(branding.companyName)} begins on <b>${startFmt}</b>.</p>
-  <p>Package: <b>${escapeHtml(params.packageName)}</b>${params.reference ? ` (ref ${escapeHtml(params.reference)})` : ""}</p>
-  <p>A few things to confirm before you travel:</p>
-  <ul>
-    <li>Valid passport &amp; any visas required</li>
-    <li>Travel insurance</li>
-    <li>Comfortable clothing and appropriate footwear</li>
-    <li>Any medication you need</li>
-  </ul>
-  <p>${escapeHtml(getQuestionsLine(branding))}</p>
-  ${getSignatureHtml(branding)}
-</body></html>`.trim();
+  const html = buildBrandedEmail(
+    {
+      preheader: `${params.daysUntil} day${params.daysUntil === 1 ? "" : "s"} until ${params.packageName} begins on ${startFmt}.`,
+      eyebrow: `Starts in ${params.daysUntil} day${params.daysUntil === 1 ? "" : "s"}`,
+      title: `Getting ready, ${params.clientName.split(/\s+/)[0] || params.clientName}?`,
+      intro: `Your tour begins on <b>${startFmt}</b>. A quick pre-flight check so nothing catches you off guard.`,
+      sections: [
+        {
+          label: "Your trip",
+          variant: "card",
+          rows: [
+            { label: "Package", value: escapeHtml(params.packageName), emphasis: true },
+            { label: "Start", value: startFmt },
+            ...(params.reference
+              ? [{ label: "Reference", value: escapeHtml(params.reference) }]
+              : []),
+          ],
+        },
+        {
+          label: "Checklist",
+          variant: "callout-warm",
+          body: `<ul style="margin:0;padding-left:18px;font-size:14px;color:#11272b;">
+            <li style="margin-bottom:6px;">Valid passport and any visas required for Sri Lanka</li>
+            <li style="margin-bottom:6px;">Travel insurance confirmation</li>
+            <li style="margin-bottom:6px;">Light, breathable clothing and sturdy walking shoes</li>
+            <li style="margin-bottom:6px;">Prescription medications + copies of prescriptions</li>
+            <li style="margin-bottom:6px;">Charger/adapter (Sri Lanka uses Type D/G outlets, 230V)</li>
+            <li style="margin-bottom:6px;">Small cash for incidentals — USD or LKR</li>
+          </ul>`,
+        },
+      ],
+      closing:
+        "Any last-minute questions — flight times, pickup details, dietary notes — reply to this email. We want the start of your trip to feel easy.",
+    },
+    branding
+  );
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
@@ -1134,16 +1353,26 @@ export async function sendPostTripFollowUpEmail(
   const email = params.clientEmail?.trim();
   if (!email) return { ok: false, error: "No client email" };
   const branding = await getEmailBranding();
-  const html = `
-<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0d9488;">Thank you for traveling with us</h2>
-  <p>Hello ${escapeHtml(params.clientName)},</p>
-  <p>We hope you enjoyed your trip with ${escapeHtml(branding.companyName)}. It was a pleasure to host you${params.packageName ? ` on the <b>${escapeHtml(params.packageName)}</b>` : ""}.</p>
-  <p>We'd love to hear about your experience — what you enjoyed, and anything we can do better. Your feedback helps us serve future travelers.</p>
-  ${params.reviewLink ? `<p><a href="${params.reviewLink}" style="display:inline-block; background:#0d9488; color:#fff; padding:10px 18px; border-radius:8px; text-decoration:none; font-weight:600;">Leave a review</a></p>` : ""}
-  <p>${escapeHtml(getQuestionsLine(branding))}</p>
-  ${getSignatureHtml(branding)}
-</body></html>`.trim();
+  const html = buildBrandedEmail(
+    {
+      preheader: `Hope you enjoyed ${params.packageName}. We'd love your feedback.`,
+      eyebrow: "Thank you",
+      title: `Welcome back, ${params.clientName.split(/\s+/)[0] || params.clientName}`,
+      intro: `It was a pleasure hosting you${params.packageName ? ` on <b>${escapeHtml(params.packageName)}</b>` : ""}. We hope the trip lived up to what you pictured.`,
+      sections: [
+        {
+          variant: "callout-warm",
+          body: `<p style="margin:0;font-size:14px;color:#11272b;">If you have a few minutes, we'd love to hear how it went — what you'll remember, what we should change, and anything in between. Short replies are absolutely fine. Honest ones help us most.</p>`,
+        },
+      ],
+      ...(params.reviewLink
+        ? { primaryCta: { label: "Share a quick review", href: params.reviewLink } }
+        : {}),
+      closing:
+        "If another Sri Lanka trip is on your mind — yours, friends', or family's — you know where to find us. Past guests always get priority availability.",
+    },
+    branding
+  );
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
@@ -1177,18 +1406,25 @@ export async function sendBookingChangeEmail(
   const title = params.changeType === "cancellation"
     ? "Your booking has been cancelled"
     : "Your booking has been updated";
-  const html = `
-<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: ${params.changeType === "cancellation" ? "#b91c1c" : "#b45309"};">${title}</h2>
-  <p>Hello ${escapeHtml(params.clientName)},</p>
-  <p>We're writing regarding your booking for <b>${escapeHtml(params.packageName)}</b>${params.reference ? ` (ref ${escapeHtml(params.reference)})` : ""}.</p>
-  <div style="background:#f8fafc; border-left:3px solid ${params.changeType === "cancellation" ? "#b91c1c" : "#b45309"}; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
-    <p style="margin:0;">${escapeHtml(params.summary)}</p>
-  </div>
-  <p>If you have any questions or would like to discuss next steps, please reply to this email.</p>
-  <p>${escapeHtml(getQuestionsLine(branding))}</p>
-  ${getSignatureHtml(branding)}
-</body></html>`.trim();
+  const isCancel = params.changeType === "cancellation";
+  const html = buildBrandedEmail(
+    {
+      preheader: `${title} — ${params.packageName}`,
+      eyebrow: isCancel ? "Cancellation" : "Update",
+      title,
+      intro: `We're writing about your booking for <b>${escapeHtml(params.packageName)}</b>${params.reference ? ` (ref <span style="font-family:monospace;">${escapeHtml(params.reference)}</span>)` : ""}.`,
+      sections: [
+        {
+          label: "What changed",
+          variant: isCancel ? "callout-warn" : "callout-warm",
+          body: `<p style="margin:0;font-size:14px;color:#11272b;">${escapeHtml(params.summary)}</p>`,
+        },
+      ],
+      closing:
+        "If you have any questions, want to discuss next steps, or would like to rebook — just reply to this email. We're here to help.",
+    },
+    branding
+  );
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
