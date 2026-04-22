@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createEmployee, updateEmployee, deleteEmployee, getEmployee } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import type { EmployeePayType } from "@/lib/types";
+import { requireAdmin } from "@/lib/admin-session";
 
 function parseOptionalNum(val: string | null): number | undefined {
   if (!val?.trim()) return undefined;
@@ -12,6 +13,7 @@ function parseOptionalNum(val: string | null): number | undefined {
 }
 
 export async function createEmployeeAction(formData: FormData) {
+  await requireAdmin();
   const name = (formData.get("name") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
   const phone = (formData.get("phone") as string)?.trim() || undefined;
@@ -70,6 +72,7 @@ export async function createEmployeeAction(formData: FormData) {
 }
 
 export async function updateEmployeeAction(id: string, formData: FormData) {
+  await requireAdmin();
   const name = (formData.get("name") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
   const phone = (formData.get("phone") as string)?.trim() || undefined;
@@ -128,6 +131,7 @@ export async function updateEmployeeAction(id: string, formData: FormData) {
 }
 
 export async function deleteEmployeeAction(id: string): Promise<{ success?: boolean; error?: string }> {
+  await requireAdmin();
   const employee = await getEmployee(id);
   const ok = await deleteEmployee(id);
   if (!ok) return { error: "Employee not found" };

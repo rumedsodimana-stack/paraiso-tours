@@ -44,6 +44,7 @@ import {
   getCustomRouteMetaFromAuditLogs,
 } from "@/lib/custom-route-booking";
 import type { Lead, TourPackage, TourStatus } from "@/lib/types";
+import { requireAdmin } from "@/lib/admin-session";
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
@@ -96,6 +97,7 @@ async function hydrateCustomRouteSnapshot(lead: Lead): Promise<Lead> {
 }
 
 export async function createTourAction(formData: FormData) {
+  await requireAdmin();
   const leadId = (formData.get("leadId") as string)?.trim();
   const packageId = (formData.get("packageId") as string)?.trim();
   const startDate = (formData.get("startDate") as string)?.trim();
@@ -133,6 +135,7 @@ export async function createTourAction(formData: FormData) {
 }
 
 export async function updateTourStatusAction(id: string, status: TourStatus) {
+  await requireAdmin();
   const existingTour = await getTour(id);
   if (!existingTour) return { error: "Tour not found" };
 
@@ -157,6 +160,7 @@ export async function updateTourStatusAction(id: string, status: TourStatus) {
 }
 
 export async function deleteTourAction(id: string) {
+  await requireAdmin();
   const tour = await getTour(id);
   if (!tour) return { error: "Tour not found" };
 
@@ -191,6 +195,7 @@ export async function scheduleTourFromLeadAction(
   warnings?: string[];
   availabilityStatus?: "ready" | "attention_needed";
 }> {
+  await requireAdmin();
   let rollback: (() => Promise<void>) | null = null;
 
   try {
@@ -462,6 +467,23 @@ export async function scheduleTourFromLeadAction(
       };
     }
 
+    // Denormalize tour confirmationId onto the invoice so reconciliation
+    // can chain invoice → tour in a single lookup. Best-effort.
+    if (tour.confirmationId && invoice.confirmationId !== tour.confirmationId) {
+      try {
+        const updatedInv = await updateInvoice(invoice.id, {
+          confirmationId: tour.confirmationId,
+        });
+        if (updatedInv) invoice = updatedInv;
+      } catch (err) {
+        debugLog("Invoice confirmationId link failed", {
+          error: err instanceof Error ? err.message : String(err),
+          invoiceId: invoice.id,
+          tourId: tour.id,
+        });
+      }
+    }
+
     let payment = await getPaymentByTourId(tour.id);
     if (!payment) {
       try {
@@ -472,6 +494,7 @@ export async function scheduleTourFromLeadAction(
           description: `Tour: ${pkg.name} – ${clientName}`,
           clientName: lead.name,
           reference,
+          confirmationId: tour.confirmationId,
           leadId: lead.id,
           tourId: tour.id,
           invoiceId: invoice?.id,
@@ -608,6 +631,7 @@ export async function scheduleTourFromLeadAction(
               description: `Supplier payable – ${info.name} – ${pkg.name} (${reference})`,
               supplierId,
               supplierName: info.name,
+              confirmationId: tour.confirmationId,
               tourId: tour.id,
               leadId: lead.id,
               status: "pending",
@@ -878,6 +902,7 @@ export async function scheduleTourFromLeadAction(
 export async function sendItineraryToGuestAction(
   tourId: string
 ): Promise<{ success?: boolean; error?: string }> {
+  await requireAdmin();
   const tour = await getTour(tourId);
   if (!tour) return { error: "Tour not found" };
   const lead = await getLead(tour.leadId);
@@ -934,6 +959,7 @@ export async function sendItineraryToGuestAction(
 export async function markTourCompletedPaidAction(
   tourId: string
 ): Promise<{ success?: boolean; paymentId?: string; error?: string }> {
+  await requireAdmin();
   let rollback: (() => Promise<void>) | null = null;
 
   try {

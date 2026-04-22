@@ -7,12 +7,23 @@ interface AdminSessionPayload {
   expiresAt: number;
 }
 
+/**
+ * Returns the HMAC secret used to sign admin session tokens.
+ * Throws at runtime if no secret is configured — we never fall back to a
+ * hardcoded string, because that would make tokens forgeable in any env
+ * that forgot to set ADMIN_SESSION_SECRET or ADMIN_PASSWORD.
+ */
 function getAdminSessionSecret(): string {
-  return (
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.ADMIN_PASSWORD ||
-    "paraiso-admin-session-change-me"
-  );
+  const secret =
+    process.env.ADMIN_SESSION_SECRET?.trim() ||
+    process.env.ADMIN_PASSWORD?.trim();
+  if (!secret) {
+    throw new Error(
+      "Admin session secret not configured. Set ADMIN_SESSION_SECRET (preferred) " +
+        "or ADMIN_PASSWORD in the environment before using admin-session helpers."
+    );
+  }
+  return secret;
 }
 
 function bytesToBase64Url(bytes: Uint8Array): string {
@@ -90,6 +101,28 @@ export async function createAdminSessionToken(): Promise<string> {
   const encodedPayload = base64UrlEncodeText(JSON.stringify(payload));
   const signature = await signValue(encodedPayload);
   return `${encodedPayload}.${signature}`;
+}
+
+/**
+ * Admin-session guard for server actions. Call at the top of every
+ * admin-mutating action. Throws if no valid admin session cookie.
+ *
+ * Usage:
+ *   "use server";
+ *   import { requireAdmin } from "@/lib/admin-session";
+ *   export async function someAction(...) {
+ *     await requireAdmin();
+ *     // ... mutation
+ *   }
+ */
+export async function requireAdmin(): Promise<void> {
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
+  const session = await verifyAdminSessionToken(token);
+  if (!session) {
+    throw new Error("Unauthorized — admin session required.");
+  }
 }
 
 export async function verifyAdminSessionToken(

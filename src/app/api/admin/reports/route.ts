@@ -49,10 +49,19 @@ export async function GET(request: Request) {
   }
 }
 
+/**
+ * Decide whether a row whose date is `iso` should appear in a report
+ * bounded by [from, to]. Missing dates are **always excluded from bounded
+ * reports** (so a payment with no date doesn't silently inflate a month's
+ * totals) and **always included in unbounded reports** (so everything
+ * still rolls up when no range is set). This is documented behavior.
+ */
 function dateInRange(iso: string | undefined, from?: string, to?: string): boolean {
-  if (!iso) return !from && !to;
-  if (from && iso < from) return false;
-  if (to && iso > to) return false;
+  const bounded = !!from || !!to;
+  const trimmed = iso?.trim();
+  if (!trimmed) return !bounded;
+  if (from && trimmed < from) return false;
+  if (to && trimmed > to) return false;
   return true;
 }
 

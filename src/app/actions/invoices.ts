@@ -27,6 +27,7 @@ import {
   getCustomRouteMetaFromAuditLogs,
 } from "@/lib/custom-route-booking";
 import type { InvoiceStatus, Lead } from "@/lib/types";
+import { requireAdmin } from "@/lib/admin-session";
 
 async function hydrateCustomRouteSnapshot(lead: Lead): Promise<Lead> {
   if (lead.packageSnapshot || lead.packageId) return lead;
@@ -44,6 +45,7 @@ async function hydrateCustomRouteSnapshot(lead: Lead): Promise<Lead> {
 }
 
 export async function createInvoiceFromLead(leadId: string) {
+  await requireAdmin();
   let lead = await getLead(leadId);
   if (!lead) return { error: "Lead not found" };
 
@@ -139,6 +141,7 @@ export async function sendInvoiceToGuestAction(
   invoiceId: string,
   opts?: { note?: string }
 ): Promise<{ success?: boolean; error?: string }> {
+  await requireAdmin();
   const invoice = await getInvoice(invoiceId);
   if (!invoice) return { error: "Invoice not found" };
 
@@ -180,6 +183,7 @@ export async function sendInvoiceToGuestAction(
 }
 
 export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStatus): Promise<{ success?: boolean; error?: string }> {
+  await requireAdmin();
   const updates: { status: InvoiceStatus; paidAt?: string } = { status };
   if (status === "paid") {
     updates.paidAt = new Date().toISOString().slice(0, 10);
@@ -218,6 +222,7 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
  * For incoming: client is the payer. For outgoing: clientName is the payee (supplier).
  */
 export async function createInvoiceFromPayment(paymentId: string) {
+  await requireAdmin();
   const payment = await getPayment(paymentId);
   if (!payment) return { error: "Payment not found" };
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getEmployees, getTours, createPayrollRun, updatePayrollRun, createPayment } from "@/lib/db";
 import type { PayrollItem } from "@/lib/types";
+import { requireAdmin } from "@/lib/admin-session";
 
 function computePayrollItem(emp: {
   id: string;
@@ -39,6 +40,7 @@ function computePayrollItem(emp: {
 }
 
 export async function runPayrollAction(formData: FormData) {
+  await requireAdmin();
   const periodStart = (formData.get("periodStart") as string)?.trim();
   const periodEnd = (formData.get("periodEnd") as string)?.trim();
   const payDate = (formData.get("payDate") as string)?.trim();
@@ -72,6 +74,7 @@ export async function runPayrollAction(formData: FormData) {
 }
 
 export async function markPayrollPaidAction(id: string) {
+  await requireAdmin();
   const { getPayrollRun } = await import("@/lib/db");
   const run = await getPayrollRun(id);
   if (!run) return { error: "Payroll run not found" };

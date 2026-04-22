@@ -1,5 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+
+// Session signing requires a secret. Set before importing the module
+// under test so getAdminSessionSecret() finds it.
+process.env.ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET ?? "test-secret-do-not-use-in-prod";
+
 import {
   createAdminSessionToken,
   getSafeAdminNextPath,

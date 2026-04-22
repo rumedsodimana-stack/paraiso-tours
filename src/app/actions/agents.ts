@@ -12,12 +12,14 @@ import {
   updateAgentTask,
 } from "@/lib/agents/db";
 import { recordAuditEvent } from "@/lib/audit";
+import { requireAdmin } from "@/lib/admin-session";
 
 function generateId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export async function startBookingProcessorAction(leadId: string) {
+  await requireAdmin();
   const threadId = generateId("thr");
 
   await createAgentThread({
@@ -57,6 +59,7 @@ export async function approveAgentTaskAction(
   taskId: string,
   edits?: { emailBody?: string; notes?: string }
 ) {
+  await requireAdmin();
   await updateAgentTask(taskId, { status: "approved", adminNotes: edits?.notes });
 
   try {
@@ -87,6 +90,7 @@ export async function rejectAgentTaskAction(
   taskId: string,
   reason?: string
 ) {
+  await requireAdmin();
   await updateAgentTask(taskId, { status: "rejected", adminNotes: reason });
   await updateAgentThread(threadId, {
     status: "rejected",
@@ -116,6 +120,7 @@ export async function rejectAgentTaskAction(
 }
 
 export async function getAgentDashboardAction() {
+  await requireAdmin();
   const threads = await getAgentThreads();
   const awaitingApproval = threads.filter((t) => t.status === "awaiting_approval");
   const recent = threads.filter((t) => t.status !== "awaiting_approval").slice(0, 20);
@@ -123,6 +128,7 @@ export async function getAgentDashboardAction() {
 }
 
 export async function getAgentThreadDetailAction(threadId: string) {
+  await requireAdmin();
   const thread = await getAgentThread(threadId);
   if (!thread) return null;
   const tasks = await getAgentTasks(threadId);

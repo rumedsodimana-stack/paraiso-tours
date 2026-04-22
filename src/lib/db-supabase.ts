@@ -180,6 +180,7 @@ function toInvoice(row: Record<string, unknown>): Invoice {
   return {
     id: String(row.id),
     leadId: String(row.lead_id),
+    confirmationId: (row.confirmation_id as string | null) ?? undefined,
     reference: (row.reference as string | null) ?? undefined,
     invoiceNumber: String(row.invoice_number),
     status: row.status as Invoice["status"],
@@ -256,6 +257,7 @@ function toPayment(row: Record<string, unknown>): Payment {
     description: String(row.description),
     clientName: (row.client_name as string | null) ?? undefined,
     reference: (row.reference as string | null) ?? undefined,
+    confirmationId: (row.confirmation_id as string | null) ?? undefined,
     leadId: (row.lead_id as string | null) ?? undefined,
     tourId: (row.tour_id as string | null) ?? undefined,
     invoiceId: (row.invoice_id as string | null) ?? undefined,
@@ -937,6 +939,7 @@ export async function createInvoice(
   const row = {
     id: generateId("inv"),
     lead_id: data.leadId,
+    confirmation_id: toNullable(data.confirmationId),
     reference: toNullable(data.reference),
     invoice_number: data.invoiceNumber ?? generateDocumentNumber("INV"),
     status: data.status,
@@ -972,6 +975,7 @@ export async function updateInvoice(
     updated_at: new Date().toISOString(),
   };
   if (data.reference !== undefined) update.reference = toNullable(data.reference);
+  if (data.confirmationId !== undefined) update.confirmation_id = toNullable(data.confirmationId);
   if (data.invoiceNumber !== undefined) update.invoice_number = data.invoiceNumber;
   if (data.status !== undefined) update.status = data.status;
   if (data.clientName !== undefined) update.client_name = data.clientName;
@@ -1243,6 +1247,7 @@ export async function createPayment(
     description: data.description,
     client_name: toNullable(data.clientName),
     reference: toNullable(data.reference),
+    confirmation_id: toNullable(data.confirmationId),
     lead_id: toNullable(data.leadId),
     tour_id: toNullable(data.tourId),
     invoice_id: toNullable(data.invoiceId),
@@ -1277,6 +1282,7 @@ export async function updatePayment(
     update.client_name = toNullable(data.clientName);
   }
   if (data.reference !== undefined) update.reference = toNullable(data.reference);
+  if (data.confirmationId !== undefined) update.confirmation_id = toNullable(data.confirmationId);
   if (data.leadId !== undefined) update.lead_id = toNullable(data.leadId);
   if (data.tourId !== undefined) update.tour_id = toNullable(data.tourId);
   if (data.invoiceId !== undefined) {

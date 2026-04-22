@@ -10,6 +10,7 @@ import {
 } from "@/lib/app-config";
 import { encryptStoredSecret } from "@/lib/settings-secrets";
 import { supabase } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/admin-session";
 
 export interface AppSettingsActionState {
   ok: boolean;
@@ -104,6 +105,7 @@ export async function updateAppSettingsAction(
   _prevState: AppSettingsActionState,
   formData: FormData
 ): Promise<AppSettingsActionState> {
+  await requireAdmin();
   try {
     const previous = await getAppSettings();
     const logoFile = formData.get("logoFile");
@@ -211,6 +213,7 @@ export async function updateAiSettingsAction(
   _prevState: AppSettingsActionState,
   formData: FormData
 ): Promise<AppSettingsActionState> {
+  await requireAdmin();
   try {
     const previous = await getAppSettings();
     const previousStoredKey = await getStoredAiApiKeyRecord();

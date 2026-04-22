@@ -7,8 +7,10 @@ import {
   deleteHotelMealPlan,
 } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
+import { requireAdmin } from "@/lib/admin-session";
 
 export async function createMealPlanAction(formData: FormData) {
+  await requireAdmin();
   const hotelId = (formData.get("hotelId") as string)?.trim();
   const label = (formData.get("label") as string)?.trim();
   const pricePerPerson =
@@ -42,6 +44,7 @@ export async function createMealPlanAction(formData: FormData) {
 }
 
 export async function updateMealPlanAction(id: string, formData: FormData) {
+  await requireAdmin();
   const label = (formData.get("label") as string)?.trim();
   const pricePerPerson =
     parseFloat(formData.get("pricePerPerson") as string) || 0;
@@ -68,6 +71,7 @@ export async function updateMealPlanAction(id: string, formData: FormData) {
 }
 
 export async function deleteMealPlanAction(id: string, hotelId: string) {
+  await requireAdmin();
   const ok = await deleteHotelMealPlan(id);
   if (!ok) return { error: "Failed to archive meal plan." };
 

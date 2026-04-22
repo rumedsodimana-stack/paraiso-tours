@@ -16,19 +16,43 @@ export const clientBookingSchema = z.object({
 });
 
 // --- Admin lead creation / update ---
-export const leadSchema = z.object({
-  name: z.string().min(1, "Name is required").max(200),
-  email: z.string().email("Valid email is required").max(320),
-  phone: z.string().max(50).optional(),
-  source: z.string().max(100).optional(),
-  status: z.enum(["new", "hold", "cancelled", "won"]).optional(),
-  destination: z.string().max(300).optional(),
-  travelDate: z.string().optional(),
-  pax: z.number().int().min(1).max(500).optional(),
-  accompaniedGuestName: z.string().max(200).optional(),
-  notes: z.string().max(5000).optional(),
-  packageId: z.string().max(200).optional(),
-});
+export const leadSchema = z
+  .object({
+    name: z.string().min(1, "Name is required").max(200),
+    email: z.string().email("Valid email is required").max(320),
+    phone: z.string().max(50).optional(),
+    source: z.string().max(100).optional(),
+    status: z.enum(["new", "hold", "cancelled", "won"]).optional(),
+    destination: z.string().max(300).optional(),
+    travelDate: z.string().optional(),
+    pax: z.number().int().min(1).max(500).optional(),
+    accompaniedGuestName: z.string().max(200).optional(),
+    notes: z.string().max(5000).optional(),
+    packageId: z.string().max(200).optional(),
+  })
+  .superRefine((data, ctx) => {
+    // When a package is attached, require traveler count so pricing
+    // downstream can't silently default to 1 and misprice.
+    if (data.packageId && data.pax == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["pax"],
+        message: "Select a traveler count when choosing a package.",
+      });
+    }
+    // Soft date sanity — admins may leave it blank (draft) but if set it
+    // must be parseable.
+    if (data.travelDate && data.travelDate.trim()) {
+      const d = data.travelDate.trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Number.isNaN(new Date(d).getTime())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["travelDate"],
+          message: "Travel date must be a valid YYYY-MM-DD date.",
+        });
+      }
+    }
+  });
 
 // --- Supplier / hotel ---
 export const hotelSchema = z.object({

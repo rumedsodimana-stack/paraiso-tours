@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { getPayment, getInvoice, updatePayment, updateInvoice } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
+import { requireAdmin } from "@/lib/admin-session";
 
 /** Mark payment as received/completed and sync linked invoice to paid */
 export async function markPaymentReceived(paymentId: string): Promise<{ success?: boolean; error?: string }> {
+  await requireAdmin();
   const payment = await getPayment(paymentId);
   if (!payment) return { error: "Payment not found" };
   if (payment.status === "completed") return { success: true };
@@ -47,6 +49,7 @@ export async function markPaymentReceived(paymentId: string): Promise<{ success?
 
 /** Mark outgoing payment as paid/completed */
 export async function markPaymentPaid(paymentId: string): Promise<{ success?: boolean; error?: string }> {
+  await requireAdmin();
   const payment = await getPayment(paymentId);
   if (!payment) return { error: "Payment not found" };
   if (payment.status === "completed") return { success: true };

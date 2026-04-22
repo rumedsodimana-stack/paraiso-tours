@@ -240,6 +240,9 @@ export interface Payment {
   description: string;
   clientName?: string;
   reference?: string;
+  /** Denormalized client-facing confirmation id of the linked tour, if any.
+   *  Lets reconciliation chase payment → tour in one step. */
+  confirmationId?: string;
   /** Link to lead (for client payments) */
   leadId?: string;
   /** Link to tour (for client or supplier payments) */
@@ -270,6 +273,9 @@ export interface InvoiceLineItem {
 export interface Invoice {
   id: string;
   leadId: string;
+  /** Denormalized tour confirmation id when the invoice is issued from a
+   *  scheduled tour. Chain: invoice → tour (by confirmationId) → payment. */
+  confirmationId?: string;
   reference?: string;
   invoiceNumber: string;
   status: InvoiceStatus;

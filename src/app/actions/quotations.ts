@@ -17,6 +17,7 @@ import {
 import { recordAuditEvent } from "@/lib/audit";
 import { sendQuotationEmail } from "@/lib/email";
 import type { Quotation, QuotationLineItem, ItineraryDay } from "@/lib/types";
+import { requireAdmin } from "@/lib/admin-session";
 
 function generateInvoiceNumber(): string {
   const now = new Date();
@@ -78,6 +79,7 @@ function parseStringList(raw: string): string[] {
 }
 
 export async function createQuotationAction(formData: FormData) {
+  await requireAdmin();
   try {
     const contactName = (formData.get("contactName") as string)?.trim();
     const contactEmail = (formData.get("contactEmail") as string)?.trim();
@@ -131,6 +133,7 @@ export async function createQuotationAction(formData: FormData) {
 }
 
 export async function updateQuotationAction(id: string, formData: FormData) {
+  await requireAdmin();
   try {
     const quotation = await getQuotation(id);
     if (!quotation) return { error: "Quotation not found" };
@@ -181,6 +184,7 @@ export async function updateQuotationAction(id: string, formData: FormData) {
 }
 
 export async function markQuotationSentAction(id: string) {
+  await requireAdmin();
   const quotation = await getQuotation(id);
   if (!quotation) return { error: "Quotation not found" };
   if (quotation.status === "accepted") return { error: "Quotation already accepted" };
@@ -227,6 +231,7 @@ export async function markQuotationSentAction(id: string) {
 }
 
 export async function markQuotationRejectedAction(id: string) {
+  await requireAdmin();
   const quotation = await getQuotation(id);
   if (!quotation) return { error: "Quotation not found" };
   if (quotation.status === "accepted") return { error: "Quotation already accepted" };
@@ -257,6 +262,7 @@ export async function acceptQuotationAction(
   id: string,
   startDate?: string
 ): Promise<{ success?: boolean; tourId?: string; error?: string }> {
+  await requireAdmin();
   try {
     const quotation = await getQuotation(id);
     if (!quotation) return { error: "Quotation not found" };
@@ -434,6 +440,7 @@ export async function acceptQuotationAction(
 }
 
 export async function deleteQuotationAction(id: string) {
+  await requireAdmin();
   const quotation = await getQuotation(id);
   if (!quotation) return { error: "Quotation not found" };
   if (quotation.status === "accepted") return { error: "Cannot delete an accepted quotation — the tour is already scheduled" };

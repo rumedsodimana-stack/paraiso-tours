@@ -8,6 +8,7 @@ import {
   getAiInteraction,
   updateAiInteraction,
 } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-session";
 
 export interface AiKnowledgeActionState {
   ok: boolean;
@@ -18,6 +19,7 @@ export async function createAiKnowledgeDocumentAction(
   _prevState: AiKnowledgeActionState,
   formData: FormData
 ): Promise<AiKnowledgeActionState> {
+  await requireAdmin();
   try {
     const title = String(formData.get("title") ?? "").trim();
     const content = String(formData.get("content") ?? "").trim();
@@ -68,6 +70,7 @@ export async function saveAiInteractionFeedbackAction(
   _prevState: AiKnowledgeActionState,
   formData: FormData
 ): Promise<AiKnowledgeActionState> {
+  await requireAdmin();
   try {
     const interactionId = String(formData.get("interactionId") ?? "").trim();
     const helpfulValue = String(formData.get("helpful") ?? "").trim();
@@ -122,6 +125,7 @@ export async function promoteAiInteractionToKnowledgeAction(
   _prevState: AiKnowledgeActionState,
   formData: FormData
 ): Promise<AiKnowledgeActionState> {
+  await requireAdmin();
   try {
     const interactionId = String(formData.get("interactionId") ?? "").trim();
     const titleInput = String(formData.get("title") ?? "").trim();

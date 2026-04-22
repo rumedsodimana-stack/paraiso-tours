@@ -11,6 +11,7 @@ import {
 } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import type { TourPackage } from "@/lib/types";
+import { requireAdmin } from "@/lib/admin-session";
 
 function parseOptionalNum(val: string | null): number | undefined {
   if (!val?.trim()) return undefined;
@@ -33,6 +34,7 @@ function packageUsesSupplier(pkg: TourPackage, supplierId: string): boolean {
 }
 
 export async function createHotelAction(formData: FormData) {
+  await requireAdmin();
   const name = (formData.get("name") as string)?.trim();
   const type = (formData.get("type") as string) || "hotel";
   const location = (formData.get("location") as string)?.trim() || undefined;
@@ -96,6 +98,7 @@ export async function createHotelAction(formData: FormData) {
 }
 
 export async function updateHotelAction(id: string, formData: FormData) {
+  await requireAdmin();
   const name = (formData.get("name") as string)?.trim();
   const type = (formData.get("type") as string) || "hotel";
   const location = (formData.get("location") as string)?.trim() || undefined;
@@ -161,6 +164,7 @@ export async function updateHotelAction(id: string, formData: FormData) {
 }
 
 export async function deleteHotelAction(id: string) {
+  await requireAdmin();
   const hotel = await getHotel(id);
   const [packages, payments] = await Promise.all([getPackages(), getPayments()]);
   const blockingPackages = packages.filter((pkg) => packageUsesSupplier(pkg, id));

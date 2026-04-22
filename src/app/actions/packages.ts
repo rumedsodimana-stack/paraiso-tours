@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createPackage, updatePackage, deletePackage, getPackage } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import type { ItineraryDay, PackageOption } from "@/lib/types";
+import { requireAdmin } from "@/lib/admin-session";
 
 function parseItinerary(formData: FormData): ItineraryDay[] {
   const days: ItineraryDay[] = [];
@@ -65,6 +66,7 @@ function parseOptions(formData: FormData, key: string): PackageOption[] {
 }
 
 export async function createPackageAction(formData: FormData) {
+  await requireAdmin();
   const name = (formData.get("name") as string)?.trim();
   const duration = (formData.get("duration") as string)?.trim();
   const destination = (formData.get("destination") as string)?.trim();
@@ -132,6 +134,7 @@ export async function createPackageAction(formData: FormData) {
 }
 
 export async function updatePackageAction(id: string, formData: FormData) {
+  await requireAdmin();
   const name = (formData.get("name") as string)?.trim();
   const duration = (formData.get("duration") as string)?.trim();
   const destination = (formData.get("destination") as string)?.trim();
@@ -212,6 +215,7 @@ export async function updatePackageAction(id: string, formData: FormData) {
 }
 
 export async function deletePackageAction(id: string) {
+  await requireAdmin();
   const pkg = await getPackage(id);
   const ok = await deletePackage(id);
   if (!ok) return { error: "Package not found" };

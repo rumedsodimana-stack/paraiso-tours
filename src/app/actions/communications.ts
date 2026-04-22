@@ -23,6 +23,7 @@ import {
 } from "@/lib/email";
 import { resolveTourPackage } from "@/lib/package-snapshot";
 import { generateItineraryPdf } from "@/lib/itinerary-pdf";
+import { requireAdmin } from "@/lib/admin-session";
 
 export type ResendEmailInput = {
   template:
@@ -40,6 +41,7 @@ export type ResendEmailInput = {
 type Result = { success?: boolean; error?: string };
 
 export async function resendEmailAction(input: ResendEmailInput): Promise<Result> {
+  await requireAdmin();
   try {
     switch (input.template) {
       case "invoice":
@@ -235,6 +237,7 @@ async function resendPaymentReceipt(tourId?: string): Promise<Result> {
 export async function sendPreTripReminderAction(
   tourId: string
 ): Promise<Result> {
+  await requireAdmin();
   const tour = await getTour(tourId);
   if (!tour) return { error: "Tour not found" };
   const lead = await getLead(tour.leadId);
@@ -281,6 +284,7 @@ export async function sendPreTripReminderAction(
 export async function sendPostTripFollowUpAction(
   tourId: string
 ): Promise<Result> {
+  await requireAdmin();
   const tour = await getTour(tourId);
   if (!tour) return { error: "Tour not found" };
   const lead = await getLead(tour.leadId);
@@ -320,6 +324,7 @@ export async function sendBookingChangeNoticeAction(
   tourId: string,
   input: { changeType: "revision" | "cancellation"; summary: string }
 ): Promise<Result> {
+  await requireAdmin();
   const tour = await getTour(tourId);
   if (!tour) return { error: "Tour not found" };
   const lead = await getLead(tour.leadId);
@@ -362,6 +367,7 @@ export async function sendBookingChangeNoticeAction(
 export async function sendSupplierRemittanceAction(
   paymentId: string
 ): Promise<Result> {
+  await requireAdmin();
   const { getPayment, getHotels } = await import("@/lib/db");
   const payment = await getPayment(paymentId);
   if (!payment) return { error: "Payment not found" };
@@ -415,6 +421,7 @@ export async function sendSupplierChangeNoticeAction(
     summary: string;
   }
 ): Promise<Result> {
+  await requireAdmin();
   const { getHotels } = await import("@/lib/db");
   const tour = await getTour(tourId);
   if (!tour) return { error: "Tour not found" };

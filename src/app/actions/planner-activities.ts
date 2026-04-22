@@ -7,8 +7,10 @@ import {
   deletePlannerActivity,
 } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
+import { requireAdmin } from "@/lib/admin-session";
 
 export async function createActivityAction(formData: FormData) {
+  await requireAdmin();
   const destinationId = (formData.get("destinationId") as string)?.trim();
   const title = (formData.get("title") as string)?.trim();
   const summary = (formData.get("summary") as string)?.trim();
@@ -53,6 +55,7 @@ export async function createActivityAction(formData: FormData) {
 }
 
 export async function updateActivityAction(id: string, formData: FormData) {
+  await requireAdmin();
   const title = (formData.get("title") as string)?.trim();
   const summary = (formData.get("summary") as string)?.trim();
   const durationLabel =
@@ -92,6 +95,7 @@ export async function updateActivityAction(id: string, formData: FormData) {
 }
 
 export async function deleteActivityAction(id: string) {
+  await requireAdmin();
   const ok = await deletePlannerActivity(id);
   if (!ok) return { error: "Failed to archive activity." };
   revalidatePath("/admin/activities");

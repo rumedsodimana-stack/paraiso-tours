@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createPayment } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-session";
 
 export async function markPayablePaidAction(params: {
   supplierId: string;
@@ -11,6 +12,7 @@ export async function markPayablePaidAction(params: {
   startDate: string;
   endDate: string;
 }): Promise<{ success: boolean; paymentId?: string; error?: string }> {
+  await requireAdmin();
   try {
     const today = new Date().toISOString().slice(0, 10);
     const payment = await createPayment({

@@ -39,6 +39,7 @@ import {
 } from "@/lib/db";
 import { resolveLeadPackage } from "@/lib/package-snapshot";
 import type { AiModelMode } from "@/lib/types";
+import { requireAdmin } from "@/lib/admin-session";
 
 export interface AiToolActionState {
   ok: boolean;
@@ -185,6 +186,7 @@ export async function runAiToolAction(
   _prevState: AiToolActionState,
   formData: FormData
 ): Promise<AiToolActionState> {
+  await requireAdmin();
   const tool = String(formData.get("tool") ?? "").trim();
 
   try {

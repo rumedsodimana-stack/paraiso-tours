@@ -9,8 +9,10 @@ import type { LeadStatus } from "@/lib/types";
 import { leadSchema, zodErrorMessage } from "@/lib/validation";
 import { sendBookingStatusChangeEmail } from "@/lib/email";
 import { debugLog } from "@/lib/debug";
+import { requireAdmin } from "@/lib/admin-session";
 
 export async function createLeadAction(formData: FormData) {
+  await requireAdmin();
   try {
     const rawPax = formData.get("pax") ? parseInt(String(formData.get("pax")), 10) : undefined;
     const parsed = leadSchema.safeParse({
@@ -95,6 +97,7 @@ export async function createLeadAction(formData: FormData) {
 }
 
 export async function updateLeadAction(id: string, formData: FormData) {
+  await requireAdmin();
   const rawPax = formData.get("pax") ? parseInt(String(formData.get("pax")), 10) : undefined;
   const parsed = leadSchema.safeParse({
     name: (formData.get("name") as string)?.trim(),
@@ -205,6 +208,7 @@ export async function updateLeadAction(id: string, formData: FormData) {
 }
 
 export async function updateLeadStatusAction(id: string, status: LeadStatus) {
+  await requireAdmin();
   const lead = await getLead(id);
   if (!lead) return { error: "Lead not found" };
   const updated = await updateLead(id, { status });
@@ -244,6 +248,7 @@ export async function updateLeadStatusAction(id: string, status: LeadStatus) {
 }
 
 export async function deleteLeadAction(id: string) {
+  await requireAdmin();
   const lead = await getLead(id);
   const ok = await deleteLead(id);
   if (!ok) return { error: "Lead not found" };

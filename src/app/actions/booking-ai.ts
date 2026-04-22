@@ -2,6 +2,7 @@
 
 import { runAiToolAction, type AiToolActionState } from "@/app/actions/ai";
 import { getLead } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-session";
 
 export interface BookingCopilotInput {
   leadId: string;
@@ -42,6 +43,7 @@ function buildBookingContextText(input: {
 export async function runBookingCopilotAction(
   input: BookingCopilotInput
 ): Promise<AiToolActionState> {
+  await requireAdmin();
   const leadId = input.leadId?.trim();
   if (!leadId) {
     return {

@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { getTodos, createTodo, updateTodo, deleteTodo } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-session";
 
 export async function addTodoAction(formData: FormData) {
+  await requireAdmin();
   const title = (formData.get("title") as string)?.trim();
   if (!title) return { error: "Task description is required" };
 
@@ -13,6 +15,7 @@ export async function addTodoAction(formData: FormData) {
 }
 
 export async function toggleTodoAction(id: string) {
+  await requireAdmin();
   const todos = await getTodos();
   const todo = todos.find((t) => t.id === id);
   if (!todo) return { error: "Todo not found" };
@@ -23,6 +26,7 @@ export async function toggleTodoAction(id: string) {
 }
 
 export async function deleteTodoAction(id: string) {
+  await requireAdmin();
   const ok = await deleteTodo(id);
   if (!ok) return { error: "Todo not found" };
   revalidatePath("/admin/todos");
