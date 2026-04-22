@@ -25,15 +25,15 @@ test("AGENT_TOOLS: has at least the core entity + comms tools", () => {
   }
 });
 
-test("AGENT_TOOLS: every tool has name, summary, schema, handler, danger", () => {
+test("AGENT_TOOLS: every tool has name, summary, schema, handler, category", () => {
   for (const t of AGENT_TOOLS) {
     assert.ok(t.name, `missing name`);
     assert.ok(t.summary, `${t.name}: missing summary`);
     assert.ok(t.inputSchema, `${t.name}: missing schema`);
     assert.equal(typeof t.handler, "function", `${t.name}: handler not a function`);
     assert.ok(
-      ["low", "medium", "high"].includes(t.danger ?? "low"),
-      `${t.name}: invalid danger level`
+      ["read", "create", "update", "delete", "send"].includes(t.category),
+      `${t.name}: invalid category ${t.category}`
     );
   }
 });
@@ -48,14 +48,16 @@ test("getTool: null for unknown", () => {
   assert.equal(getTool("definitely_not_a_tool"), null);
 });
 
-test("listToolsForPrompt: includes every tool name and schema hint", () => {
+test("listToolsForPrompt: includes every tool name and category headers", () => {
   const out = listToolsForPrompt();
   for (const t of AGENT_TOOLS) {
     assert.ok(out.includes(t.name), `prompt missing tool: ${t.name}`);
   }
-  // Should show risk tags so the model can calibrate proposals
-  assert.match(out, /high risk/);
-  assert.match(out, /input schema/);
+  assert.match(out, /READ TOOLS/);
+  assert.match(out, /CREATE TOOLS/);
+  assert.match(out, /SEND TOOLS/);
+  assert.match(out, /UPDATE TOOLS \(REQUIRE admin approval/);
+  assert.match(out, /DELETE TOOLS \(REQUIRE admin approval/);
 });
 
 test("schedule_tour_from_lead: schema rejects missing leadId", () => {

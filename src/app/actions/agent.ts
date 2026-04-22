@@ -14,7 +14,7 @@ import {
   type AgentDecision,
   type AgentObservation,
 } from "@/lib/agent-ooda";
-import { AGENT_TOOLS, getTool, listToolsForPrompt } from "@/lib/agent-tools";
+import { AGENT_TOOLS, getTool, listToolsForPrompt, requiresApproval } from "@/lib/agent-tools";
 import { recordAuditEvent } from "@/lib/audit";
 
 export interface ClarificationInput {
@@ -306,6 +306,10 @@ export interface ExecuteProposalInput {
   input: unknown;
   /** Pass the proposal id so the audit event can chain to it. */
   proposalId?: string;
+  /** Must be true when executing update/delete tools. The server re-verifies
+   *  the tool category and rejects if this flag is missing for a tool that
+   *  needs HITL approval — double gate beyond the UI. */
+  approved?: boolean;
 }
 
 export interface ExecuteProposalResult {
@@ -331,6 +335,17 @@ export async function executeProposalAction(
       ok: false,
       summary: `Unknown tool: ${input.tool}`,
       error: `Tool "${input.tool}" is not in the registry. Known tools: ${AGENT_TOOLS.map((t) => t.name).join(", ")}`,
+    };
+  }
+
+  // Server-side re-enforcement of the HITL policy. Even if a client tried
+  // to bypass the approval UI, update/delete tools refuse to run without
+  // an explicit `approved: true` flag.
+  if (requiresApproval(tool.category) && input.approved !== true) {
+    return {
+      ok: false,
+      summary: `${tool.name} requires admin approval`,
+      error: `Tool "${tool.name}" is a ${tool.category} operation and needs an approved=true flag.`,
     };
   }
 

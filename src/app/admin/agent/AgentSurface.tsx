@@ -20,6 +20,7 @@ import { useAdminWorkspace } from "@/stores/admin-workspace.store";
 import { AgentClarification } from "@/components/agent/AgentClarification";
 import { AgentProposals } from "@/components/agent/AgentProposals";
 import { decideAgentAction, executeProposalAction } from "@/app/actions/agent";
+import { toolRequiresApproval } from "@/lib/agent-tool-catalog";
 
 /**
  * Client surface for the OODA agent loop. Pulls observation from Zustand
@@ -149,15 +150,22 @@ export function AgentSurface() {
             entityRefs: decision.entityRefs,
             confidence: decision.confidence,
           });
-          addMessage({
-            role: "assistant",
-            content: `I'd like to run **${decision.title}** (${Math.round(decision.confidence * 100)}% confidence). Approve it below to execute.`,
-            proposalId: proposal.id,
-          });
           rememberWorking({
             kind: "fact",
             text: `Proposed: ${decision.title} (tool=${decision.tool}, conf=${decision.confidence.toFixed(2)})`,
           });
+
+          if (toolRequiresApproval(decision.tool)) {
+            // Update/delete — needs HITL approval card
+            addMessage({
+              role: "assistant",
+              content: `**${decision.title}** is an edit/delete — approve it below to run.`,
+              proposalId: proposal.id,
+            });
+          } else {
+            // Read/create/send — auto-execute inline
+            await autoExecute(proposal.id, decision.title);
+          }
         }
       } catch (err) {
         addMessage({
@@ -176,7 +184,13 @@ export function AgentSurface() {
   const markProposalFailed = useAgent((s) => s.markProposalFailed);
   const allProposals = useAgent((s) => s.proposals);
 
-  const handleProposalApprove = async (proposalId: string) => {
+  // Shared helper used by both the auto-exec path (read/create/send) and
+  // the Approve button (update/delete). Human-approved runs pass
+  // approved:true so the server dispatcher allows update/delete.
+  const runProposal = async (
+    proposalId: string,
+    opts: { humanApproved: boolean }
+  ) => {
     const proposal = allProposals[proposalId];
     if (!proposal) return;
 
@@ -187,6 +201,7 @@ export function AgentSurface() {
         tool: proposal.tool,
         input: proposal.input,
         proposalId,
+        approved: opts.humanApproved,
       });
 
       if (result.ok) {
@@ -201,8 +216,8 @@ export function AgentSurface() {
           text: `${proposal.tool} succeeded: ${result.summary}`,
         });
 
-        // Auto-continue the loop: feed the tool result back to the agent
-        // so it can announce the outcome or propose a follow-up.
+        // Continue the loop — feed the outcome back so the agent either
+        // wraps up with an answer or proposes the next step.
         setPhase("observe");
         const observation = buildObservation(
           messages,
@@ -225,13 +240,16 @@ export function AgentSurface() {
               entityRefs: follow.decision.entityRefs,
               confidence: follow.decision.confidence,
             });
-            addMessage({
-              role: "assistant",
-              content: `Done. Next I'd like to run **${follow.decision.title}** (${Math.round(
-                follow.decision.confidence * 100
-              )}% confidence) — approve below.`,
-              proposalId: next.id,
-            });
+            if (toolRequiresApproval(follow.decision.tool)) {
+              addMessage({
+                role: "assistant",
+                content: `Next: **${follow.decision.title}** (edit/delete) — approve below.`,
+                proposalId: next.id,
+              });
+            } else {
+              // Chain auto-execute
+              await runProposal(next.id, { humanApproved: false });
+            }
           } else if (follow.decision.kind === "clarify" && follow.clarification) {
             const cr = addClarification({
               question: follow.clarification.question,
@@ -269,6 +287,14 @@ export function AgentSurface() {
       setPhase("idle");
     }
   };
+
+  // Alias used inside the initial send() flow for read/create/send proposals.
+  const autoExecute = (proposalId: string, _title: string) =>
+    runProposal(proposalId, { humanApproved: false });
+
+  // The Approve button in AgentProposals — always a human approval.
+  const handleProposalApprove = (proposalId: string) =>
+    runProposal(proposalId, { humanApproved: true });
 
   const handleProposalReject = async (proposalId: string, reason?: string) => {
     rememberWorking({
