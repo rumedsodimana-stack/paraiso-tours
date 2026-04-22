@@ -12,6 +12,7 @@ interface ResendProps {
     tourId?: string;
     leadId?: string;
     recipient?: string;
+    supplierName?: string;
   };
 }
 
@@ -20,12 +21,13 @@ export function ResendEmailButton({ message }: ResendProps) {
   const [toast, setToast] = useState<string | null>(null);
   const router = useRouter();
 
-  // Only templates we can re-send reliably:
+  // Templates we can re-send reliably:
   const supported =
     message.template === "invoice" ||
     message.template === "itinerary" ||
     message.template === "tour_confirmation_with_invoice" ||
-    message.template === "payment_receipt";
+    message.template === "payment_receipt" ||
+    message.template === "supplier_reservation";
 
   if (!supported) return null;
 
@@ -38,6 +40,8 @@ export function ResendEmailButton({ message }: ResendProps) {
         invoiceId: message.invoiceId,
         tourId: message.tourId,
         leadId: message.leadId,
+        supplierEmail: message.template === "supplier_reservation" ? message.recipient : undefined,
+        supplierName: message.supplierName,
       });
       setToast(result?.success ? "Sent" : result?.error ?? "Failed");
       if (result?.success) router.refresh();

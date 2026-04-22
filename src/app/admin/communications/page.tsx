@@ -290,6 +290,7 @@ export default async function CommunicationsPage({
                             tourId: m.tourId,
                             leadId: m.leadId ?? (tour?.leadId ?? lead?.id),
                             recipient: m.recipient,
+                            supplierName: m.supplierName,
                           }}
                         />
                       </div>

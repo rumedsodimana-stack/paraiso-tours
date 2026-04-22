@@ -36,6 +36,10 @@ export type ResendEmailInput = {
   invoiceId?: string;
   tourId?: string;
   leadId?: string;
+  /** Supplier-specific resend context. Recipient email used to find the
+   *  supplier when only that much of the history is preserved. */
+  supplierEmail?: string;
+  supplierName?: string;
 };
 
 type Result = { success?: boolean; error?: string };
@@ -52,6 +56,12 @@ export async function resendEmailAction(input: ResendEmailInput): Promise<Result
         return await resendTourConfirmation(input.tourId);
       case "payment_receipt":
         return await resendPaymentReceipt(input.tourId);
+      case "supplier_reservation":
+        return await resendSupplierReservation(
+          input.tourId,
+          input.supplierEmail,
+          input.supplierName
+        );
       default:
         return { error: "This template cannot be resent from here." };
     }
@@ -222,6 +232,99 @@ async function resendPaymentReceipt(tourId?: string): Promise<Result> {
       channel: "email",
       recipient: email,
       template: "payment_receipt",
+      status: result.ok ? "sent" : "failed",
+      resent: true,
+      ...(result.ok ? {} : { error: result.error ?? "unknown" }),
+    },
+  });
+
+  revalidatePath("/admin/communications");
+  return result.ok ? { success: true } : { error: result.error ?? "Send failed" };
+}
+
+async function resendSupplierReservation(
+  tourId: string | undefined,
+  supplierEmail: string | undefined,
+  supplierNameHint: string | undefined
+): Promise<Result> {
+  if (!tourId) return { error: "Missing tour id" };
+  if (!supplierEmail) return { error: "Missing supplier email" };
+
+  const tour = await getTour(tourId);
+  if (!tour) return { error: "Tour not found" };
+  const lead = await getLead(tour.leadId);
+  if (!lead) return { error: "Booking not found for tour" };
+
+  const livePackage = await getPackage(tour.packageId);
+  const pkg = resolveTourPackage(tour, livePackage, lead);
+  if (!pkg) return { error: "Package not found" };
+
+  const { getHotels } = await import("@/lib/db");
+  const { getSuppliersForSchedule } = await import("@/lib/booking-breakdown");
+  const suppliers = await getHotels();
+
+  // Find the supplier by email (preferred) or name fallback.
+  const needleEmail = supplierEmail.trim().toLowerCase();
+  const supplier =
+    suppliers.find((s) => s.email?.trim().toLowerCase() === needleEmail) ??
+    (supplierNameHint
+      ? suppliers.find(
+          (s) => s.name.trim().toLowerCase() === supplierNameHint.trim().toLowerCase()
+        )
+      : undefined);
+
+  if (!supplier) {
+    return {
+      error: `No supplier in the catalog matches ${supplierEmail}. Add the supplier or update their email.`,
+    };
+  }
+
+  // Recompute the reservation context so the email mirrors a real scheduling.
+  const scheduleSuppliers = getSuppliersForSchedule(lead, pkg, suppliers);
+  const match = scheduleSuppliers?.withEmail.find(
+    (s) => s.email.trim().toLowerCase() === (supplier.email ?? "").trim().toLowerCase()
+  );
+
+  const { sendSupplierReservationEmail } = await import("@/lib/email");
+  const result = await sendSupplierReservationEmail({
+    supplierEmail: supplier.email || supplierEmail,
+    supplierName: supplier.name,
+    supplierType:
+      (match?.supplierType as "Accommodation" | "Transport" | "Meals") ||
+      (supplier.type === "hotel"
+        ? "Accommodation"
+        : supplier.type === "transport"
+          ? "Transport"
+          : "Meals"),
+    clientName: lead.name,
+    accompaniedGuestName: lead.accompaniedGuestName,
+    reference: lead.reference || tour.id,
+    packageName: pkg.name,
+    optionLabel: match?.optionLabel || "As per package",
+    checkInDate: tour.startDate,
+    checkOutDate: tour.endDate,
+    pax: tour.pax,
+    duration: pkg.duration,
+  });
+
+  await recordAuditEvent({
+    entityType: "tour",
+    entityId: tour.id,
+    action: result.ok ? "supplier_reservation_emailed" : "supplier_reservation_email_failed",
+    summary: result.ok
+      ? `Reservation resent to ${supplier.name}`
+      : `Supplier resend failed: ${result.error ?? "unknown"}`,
+    details: [
+      `Supplier: ${supplier.name}`,
+      `Recipient: ${supplier.email || supplierEmail}`,
+      `Trigger: manual resend`,
+    ],
+    metadata: {
+      channel: "email",
+      recipient: supplier.email || supplierEmail,
+      template: "supplier_reservation",
+      supplierName: supplier.name,
+      supplierType: supplier.type,
       status: result.ok ? "sent" : "failed",
       resent: true,
       ...(result.ok ? {} : { error: result.error ?? "unknown" }),

@@ -46,21 +46,89 @@ export default async function UserGuidePage() {
               staff, troubleshoot, and understand the full booking and operations flow.
             </p>
             <div className="mt-4 rounded-xl border border-[#e0e4dd] bg-[#f4ecdd] px-4 py-3 text-sm">
-              <strong className="text-[#11272b]">Recent updates:</strong> Global search (bookings, packages, tours, invoices, employees, suppliers), Change password in Settings, structured logging, Things to do in Sri Lanka slideshow.
+              <strong className="text-[#11272b]">What&apos;s new:</strong> AI Agent workspace with 50 tools, HITL approval on edit/delete, Communications portal with email history + resend, Reports (P&amp;L / supplier / bookings / payroll CSV), Insights (revenue trend + anomalies), step-wizard booking flow, per-night hotel selection, travel-time warnings, Paraiso-branded guest emails.
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recent Updates */}
-      <div className="rounded-xl border border-teal-200/60 bg-teal-50/20 p-4">
-        <h3 className="font-semibold text-stone-800">Recent updates</h3>
-        <ul className="mt-2 space-y-1 text-sm text-[#5e7279]">
-          <li>• <strong>Booking itinerary</strong> — click a booking name or reference to view full day-by-day summary with hotels, transport, meals</li>
-          <li>• <strong>Email suppliers</strong> — one-click mailto to all suppliers (hotels, transport, meals) with pre-filled reservation request</li>
-          <li>• <strong>Per-night accommodation</strong> — clients choose different hotels for each night on multi-day packages</li>
-          <li>• <strong>Star ratings</strong> — set for hotels in Hotels &amp; Suppliers; shown on client booking form</li>
-        </ul>
+      {/* What's new — detailed */}
+      <div className="rounded-xl border border-[#e0d4bc] bg-[#fbf7f1] p-5">
+        <h3 className="font-semibold text-[#11272b]">What shipped recently</h3>
+        <div className="mt-3 grid gap-3 text-sm text-[#5e7279] md:grid-cols-2">
+          <div>
+            <p className="font-semibold text-[#11272b]">🤖 AI Agent (<Link href="/admin/agent" className="underline decoration-dotted">/admin/agent</Link>)</p>
+            <ul className="mt-1 space-y-1 pl-4 list-disc">
+              <li>Chat controls the whole app — 50 tools across every entity</li>
+              <li>Reads, creates, sends: auto-execute</li>
+              <li>Edits &amp; deletes: approval card before anything mutates</li>
+              <li>Live business snapshot injected into every reasoning step</li>
+              <li>Continues the loop — after a tool runs, proposes the next step automatically</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-[#11272b]">✅ Approval queue (<Link href="/admin/hitl" className="underline decoration-dotted">/admin/hitl</Link>)</p>
+            <ul className="mt-1 space-y-1 pl-4 list-disc">
+              <li>Bookings awaiting approval listed with inline Approve / Reject</li>
+              <li>Recent AI proposals visible for oversight</li>
+              <li>Every action audit-logged</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-[#11272b]">📧 Communications (<Link href="/admin/communications" className="underline decoration-dotted">/admin/communications</Link>)</p>
+            <ul className="mt-1 space-y-1 pl-4 list-disc">
+              <li>Every outbound email with sent/failed status, recipient, template</li>
+              <li>Filter by status / template / recipient</li>
+              <li>One-click resend for guest invoices, itineraries, confirmations, receipts, supplier reservations</li>
+              <li>Dashboard KPI: emails sent vs failed today</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-[#11272b]">📊 Reports &amp; Insights</p>
+            <ul className="mt-1 space-y-1 pl-4 list-disc">
+              <li><Link href="/admin/reports" className="underline decoration-dotted">/admin/reports</Link> — P&amp;L, supplier statement, booking revenue, payroll register (CSV)</li>
+              <li><Link href="/admin/insights" className="underline decoration-dotted">/admin/insights</Link> — revenue trend, supplier concentration, anomaly alerts</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-[#11272b]">🗓️ Scheduling</p>
+            <ul className="mt-1 space-y-1 pl-4 list-disc">
+              <li>Fixed 404-after-schedule bug (rollback was deleting committed tours)</li>
+              <li>Custom-route transport/meal shows correct status</li>
+              <li>Server-side itinerary PDF + email to guest in one click</li>
+              <li>Invoice email-to-guest with PDF attachment</li>
+              <li>Pre-trip reminder + post-trip follow-up + revision/cancellation emails</li>
+              <li>Supplier remittance + schedule-update emails</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-[#11272b]">🏨 Catalog</p>
+            <ul className="mt-1 space-y-1 pl-4 list-disc">
+              <li>Meal plans now live under hotels (not standalone)</li>
+              <li>Legacy meal suppliers still editable, no new ones</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-[#11272b]">🧭 Guest flow</p>
+            <ul className="mt-1 space-y-1 pl-4 list-disc">
+              <li>Pre-built booking is now a 5-step wizard with live price bar</li>
+              <li>Guests can opt out of in-catalog hotels (&quot;Book my own&quot;)</li>
+              <li>Journey-builder flags long transfer legs (&gt; 6h) and over-packed routes</li>
+              <li>AI journey concierge persists drafts across reloads</li>
+              <li>Guest emails rebranded on Paraiso palette</li>
+              <li>Full mobile polish (44px tap targets, no auto-zoom, safe-area)</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-[#11272b]">🔒 Security</p>
+            <ul className="mt-1 space-y-1 pl-4 list-disc">
+              <li>All admin server actions gated with requireAdmin()</li>
+              <li>Prompt-injection defense on every AI call</li>
+              <li>Hard AI daily budget cap (refuses calls past 1.5× threshold)</li>
+              <li>Middleware on /admin/** routes + /api/admin/**</li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* Table of Contents */}
@@ -70,12 +138,17 @@ export default async function UserGuidePage() {
           <li><a href="#overview" className="text-[#12343b] hover:underline">1. Overview</a></li>
           <li><a href="#client-portal" className="text-[#12343b] hover:underline">2. Client Portal (Guest-facing)</a></li>
           <li><a href="#admin-portal" className="text-[#12343b] hover:underline">3. Admin Portal (Staff)</a></li>
-          <li><a href="#key-concepts" className="text-[#12343b] hover:underline">4. Key Concepts</a></li>
-          <li><a href="#auth-password" className="text-[#12343b] hover:underline">5. Login & Password</a></li>
-          <li><a href="#ai-setup" className="text-[#12343b] hover:underline">6. AI Setup</a></li>
-          <li><a href="#whatsapp" className="text-[#12343b] hover:underline">7. WhatsApp Integration</a></li>
-          <li><a href="#logging" className="text-[#12343b] hover:underline">8. Logging</a></li>
-          <li><a href="#launch-readiness" className="text-[#12343b] hover:underline">9. Launch Readiness Checklist</a></li>
+          <li><Link href="/admin/agent" className="text-[#12343b] hover:underline">4. AI Agent workspace</Link></li>
+          <li><Link href="/admin/hitl" className="text-[#12343b] hover:underline">5. Approval queue (HITL)</Link></li>
+          <li><Link href="/admin/communications" className="text-[#12343b] hover:underline">6. Communications portal</Link></li>
+          <li><Link href="/admin/reports" className="text-[#12343b] hover:underline">7. Reports (CSV exports)</Link></li>
+          <li><Link href="/admin/insights" className="text-[#12343b] hover:underline">8. Insights (trends + anomalies)</Link></li>
+          <li><a href="#key-concepts" className="text-[#12343b] hover:underline">9. Key Concepts</a></li>
+          <li><a href="#auth-password" className="text-[#12343b] hover:underline">10. Login & Password</a></li>
+          <li><a href="#ai-setup" className="text-[#12343b] hover:underline">11. AI Setup</a></li>
+          <li><a href="#whatsapp" className="text-[#12343b] hover:underline">12. WhatsApp Integration</a></li>
+          <li><a href="#logging" className="text-[#12343b] hover:underline">13. Logging</a></li>
+          <li><a href="#launch-readiness" className="text-[#12343b] hover:underline">14. Launch Readiness Checklist</a></li>
         </ol>
       </nav>
 

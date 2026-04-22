@@ -4,11 +4,12 @@ import {
   AlertTriangle,
   ArrowRight,
   Calendar,
+  Inbox,
   MapPin,
   TrendingUp,
   Users,
 } from "lucide-react";
-import { getLeads, getTours, getInvoices } from "@/lib/db";
+import { getLeads, getTours, getInvoices, getAuditLogs } from "@/lib/db";
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { supabase } from "@/lib/supabase";
 import { isDefaultPassword } from "@/lib/settings";
@@ -230,12 +231,15 @@ function AttentionItems({
 }
 
 export default async function DashboardPage() {
-  const [leads, tours, invoices, settings, usingDefaultPw] = await Promise.all([
+  const [leads, tours, invoices, settings, usingDefaultPw, auditLogs] = await Promise.all([
     getLeads(),
     getTours(),
     getInvoices(),
     getAppSettings(),
     isDefaultPassword(),
+    // Pull recent audit events to compute the comms-health KPI. 500 is
+    // plenty to cover a normal day's email volume.
+    getAuditLogs({ limit: 500 }),
   ]);
   getDisplayCompanyName(settings);
 
@@ -264,11 +268,40 @@ export default async function DashboardPage() {
   const isVercel = process.env.VERCEL === "1";
   const hasSupabase = supabase !== null;
 
+  // Communications health — count sent vs failed email events today.
+  const todayKey = today; // YYYY-MM-DD
+  let emailsSentToday = 0;
+  let emailsFailedToday = 0;
+  for (const log of auditLogs) {
+    if (!log.createdAt.startsWith(todayKey)) continue;
+    const action = log.action;
+    const metaStatus =
+      log.metadata && typeof (log.metadata as Record<string, unknown>).status === "string"
+        ? ((log.metadata as Record<string, unknown>).status as string)
+        : null;
+    if (metaStatus === "sent" || /_emailed$/.test(action)) {
+      emailsSentToday += 1;
+    } else if (metaStatus === "failed" || /_email_failed$/.test(action)) {
+      emailsFailedToday += 1;
+    }
+  }
+
   const kpis = [
     { label: "Active Bookings", value: activeLeads, sub: newLeadsToday > 0 ? `+${newLeadsToday} today` : null, icon: Users, href: "/admin/bookings" },
     { label: "Scheduled Tours", value: scheduledTours, sub: null, icon: Calendar, href: "/admin/calendar" },
     { label: "Revenue", value: `$${(totalRevenue / 1000).toFixed(1)}k`, sub: null, icon: TrendingUp, href: "/admin/finance" },
     { label: "Conversion", value: `${conversion}%`, sub: `${leads.filter((l) => l.status === "won").length} won`, icon: null, href: "/admin/bookings" },
+    {
+      label: "Emails today",
+      value: emailsSentToday,
+      sub: emailsFailedToday > 0
+        ? `${emailsFailedToday} failed`
+        : emailsSentToday === 0
+          ? "no sends yet"
+          : "all delivered",
+      icon: Inbox,
+      href: "/admin/communications",
+    },
   ];
 
   return (
@@ -312,7 +345,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {kpis.map((kpi) => (
           <Link
             key={kpi.label}
