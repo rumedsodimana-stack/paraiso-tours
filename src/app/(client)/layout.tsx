@@ -72,16 +72,14 @@ export default async function ClientLayout({
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6]">
+              <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-[#12343b] text-[#f6ead6]">
                   {settings.company.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <Image
                       src={settings.company.logoUrl}
                       alt={brandName}
                       fill
-
                       className="rounded-2xl object-cover"
-                      sizes="100vw"
+                      sizes="40px"
                     />
                   ) : (
                     <Compass className="h-4 w-4" />

@@ -64,7 +64,7 @@ export default async function ClientPortalPage() {
           <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(11,33,38,0.92)_8%,rgba(11,33,38,0.68)_46%,rgba(11,33,38,0.24)_100%)]" />
         </div>
 
-        <div className="relative grid gap-10 px-6 py-10 sm:px-8 sm:py-12 lg:grid-cols-[1.18fr_0.82fr] lg:px-12 lg:py-14">
+        <div className="relative grid gap-8 px-5 py-10 sm:px-8 sm:py-12 sm:gap-10 lg:grid-cols-[1.18fr_0.82fr] lg:px-12 lg:py-14">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.28em] text-[#efd5aa] backdrop-blur-sm">
               <Sparkles className="h-3.5 w-3.5" />

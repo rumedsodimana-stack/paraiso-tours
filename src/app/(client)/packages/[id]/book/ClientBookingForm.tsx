@@ -314,9 +314,25 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
   }
 
   return (
-    <div className="pb-32">
-      {/* Step indicator */}
-      <ol className="mb-6 flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wider text-[#8c6a38]">
+    <div className="has-sticky-bottom-bar pb-36 sm:pb-32">
+      {/* Mobile progress indicator: compact "Step N of M" + current step label */}
+      <div className="sm:hidden mb-4 rounded-2xl border border-[#e5d7c4] bg-[#fbf7f1] px-4 py-3">
+        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-[#8c6a38]">
+          <span>Step {currentIndex + 1} of {steps.length}</span>
+          <span className="text-[#11272b]">
+            {steps[currentIndex]?.label}
+          </span>
+        </div>
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#f4ecdd]">
+          <div
+            className="h-full bg-[#12343b] transition-all"
+            style={{ width: `${((currentIndex + 1) / steps.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Desktop/tablet step indicator (horizontal, scrollable if tight) */}
+      <ol className="hidden sm:flex mb-6 flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wider text-[#8c6a38]">
         {steps.map((s, i) => {
           const Icon = s.icon;
           const active = s.n === step;
@@ -734,36 +750,39 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
         )}
       </div>
 
-      {/* Persistent bottom price bar */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#d7c2a4] bg-[#fdf7eb]/95 px-4 py-4 backdrop-blur-md shadow-[0_-10px_40px_-20px_rgba(43,32,15,0.35)]">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-col">
-            <span className="text-xs uppercase tracking-[0.18em] text-[#8c6a38]">
+      {/* Persistent bottom price bar — mobile compacts into a two-row layout */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-[#d7c2a4] bg-[#fdf7eb]/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md shadow-[0_-10px_40px_-20px_rgba(43,32,15,0.35)] sm:px-4 sm:pb-4 sm:pt-4"
+      >
+        <div className="mx-auto flex max-w-3xl flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+          <div className="flex items-baseline justify-between gap-2 sm:flex-col sm:min-w-0 sm:items-start sm:gap-0.5">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-[#8c6a38] sm:text-xs">
               Running total
             </span>
-            <span className="truncate text-xl font-semibold text-[#12343b]">
+            <span className="text-lg font-semibold text-[#12343b] sm:truncate sm:text-xl">
               {totalPrice.toLocaleString()} {pkg.currency}
             </span>
-            <span className="text-xs text-[#5e7279]">
+            <span className="hidden text-xs text-[#5e7279] sm:inline">
               {pax} traveler{pax !== 1 ? "s" : ""} · {nights} nights
             </span>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center justify-end gap-2">
             <button
               type="button"
               onClick={goBack}
               disabled={currentIndex === 0}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#ddc8b0] bg-white px-4 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#fbf7f1] disabled:opacity-40"
+              aria-label="Back"
+              className="inline-flex h-11 items-center gap-1.5 rounded-full border border-[#ddc8b0] bg-white px-4 text-sm font-medium text-[#5e7279] transition hover:bg-[#fbf7f1] disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" />
-              Back
+              <span className="hide-tiny">Back</span>
             </button>
             {step !== 5 ? (
               <button
                 type="button"
                 onClick={goNext}
                 disabled={!canAdvance}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#12343b] px-5 py-2.5 text-sm font-semibold text-[#f6ead6] transition hover:bg-[#0f2b31] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#12343b] px-5 text-sm font-semibold text-[#f6ead6] transition hover:bg-[#0f2b31] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
               >
                 Next
                 <ChevronRight className="h-4 w-4" />
@@ -773,7 +792,7 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
                 type="button"
                 onClick={submitBooking}
                 disabled={loading || !canSubmit}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#c9922f] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a87a22] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#c9922f] px-5 text-sm font-semibold text-white transition hover:bg-[#a87a22] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
               >
                 {loading ? "Submitting…" : "Submit booking"}
                 <Check className="h-4 w-4" />

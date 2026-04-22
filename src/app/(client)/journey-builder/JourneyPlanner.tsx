@@ -1360,23 +1360,23 @@ export function JourneyPlanner({
       {/* ================================================================ */}
       {/*  STICKY BOTTOM BAR                                               */}
       {/* ================================================================ */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200 bg-white/95 px-5 py-3 backdrop-blur-md safe-bottom">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-          <div>
-            <p className="text-xs text-stone-500">
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200 bg-white/95 px-4 pb-[max(10px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:px-5">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs text-stone-500">
               {days.length} day{days.length === 1 ? "" : "s"} · {uniqueDestinations.size} place{uniqueDestinations.size === 1 ? "" : "s"} · {pax} guest{pax === 1 ? "" : "s"}
             </p>
-            <p className="text-lg font-bold text-[#12343b]">{currencyFormat(pricing.total, pricing.currency)}</p>
+            <p className="truncate text-base font-bold text-[#12343b] sm:text-lg">{currencyFormat(pricing.total, pricing.currency)}</p>
           </div>
           {openSection !== 4 ? (
             <button type="button" onClick={() => setOpenSection(4)}
-              className="rounded-xl bg-[#12343b] px-5 py-2.5 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31]">
+              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[#12343b] px-5 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31]">
               Review
             </button>
           ) : (
             <button type="button" disabled={submitting}
               onClick={() => { const f = document.querySelector<HTMLFormElement>("form"); f?.requestSubmit(); }}
-              className="rounded-xl bg-[#12343b] px-5 py-2.5 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31] disabled:opacity-60">
+              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[#12343b] px-5 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31] disabled:opacity-60">
               {submitting ? "Sending..." : "Confirm"}
             </button>
           )}

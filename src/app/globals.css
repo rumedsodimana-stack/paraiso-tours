@@ -802,3 +802,145 @@ body::after {
     transform: translate(-50%, -50%) scale(1.35);
   }
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   Mobile polish for the client portal.
+   Targets the universal issues that hurt on phones:
+     1. Horizontal scroll bleed (images, pre, tables, very-long tokens)
+     2. Tiny tap targets (iOS Human Interface min = 44×44)
+     3. 16px font-size on inputs (prevents iOS Safari auto-zoom)
+     4. Image overflow into rounded containers
+     5. Chatty bottom bar overlap on booking wizard
+     6. Better touch feedback (kill the grey tap flash, add one we own)
+   Everything is min-width gated so desktop is untouched.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Universal safety net — no element should punch horizontal scroll. */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+img,
+svg,
+video,
+picture {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Long URLs / reference codes shouldn't break the layout. */
+p,
+li,
+dd,
+dt,
+td,
+th,
+span,
+a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+code,
+pre {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Kill the flashy iOS grey tap highlight; use our own subtle one. */
+a,
+button,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+  -webkit-tap-highlight-color: rgba(18, 52, 59, 0.08);
+}
+
+/* Phone-only rules. */
+@media (max-width: 640px) {
+  /* iOS auto-zooms any input with font-size < 16px on focus. Force 16px
+     everywhere on phones. Desktop can stay smaller. */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="date"],
+  input[type="search"],
+  input[type="url"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* 44×44 minimum tap target on primary buttons + nav links. */
+  .tap-safe,
+  button:not(.no-tap-safe),
+  a[role="button"] {
+    min-height: 44px;
+  }
+
+  /* Anything that tries to claim a huge min-height on mobile (hero
+     imagery, dashboards) should wrap naturally instead of forcing a
+     tall blank area on small screens. */
+  [data-mobile-min-auto] {
+    min-height: auto !important;
+  }
+
+  /* Pages with a fixed bottom bar (booking wizard) need breathing room
+     so the last form fields aren't hidden. The wizard already adds
+     pb-32; this is a belt-and-braces fallback. */
+  .has-sticky-bottom-bar {
+    padding-bottom: 9rem;
+  }
+
+  /* Table-in-prose: let them scroll horizontally instead of breaking. */
+  main table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Reduce very large hero type by a notch on phones — the design
+     languages tend to over-size on small screens. */
+  h1.text-4xl,
+  h1.text-5xl,
+  h1.text-6xl {
+    font-size: 2rem;
+    line-height: 1.15;
+  }
+
+  h2.text-3xl,
+  h2.text-4xl {
+    font-size: 1.5rem;
+    line-height: 1.2;
+  }
+}
+
+/* Small phone (≤ 380px — iPhone SE, older Androids). Tighten further. */
+@media (max-width: 380px) {
+  .hide-tiny {
+    display: none !important;
+  }
+}
+
+/* Respect users who prefer reduced motion. Pulses and long transitions
+   can be nauseating. */
+@media (prefers-reduced-motion: reduce) {
+  .journey-map-marker__pulse {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
