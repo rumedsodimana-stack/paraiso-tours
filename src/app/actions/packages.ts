@@ -15,16 +15,37 @@ function parseItinerary(formData: FormData): ItineraryDay[] {
     const accommodation = formData.get(`itinerary_${i}_accommodation`) as string;
     const accommodationOptionsRaw = formData.get(`itinerary_${i}_accommodationOptions`) as string;
     const mealPlanOptionsRaw = formData.get(`itinerary_${i}_mealPlanOptions`) as string;
+    // Per-day destination + activity wiring so booking flows can filter
+    // hotels + activities by destination. Destination is a planner id
+    // (e.g. "kandy"); activities is a JSON array of activity ids the
+    // admin selected for this day.
+    const destinationId = (formData.get(`itinerary_${i}_destinationId`) as string)?.trim();
+    const activityIdsRaw = (formData.get(`itinerary_${i}_activityIds`) as string) ?? "";
     if (!title && !description && !accommodationOptionsRaw) break;
     const accommodationOptions = parseOptionsFromJson(accommodationOptionsRaw);
     const mealPlanOptions = parseOptionsFromJson(mealPlanOptionsRaw);
+    let activityIds: string[] = [];
+    if (activityIdsRaw.trim()) {
+      try {
+        const parsed = JSON.parse(activityIdsRaw);
+        if (Array.isArray(parsed)) {
+          activityIds = parsed
+            .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+            .map((v) => v.trim());
+        }
+      } catch {
+        // corrupt payload — fall through with empty list
+      }
+    }
     days.push({
       day: i + 1,
       title: title?.trim() || "",
       description: description?.trim() || "",
       accommodation: accommodation?.trim() || undefined,
+      destinationId: destinationId || undefined,
       accommodationOptions: accommodationOptions.length ? accommodationOptions : undefined,
       mealPlanOptions: mealPlanOptions.length ? mealPlanOptions : undefined,
+      activityIds: activityIds.length ? activityIds : undefined,
     });
     i++;
   }

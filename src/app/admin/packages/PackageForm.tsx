@@ -10,8 +10,6 @@ import {
   DollarSign,
   Globe,
   ImageIcon,
-  ListChecks,
-  Map,
   Package,
   PlaneLanding,
   Plus,
@@ -23,12 +21,12 @@ import {
 } from "lucide-react";
 import type {
   TourPackage,
-  ItineraryDay,
   HotelSupplier,
   HotelMealPlan,
   PackageOption,
   PriceType,
 } from "@/lib/types";
+import { OWN_HOTEL_PERSISTED_VALUE } from "@/lib/types";
 import type { PlannerDestination, PlannerDestinationId } from "@/lib/route-planner";
 import { getPlannerActivities } from "@/lib/route-planner";
 import { calcOptionPrice } from "@/lib/package-price";
@@ -220,6 +218,10 @@ export function PackageForm({
       return pkg.itinerary.map((d, i) => {
         const firstSupplierId = d.accommodationOptions?.[0]?.supplierId;
         const hotel = firstSupplierId ? hotelLookup[firstSupplierId] : undefined;
+        // Prefer the persisted day-level destinationId (new field), fall
+        // back to the first hotel's destinationId for legacy packages
+        // saved before destination-per-day was wired to persistence.
+        const persistedDestinationId = d.destinationId ?? hotel?.destinationId ?? null;
         return {
           id: `day_${i + 1}`,
           day: i + 1,
@@ -228,9 +230,9 @@ export function PackageForm({
           accommodation: d.accommodation ?? "",
           accommodationOptions: d.accommodationOptions ?? [],
           mealPlanOptions: d.mealPlanOptions ?? [],
-          destinationId: hotel?.destinationId ?? null,
-          hotelMode: (d.accommodation === "Own arrangement" ? "own" : "pick") as HotelMode,
-          selectedActivityIds: [],
+          destinationId: persistedDestinationId,
+          hotelMode: (d.accommodation === OWN_HOTEL_PERSISTED_VALUE ? "own" : "pick") as HotelMode,
+          selectedActivityIds: Array.isArray(d.activityIds) ? [...d.activityIds] : [],
           notes: "",
         };
       });
@@ -328,16 +330,27 @@ export function PackageForm({
     formData.set("description", description);
     if (imageUrlInput) formData.set("imageUrl", imageUrlInput);
 
-    // Serialise itinerary
+    // Serialise itinerary. Destination + activities are persisted per day
+    // so the client booking form can filter hotels + activities by the
+    // same destination the admin authored here. Without this, the booking
+    // form falls back to whatever is on the package-level list and cannot
+    // enforce "hotels + activities scoped to destination".
     days.forEach((day, i) => {
       formData.set(`itinerary_${i}_title`, day.title);
       formData.set(`itinerary_${i}_description`, day.description);
       formData.set(`itinerary_${i}_accommodation`,
-        day.hotelMode === "own" ? "Own arrangement" : (day.accommodationOptions[0]?.label ?? ""));
+        day.hotelMode === "own" ? OWN_HOTEL_PERSISTED_VALUE : (day.accommodationOptions[0]?.label ?? ""));
       formData.set(`itinerary_${i}_accommodationOptions`,
         JSON.stringify(day.hotelMode === "own" ? [] : day.accommodationOptions));
       formData.set(`itinerary_${i}_mealPlanOptions`,
         JSON.stringify(day.hotelMode === "own" ? [] : day.mealPlanOptions));
+      if (day.destinationId) {
+        formData.set(`itinerary_${i}_destinationId`, day.destinationId);
+      }
+      formData.set(
+        `itinerary_${i}_activityIds`,
+        JSON.stringify(day.selectedActivityIds ?? []),
+      );
     });
 
     // Merge activity inclusions with manual

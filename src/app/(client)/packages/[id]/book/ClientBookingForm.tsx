@@ -12,8 +12,11 @@ import {
   Users,
   Calendar,
   MessageSquare,
+  MapPinned,
+  Sparkles,
 } from "lucide-react";
 import type { TourPackage, PackageOption, HotelSupplier, HotelMealPlan } from "@/lib/types";
+import { OWN_HOTEL_CTA_LABEL } from "@/lib/types";
 import { calcOptionPrice, getFlatMealPlanOptions } from "@/lib/package-price";
 import { createClientBookingAction } from "@/app/actions/client-booking";
 import { debugClient } from "@/lib/debug";
@@ -27,6 +30,11 @@ import {
 } from "../../../_ui";
 import { buildPackageRouteMapPoints } from "@/lib/route-coords";
 import { ReviewMap } from "../../../journey-builder/ReviewMap";
+import {
+  getPlannerActivities,
+  getPlannerDestination,
+  type PlannerDestinationId,
+} from "@/lib/route-planner";
 
 /** Sentinel meal-plan choice: "no meal plan selected — room only / arranged
  *  directly with the hotel". Rendered as a zero-cost option so guests can
@@ -38,19 +46,47 @@ function parseNights(duration: string): number {
   return m ? parseInt(m[1], 10) : 0;
 }
 
-function getAccommodationOptionsForNight(pkg: TourPackage, nightIndex: number): PackageOption[] {
+/**
+ * Resolve hotel options for a given night. Precedence:
+ *   1. Per-day curated list the admin attached (`day.accommodationOptions`).
+ *   2. If the day has a `destinationId`, synthesize options from the
+ *      hotel catalog filtered to that destination — keeps the invariant
+ *      "hotels come according to destination" even when the admin didn't
+ *      hand-pick options for that night.
+ *   3. Package-level fallback so legacy packages keep rendering.
+ */
+function getAccommodationOptionsForNight(
+  pkg: TourPackage,
+  nightIndex: number,
+  hotels: HotelSupplier[] = [],
+): PackageOption[] {
   const day = pkg.itinerary?.[nightIndex];
   if (day?.accommodationOptions?.length) return day.accommodationOptions;
+  if (day?.destinationId) {
+    const catalogMatches = hotels
+      .filter((h) => h.type === "hotel" && h.destinationId === day.destinationId)
+      .map<PackageOption>((h) => ({
+        id: `catalog_${h.id}`,
+        label: h.name,
+        price: h.defaultPricePerNight ?? 0,
+        priceType: "per_room_per_night",
+        supplierId: h.id,
+      }));
+    if (catalogMatches.length) return catalogMatches;
+  }
   return pkg.accommodationOptions ?? [];
 }
 
-function getAllAccommodationNightOptions(pkg: TourPackage): { nightIndex: number; options: PackageOption[] }[] {
+function getAllAccommodationNightOptions(
+  pkg: TourPackage,
+  hotels: HotelSupplier[] = [],
+): { nightIndex: number; options: PackageOption[] }[] {
   const nights = parseNights(pkg.duration) || 1;
   const result: { nightIndex: number; options: PackageOption[] }[] = [];
   const packageLevel = pkg.accommodationOptions ?? [];
   let fallbackOptions: PackageOption[] =
-    getAccommodationOptionsForNight(pkg, 0).length > 0
-      ? getAccommodationOptionsForNight(pkg, 0)
+    getAccommodationOptionsForNight(pkg, 0, hotels).length > 0
+      ? getAccommodationOptionsForNight(pkg, 0, hotels)
       : packageLevel;
   if (fallbackOptions.length === 0) {
     const firstWithOptions = pkg.itinerary?.find((d) => d.accommodationOptions?.length);
@@ -59,9 +95,10 @@ function getAllAccommodationNightOptions(pkg: TourPackage): { nightIndex: number
   }
   if (fallbackOptions.length === 0 && packageLevel.length > 0) fallbackOptions = packageLevel;
   for (let i = 0; i < nights; i++) {
-    let opts = getAccommodationOptionsForNight(pkg, i);
+    let opts = getAccommodationOptionsForNight(pkg, i, hotels);
     if (opts.length === 0) opts = fallbackOptions;
-    if (opts.length === 0 && i > 0) opts = getAccommodationOptionsForNight(pkg, 0) || packageLevel;
+    if (opts.length === 0 && i > 0)
+      opts = getAccommodationOptionsForNight(pkg, 0, hotels) || packageLevel;
     if (fallbackOptions.length === 0 && opts.length > 0) fallbackOptions = opts;
     if (opts.length > 0) result.push({ nightIndex: i, options: opts });
   }
@@ -115,7 +152,14 @@ export function ClientBookingForm({
     () => pkg.accommodationOptions ?? [],
     [pkg.accommodationOptions]
   );
-  const perNightAccommodation = useMemo(() => getAllAccommodationNightOptions(pkg), [pkg]);
+  // Feed the global hotels catalog so nights whose admin-curated list is
+  // empty can fall back to the destination-scoped catalog (hotels whose
+  // `destinationId` matches `pkg.itinerary[i].destinationId`). Preserves
+  // the invariant: "hotels always come according to destination".
+  const perNightAccommodation = useMemo(
+    () => getAllAccommodationNightOptions(pkg, hotels),
+    [pkg, hotels],
+  );
 
   const getDefault = (opts: PackageOption[]) =>
     opts.find((o) => o.isDefault)?.id ?? opts[0]?.id ?? "";
@@ -845,7 +889,7 @@ export function ClientBookingForm({
                 : "Pick from our curated hotels below, or select "}
               {!hasHotelMealPlans && (
                 <>
-                  <b>Book my own</b> if you prefer to arrange your own stay.
+                  <b>{OWN_HOTEL_CTA_LABEL}</b> if you prefer to arrange your own stay.
                 </>
               )}
             </p>
@@ -896,7 +940,7 @@ export function ClientBookingForm({
                     />
                     <div className="flex flex-col">
                       <span className="font-medium text-[var(--portal-ink)]">
-                        Book my own
+                        {OWN_HOTEL_CTA_LABEL}
                       </span>
                       <span className="text-xs text-[var(--portal-eyebrow)]">
                         I&apos;ll arrange the stay
@@ -972,16 +1016,64 @@ export function ClientBookingForm({
               <div className="space-y-4">
                 {perNightAccommodation.map(({ nightIndex, options }) => {
                   const nightBookOwn = !!bookMyOwnNights[nightIndex];
+                  // Surface the day's destination + activities so the
+                  // guest sees "Kandy — cultural temple tour" context
+                  // before picking a hotel. Resolved straight from the
+                  // planner catalog — same source the journey-builder
+                  // uses — so both flows agree.
+                  const dayRecord = pkg.itinerary?.[nightIndex];
+                  const destId = dayRecord?.destinationId as
+                    | PlannerDestinationId
+                    | undefined;
+                  let destLabel = "";
+                  let dayActivities: { id: string; title: string }[] = [];
+                  if (destId) {
+                    try {
+                      destLabel = getPlannerDestination(destId).name;
+                    } catch {
+                      destLabel = destId;
+                    }
+                    try {
+                      const catalog = getPlannerActivities(destId);
+                      const selected = dayRecord?.activityIds ?? [];
+                      dayActivities = selected.length
+                        ? catalog
+                            .filter((a) => selected.includes(a.id))
+                            .map((a) => ({ id: a.id, title: a.title }))
+                        : [];
+                    } catch {
+                      dayActivities = [];
+                    }
+                  }
                   return (
                     <div
                       key={nightIndex}
                       className="rounded-[1.35rem] border border-[var(--portal-border)] bg-white p-4"
                     >
-                      <div className="mb-3">
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
                         <p className="text-sm font-medium uppercase tracking-[0.14em] text-[var(--portal-eyebrow)]">
                           Night {nightIndex + 1}
                         </p>
+                        {destLabel ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--portal-border)] bg-[var(--portal-paper)] px-2.5 py-0.5 text-xs font-medium text-[var(--portal-ink)]">
+                            <MapPinned className="h-3 w-3 text-[var(--portal-gold-deep)]" />
+                            {destLabel}
+                          </span>
+                        ) : null}
                       </div>
+                      {dayActivities.length > 0 ? (
+                        <div className="mb-3 rounded-[1.15rem] border border-[var(--portal-border)] bg-[var(--portal-paper)] px-3 py-2">
+                          <p className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-[var(--portal-eyebrow)]">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Activities included this day
+                          </p>
+                          <ul className="ml-1 list-disc space-y-0.5 pl-4 text-sm text-[var(--portal-ink)]">
+                            {dayActivities.map((a) => (
+                              <li key={a.id}>{a.title}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                       <div className="grid gap-2 sm:grid-cols-2">
                         {options.map((opt) => (
                           <label
@@ -1047,7 +1139,7 @@ export function ClientBookingForm({
                           />
                           <div className="flex flex-col">
                             <span className="font-medium text-[var(--portal-ink)]">
-                              Book my own
+                              {OWN_HOTEL_CTA_LABEL}
                             </span>
                             <span className="text-xs text-[var(--portal-eyebrow)]">
                               I&apos;ll arrange this night

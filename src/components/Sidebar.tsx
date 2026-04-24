@@ -14,7 +14,9 @@ import {
   ChevronRight,
   Compass,
   FileText,
+  Hotel,
   Inbox,
+  Sparkles,
   Landmark,
   LayoutDashboard,
   ListTodo,
@@ -92,6 +94,8 @@ const OPERATIONS: NavItem[] = [
 const CATALOG: NavItem[] = [
   { href: "/admin/packages", label: "Tour Packages", icon: Package },
   { href: "/admin/destinations", label: "Destinations", icon: MapPin },
+  { href: "/admin/hotels", label: "Hotels", icon: Hotel },
+  { href: "/admin/activities", label: "Activities", icon: Sparkles },
   { href: "/admin/transportation", label: "Transportation", icon: Car },
 ];
 

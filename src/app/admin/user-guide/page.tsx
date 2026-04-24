@@ -57,7 +57,7 @@ export default async function UserGuidePage() {
         <h3 className="font-semibold text-[#11272b]">What shipped recently</h3>
         <div className="mt-3 grid gap-3 text-sm text-[#5e7279] md:grid-cols-2">
           <div>
-            <p className="font-semibold text-[#11272b]">🤖 AI Agent (<Link href="/admin/agent" className="underline decoration-dotted">/admin/agent</Link>)</p>
+            <p className="font-semibold text-[#11272b]">🤖 AI Workspace (<Link href="/admin/ai" className="underline decoration-dotted">/admin/ai</Link>)</p>
             <ul className="mt-1 space-y-1 pl-4 list-disc">
               <li>Chat controls the whole app — 50 tools across every entity</li>
               <li>Reads, creates, sends: auto-execute</li>
@@ -138,7 +138,7 @@ export default async function UserGuidePage() {
           <li><a href="#overview" className="text-[#12343b] hover:underline">1. Overview</a></li>
           <li><a href="#client-portal" className="text-[#12343b] hover:underline">2. Client Portal (Guest-facing)</a></li>
           <li><a href="#admin-portal" className="text-[#12343b] hover:underline">3. Admin Portal (Staff)</a></li>
-          <li><Link href="/admin/agent" className="text-[#12343b] hover:underline">4. AI Agent workspace</Link></li>
+          <li><Link href="/admin/ai" className="text-[#12343b] hover:underline">4. AI Workspace</Link></li>
           <li><Link href="/admin/hitl" className="text-[#12343b] hover:underline">5. Approval queue (HITL)</Link></li>
           <li><Link href="/admin/communications" className="text-[#12343b] hover:underline">6. Communications portal</Link></li>
           <li><Link href="/admin/reports" className="text-[#12343b] hover:underline">7. Reports (CSV exports)</Link></li>

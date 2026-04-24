@@ -1,6 +1,21 @@
 export type LeadStatus = "new" | "scheduled" | "cancelled" | "completed";
 
 /**
+ * Canonical labels for the "guest books their own hotel" escape hatch.
+ * Single source of truth — keeps copy consistent across booking form,
+ * journey builder, badges, and persisted itinerary snapshots.
+ *
+ * - `OWN_HOTEL_CTA_LABEL`: used on the peer tile guests click to opt out.
+ * - `OWN_HOTEL_BADGE_LABEL`: short chip shown on review cards.
+ * - `OWN_HOTEL_PERSISTED_VALUE`: stored in `ItineraryDay.accommodation`
+ *   when the guest arranges their own stay. DO NOT change without a
+ *   migration — existing packages persist this string.
+ */
+export const OWN_HOTEL_CTA_LABEL = "Book my own";
+export const OWN_HOTEL_BADGE_LABEL = "Own stay";
+export const OWN_HOTEL_PERSISTED_VALUE = "Own arrangement";
+
+/**
  * Normalize legacy status values to the simplified 4-status model.
  * Old data may have:
  *   - "won"  → bookings that were accepted; now "scheduled"
@@ -102,10 +117,24 @@ export interface ItineraryDay {
   title: string;
   description: string;
   accommodation?: string;
+  /**
+   * Planner destination this day belongs to (e.g. "kandy", "ella").
+   * Drives catalog filtering at booking time: hotels on offer come from the
+   * global hotel catalog matching this destination, and activities come
+   * from the destination-scoped activity catalog. Kept optional so legacy
+   * packages without a destination continue to render.
+   */
+  destinationId?: string;
   /** Hotel options for this night (guest chooses one) */
   accommodationOptions?: PackageOption[];
   /** Meal plan options for this night — tied to the hotel(s) above (BB, HB, FB etc.) */
   mealPlanOptions?: PackageOption[];
+  /**
+   * IDs of destination-scoped activities selected by the admin for this
+   * day. Resolved against the activities catalog at render time so the
+   * booking form can surface them as inclusions per day.
+   */
+  activityIds?: string[];
 }
 
 export type PriceType =

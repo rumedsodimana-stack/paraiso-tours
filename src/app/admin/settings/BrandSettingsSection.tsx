@@ -241,12 +241,12 @@ export function BrandSettingsSection({
                 name="trackBookingLabel"
                 defaultValue={settings.portal.trackBookingLabel}
               />
-              <InputField
-                label="Journey guidance fee"
+              {/* Journey guidance fee is edited in the Portal tab — preserve
+                  its value here so this form's submit doesn't blank it. */}
+              <input
+                type="hidden"
                 name="customJourneyGuidanceFee"
-                defaultValue={String(settings.portal.customJourneyGuidanceFee)}
-                placeholder="150"
-                type="number"
+                value={String(settings.portal.customJourneyGuidanceFee)}
               />
               <InputField
                 label="Journey guidance label"

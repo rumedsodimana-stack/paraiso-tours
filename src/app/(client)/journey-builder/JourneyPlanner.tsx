@@ -9,7 +9,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  GripVertical,
   Loader2,
   MapPinned,
   Minus,
@@ -22,6 +21,7 @@ import {
 } from "lucide-react";
 import { generateClientJourneyPlanAction } from "@/app/actions/client-ai";
 import type { HotelMealPlan, HotelSupplier, TourPackage } from "@/lib/types";
+import { OWN_HOTEL_BADGE_LABEL } from "@/lib/types";
 import type { ClientJourneyPlan } from "@/lib/client-ai-concierge";
 import {
   calculateCustomJourneyPricing,
@@ -42,6 +42,13 @@ import {
   type PlannerDestinationId,
 } from "@/lib/route-planner";
 import { ReviewMap } from "./ReviewMap";
+import {
+  WizardShell,
+  WizardPriceBar,
+  StepSelector,
+  type WizardPriceBarBreakdownItem,
+  type StepSelectorItem,
+} from "../_ui";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -99,7 +106,6 @@ function SectionAccordion({
   title,
   subtitle,
   open,
-  done,
   onToggle,
   children,
 }: {
@@ -107,7 +113,6 @@ function SectionAccordion({
   title: string;
   subtitle: string;
   open: boolean;
-  done: boolean;
   onToggle: () => void;
   children: ReactNode;
 }) {
@@ -120,14 +125,12 @@ function SectionAccordion({
       >
         <span
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-            done
+            open
               ? "bg-[var(--portal-ink)] text-[var(--portal-cream)]"
-              : open
-                ? "bg-[var(--portal-ink)] text-[var(--portal-cream)]"
-                : "bg-stone-100 text-stone-500"
+              : "bg-stone-100 text-stone-500"
           }`}
         >
-          {done && !open ? <Check className="h-4 w-4" /> : number}
+          {number}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-base font-semibold text-stone-900">{title}</span>
@@ -141,37 +144,6 @@ function SectionAccordion({
       </button>
       {open && <div className="border-t border-[var(--portal-border-soft)] px-5 pb-6 pt-5">{children}</div>}
     </section>
-  );
-}
-
-function OptionPill({
-  label,
-  detail,
-  selected,
-  onClick,
-}: {
-  label: string;
-  detail?: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl border px-4 py-3 text-left transition ${
-        selected
-          ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white shadow-md"
-          : "border-[var(--portal-border)] bg-white text-stone-800 hover:border-stone-400"
-      }`}
-    >
-      <span className="block text-sm font-semibold">{label}</span>
-      {detail && (
-        <span className={`mt-0.5 block text-xs ${selected ? "text-stone-300" : "text-stone-500"}`}>
-          {detail}
-        </span>
-      )}
-    </button>
   );
 }
 
@@ -466,6 +438,21 @@ export function JourneyPlanner({
     return enrichedDays.reduce((sum, d) => sum + (d.leg?.driveHours ?? 0), 0);
   }, [enrichedDays]);
 
+  /**
+   * Line items for the sticky `<WizardPriceBar>` breakdown sheet.
+   * Mirrors `pricing.lineItems` so the journey-builder and booking
+   * wizard surface costs in the same visual shell.
+   */
+  const priceBreakdown = useMemo<WizardPriceBarBreakdownItem[]>(
+    () =>
+      pricing.lineItems.map((li) => ({
+        id: li.id,
+        label: li.label,
+        amount: currencyFormat(li.amount, pricing.currency),
+      })),
+    [pricing],
+  );
+
   const totalNights = days.length;
   const uniqueDestinations = new Set(days.map((d) => d.destinationId).filter(Boolean));
 
@@ -745,21 +732,55 @@ export function JourneyPlanner({
   /*  RENDER                                                           */
   /* ---------------------------------------------------------------- */
 
-  return (
-    <div className="mx-auto max-w-2xl space-y-4 pb-32">
-      {/* ---- Hero ---- */}
-      <section className="rounded-2xl bg-[var(--portal-ink)] px-5 py-6 text-[var(--portal-cream)]">
-        <p className="text-xs uppercase tracking-[0.28em] text-[var(--portal-highlight)]">
-          Custom trip builder
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-          Plan your Sri Lanka day by day
-        </h1>
-        <p className="mt-2 text-sm leading-relaxed text-stone-300">
-          Add days, pick where you want to be, choose activities, and we&apos;ll arrange everything.
-        </p>
-      </section>
+  // Journey-builder keeps its accordion flow (openSection 1-4), but the
+  // visual shell mirrors the booking wizard: a compact header with
+  // StepSelector on top, scrollable body, sticky WizardPriceBar at the
+  // bottom. The 4 accordion sections remain interactable at any time —
+  // StepSelector here is a progress indicator that also lets guests
+  // jump back to a completed section.
+  const stepSelectorItems: StepSelectorItem[] = [
+    { id: 1, label: "When & Who", icon: CalendarDays },
+    { id: 2, label: "Vehicle", icon: BedDouble },
+    { id: 3, label: "Day by Day", icon: MapPinned },
+    { id: 4, label: "Review", icon: Check },
+  ];
+  const currentStepIndex = Math.max(0, (openSection === 0 ? 1 : openSection) - 1);
 
+  return (
+    <>
+      <WizardShell>
+        <WizardShell.Header>
+          {/* Mobile: compact "Step N of M" progress bar */}
+          <div className="sm:hidden px-4 pt-1 pb-2">
+            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-[var(--portal-eyebrow)]">
+              <span>Step {currentStepIndex + 1} of {stepSelectorItems.length}</span>
+              <span className="text-[var(--portal-ink)]">
+                {stepSelectorItems[currentStepIndex]?.label}
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--portal-paper)]">
+              <div
+                className="h-full bg-[var(--portal-ink)] transition-all"
+                style={{ width: `${((currentStepIndex + 1) / stepSelectorItems.length) * 100}%` }}
+              />
+            </div>
+          </div>
+          <div className="hidden sm:block px-4 pt-1 pb-2 sm:px-6">
+            <StepSelector
+              steps={stepSelectorItems}
+              currentIndex={currentStepIndex}
+              onSelect={(idx) => {
+                // Only allow jumping to completed sections
+                const target = idx + 1;
+                if (sectionDone(target) || target <= openSection) {
+                  setOpenSection(target);
+                }
+              }}
+            />
+          </div>
+        </WizardShell.Header>
+        <WizardShell.Body>
+          <div className="space-y-6">
       {/* ---- AI Quick Build ---- */}
       {aiConciergeEnabled && (
         <details className="group rounded-2xl border border-[var(--portal-border)] bg-white/80 backdrop-blur-sm">
@@ -825,13 +846,13 @@ export function JourneyPlanner({
       {/* ================================================================ */}
       {/*  SECTION 1 — When & Who                                          */}
       {/* ================================================================ */}
+      {openSection === 1 && (
       <SectionAccordion
         number={1}
         title="When & Who"
         subtitle={travelDate ? `${travelDate} · ${pax} guest${pax === 1 ? "" : "s"}${guestNames[0] ? ` · ${guestNames[0]}` : ""}` : "Set your travel date & group size"}
-        open={openSection === 1}
-        done={sectionDone(1)}
-        onToggle={() => setOpenSection(openSection === 1 ? 0 : 1)}
+        open
+        onToggle={() => {}}
       >
         <div className="space-y-5">
           <label className="block">
@@ -896,21 +917,35 @@ export function JourneyPlanner({
           </button>
         </div>
       </SectionAccordion>
+      )}
 
       {/* ================================================================ */}
       {/*  SECTION 2 — Vehicle                                             */}
       {/* ================================================================ */}
+      {openSection === 2 && (
       <SectionAccordion
         number={2}
         title="Your Vehicle"
         subtitle={selectedTransport ? selectedTransport.label : "Choose transport for the trip"}
-        open={openSection === 2}
-        done={true}
-        onToggle={() => setOpenSection(openSection === 2 ? 0 : 2)}
+        open
+        onToggle={() => {}}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <OptionPill label="No transport" detail="I'll arrange my own" selected={transportSelectionId === "none"} onClick={() => setTransportSelectionId("none")} />
+            <button
+              type="button"
+              onClick={() => setTransportSelectionId("none")}
+              className={`rounded-xl border px-4 py-3 text-left transition ${
+                transportSelectionId === "none"
+                  ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white shadow-md"
+                  : "border-[var(--portal-border)] bg-white text-stone-800 hover:border-stone-400"
+              }`}
+            >
+              <span className="block text-sm font-semibold">No transport</span>
+              <span className={`mt-0.5 block text-xs ${transportSelectionId === "none" ? "text-stone-300" : "text-stone-500"}`}>
+                I&apos;ll arrange my own
+              </span>
+            </button>
             {transportOptions.map((opt) => {
               const cap = opt.capacity ?? 3;
               const fits = cap >= pax;
@@ -948,17 +983,18 @@ export function JourneyPlanner({
           </button>
         </div>
       </SectionAccordion>
+      )}
 
       {/* ================================================================ */}
       {/*  SECTION 3 — Day by Day                                          */}
       {/* ================================================================ */}
+      {openSection === 3 && (
       <SectionAccordion
         number={3}
         title="Day by Day"
         subtitle={days.length ? `${days.length} day${days.length === 1 ? "" : "s"} · ${uniqueDestinations.size} destination${uniqueDestinations.size === 1 ? "" : "s"}` : "Build your itinerary"}
-        open={openSection === 3}
-        done={sectionDone(2)}
-        onToggle={() => setOpenSection(openSection === 3 ? 0 : 3)}
+        open
+        onToggle={() => {}}
       >
         <div className="space-y-3">
           {/* Arrival marker */}
@@ -1003,7 +1039,7 @@ export function JourneyPlanner({
                           )}
                           {day.destination.name}
                           {day.selectedActivities.length > 0 && ` · ${day.selectedActivities.length} activit${day.selectedActivities.length === 1 ? "y" : "ies"}`}
-                          {day.hotelMode === "own" && " · Own stay"}
+                          {day.hotelMode === "own" && ` · ${OWN_HOTEL_BADGE_LABEL}`}
                           {(() => {
                             const label = resolveMealPlanLabel(day.hotelId, day.mealPlanId);
                             return label ? ` · ${label}` : "";
@@ -1327,17 +1363,18 @@ export function JourneyPlanner({
           )}
         </div>
       </SectionAccordion>
+      )}
 
       {/* ================================================================ */}
       {/*  SECTION 4 — Review & Confirm                                    */}
       {/* ================================================================ */}
+      {openSection === 4 && (
       <SectionAccordion
         number={4}
         title="Review & Confirm"
         subtitle="Check your trip and send the request"
-        open={openSection === 4}
-        done={false}
-        onToggle={() => setOpenSection(openSection === 4 ? 0 : 4)}
+        open
+        onToggle={() => {}}
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Travel-time feasibility warnings */}
@@ -1417,7 +1454,7 @@ export function JourneyPlanner({
                           </span>
                         ) : null;
                       })()}
-                      {day.hotelMode === "own" && <span className="rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] text-blue-700">Own stay</span>}
+                      {day.hotelMode === "own" && <span className="rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] text-blue-700">{OWN_HOTEL_BADGE_LABEL}</span>}
                     </div>
                   )}
                 </div>
@@ -1425,25 +1462,6 @@ export function JourneyPlanner({
               <div className="flex items-center gap-3 px-4 py-2.5">
                 <PlaneLanding className="h-3.5 w-3.5 text-[var(--portal-ink)]" />
                 <span className="text-xs font-medium text-stone-700">Depart{travelDate ? ` · ${formatDate(travelDate, days.length + 1)}` : ""}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Price breakdown */}
-          <div className="rounded-xl border border-[var(--portal-border-soft)] bg-[var(--portal-paper)] p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Price estimate</p>
-            <div className="mt-3 space-y-2">
-              {pricing.lineItems.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span className="text-stone-600">{item.label}</span>
-                  <span className="font-medium text-stone-900">{currencyFormat(item.amount, pricing.currency)}</span>
-                </div>
-              ))}
-              <div className="border-t border-[var(--portal-border-soft)] pt-2">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-stone-900">Total</span>
-                  <span className="text-lg font-bold text-[var(--portal-ink)]">{currencyFormat(pricing.total, pricing.currency)}</span>
-                </div>
               </div>
             </div>
           </div>
@@ -1483,32 +1501,42 @@ export function JourneyPlanner({
           </p>
         </form>
       </SectionAccordion>
+      )}
 
-      {/* ================================================================ */}
-      {/*  STICKY BOTTOM BAR                                               */}
-      {/* ================================================================ */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200 bg-white/95 px-4 pb-[max(10px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:px-5">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs text-stone-500">
-              {days.length} day{days.length === 1 ? "" : "s"} · {uniqueDestinations.size} place{uniqueDestinations.size === 1 ? "" : "s"} · {pax} guest{pax === 1 ? "" : "s"}
-            </p>
-            <p className="truncate text-base font-bold text-[var(--portal-ink)] sm:text-lg">{currencyFormat(pricing.total, pricing.currency)}</p>
           </div>
-          {openSection !== 4 ? (
-            <button type="button" onClick={() => setOpenSection(4)}
-              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[var(--portal-ink)] px-5 text-sm font-semibold text-[var(--portal-cream)] transition hover:bg-[var(--portal-ink-soft)]">
+        </WizardShell.Body>
+      </WizardShell>
+      <WizardPriceBar
+        label="Trip estimate"
+        totalLabel={currencyFormat(pricing.total, pricing.currency)}
+        summary={`${days.length} day${days.length === 1 ? "" : "s"} · ${uniqueDestinations.size} place${uniqueDestinations.size === 1 ? "" : "s"} · ${pax} guest${pax === 1 ? "" : "s"}`}
+        breakdown={priceBreakdown}
+        actions={
+          openSection !== 4 ? (
+            <button
+              type="button"
+              onClick={() => setOpenSection(4)}
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-[var(--portal-ink)] px-5 text-sm font-semibold text-[var(--portal-cream)] transition hover:opacity-90"
+            >
               Review
+              <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
-            <button type="button" disabled={submitting}
-              onClick={() => { const f = document.querySelector<HTMLFormElement>("form"); f?.requestSubmit(); }}
-              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[var(--portal-ink)] px-5 text-sm font-semibold text-[var(--portal-cream)] transition hover:bg-[var(--portal-ink-soft)] disabled:opacity-60">
-              {submitting ? "Sending..." : "Confirm"}
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => {
+                const f = document.querySelector<HTMLFormElement>("form");
+                f?.requestSubmit();
+              }}
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-[var(--portal-accent,var(--portal-gold-deep))] px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? "Sending…" : "Confirm"}
+              <Check className="h-4 w-4" />
             </button>
-          )}
-        </div>
-      </div>
-    </div>
+          )
+        }
+      />
+    </>
   );
 }
