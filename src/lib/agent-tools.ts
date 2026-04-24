@@ -1867,6 +1867,169 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
     },
   },
 
+  // ── UNIVERSAL FALLBACK ──────────────────────────────────────────────
+  // When no specific tool fits, this dispatcher fuzzy-matches a free-form
+  // target string ("last payment", "tours this week", "employee salaries")
+  // to any known read surface and applies simple filters. The agent uses
+  // this instead of refusing when a user asks something we haven't wired.
+  {
+    name: "inspect_any",
+    category: "read",
+    summary:
+      "Universal read fallback. Give it a target noun (e.g. 'leads', 'tours', 'payments', 'invoices', 'employees', 'hotels', 'packages', 'quotations', 'todos', 'communications', 'audit', 'ai_interactions', 'ai_knowledge', 'settings', 'destinations', 'activities', 'meal_plans', 'payroll', 'bookings') plus optional free-form filters (email, status, text, sinceDays, limit) and it returns the raw rows. Use this whenever no specific tool covers the question.",
+    inputSchema: z.object({
+      target: z.string().min(1).max(80),
+      email: z.string().max(320).optional(),
+      status: z.string().max(60).optional(),
+      text: z.string().max(200).optional(),
+      sinceDays: z.number().int().min(1).max(3650).optional(),
+      limit: z.number().int().min(1).max(500).optional(),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          target: z.string().min(1).max(80),
+          email: z.string().max(320).optional(),
+          status: z.string().max(60).optional(),
+          text: z.string().max(200).optional(),
+          sinceDays: z.number().int().min(1).max(3650).optional(),
+          limit: z.number().int().min(1).max(500).optional(),
+        })
+        .parse(raw);
+      const t = input.target.toLowerCase().trim();
+      const limit = input.limit ?? 50;
+      const sinceMs = input.sinceDays ? Date.now() - input.sinceDays * 86400_000 : 0;
+      const db = await import("./db");
+
+      // Map fuzzy target → loader
+      type Loader = () => Promise<unknown[]>;
+      const table: Array<[RegExp, Loader]> = [
+        [/lead|request|inquir/, async () => db.getLeads()],
+        [/tour|trip|booking/, async () => db.getTours()],
+        [/invoice|bill/, async () => db.getInvoices()],
+        [/payment|receipt|receive|payable/, async () => db.getPayments()],
+        [/employee|staff|team/, async () => db.getEmployees()],
+        [/hotel|supplier/, async () => db.getHotels()],
+        [/package|tour\s*package|itiner/, async () => db.getPackages()],
+        [/quotation|quote/, async () => db.getQuotations()],
+        [/todo|task/, async () => db.getTodos()],
+        [/communication|email|sent|message/, async () => db.getAuditLogs({ limit: 500 })],
+        [/audit|log|history/, async () => db.getAuditLogs({ limit: 500 })],
+        [/ai.*interaction|prompt/, async () => db.getAiInteractions(500)],
+        [/ai.*knowledge|kb|doc/, async () => db.getAiKnowledgeDocuments()],
+        [/activity|excursion/, async () => db.getPlannerActivityRecords()],
+        [/meal|food|board/, async () => db.getAllMealPlans()],
+        [/payroll|salary|wage/, async () => db.getPayrollRuns()],
+        [/destination/, async () => {
+          const pkgs = await db.getPackages();
+          const byDest = new Map<string, number>();
+          for (const p of pkgs) {
+            const d = p.destination ?? "unknown";
+            byDest.set(d, (byDest.get(d) ?? 0) + 1);
+          }
+          return [...byDest.entries()].map(([destination, count]) => ({ destination, count }));
+        }],
+        [/setting|config|branding/, async () => {
+          const { getAppSettings } = await import("./app-config");
+          return [await getAppSettings()];
+        }],
+      ];
+
+      const hit = table.find(([re]) => re.test(t));
+      if (!hit) {
+        return fail(
+          `Unknown target "${input.target}". Try one of: leads, tours, invoices, payments, employees, hotels, packages, quotations, todos, communications, audit, ai_interactions, ai_knowledge, activities, meal_plans, payroll, destinations, settings.`
+        );
+      }
+
+      let rows: unknown[] = [];
+      try {
+        rows = await hit[1]();
+      } catch (e) {
+        return fail(`inspect_any load failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
+      // Filter generically — operate on any row with matching fields
+      const emailNeedle = input.email?.toLowerCase();
+      const statusNeedle = input.status?.toLowerCase();
+      const textNeedle = input.text?.toLowerCase();
+
+      const filtered = rows.filter((r) => {
+        if (typeof r !== "object" || r === null) return true;
+        const row = r as Record<string, unknown>;
+        if (emailNeedle) {
+          const hay = JSON.stringify(row).toLowerCase();
+          if (!hay.includes(emailNeedle)) return false;
+        }
+        if (statusNeedle) {
+          const s = (row.status ?? row.state ?? "").toString().toLowerCase();
+          if (!s.includes(statusNeedle)) return false;
+        }
+        if (textNeedle) {
+          const hay = JSON.stringify(row).toLowerCase();
+          if (!hay.includes(textNeedle)) return false;
+        }
+        if (sinceMs > 0) {
+          const ts = row.createdAt ?? row.at ?? row.sentAt ?? row.updatedAt;
+          if (typeof ts === "string") {
+            const d = Date.parse(ts);
+            if (!Number.isNaN(d) && d < sinceMs) return false;
+          } else if (typeof ts === "number" && ts < sinceMs) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      // Sort newest-first when a timestamp exists
+      filtered.sort((a, b) => {
+        const ta = (a as Record<string, unknown>)?.createdAt ?? (a as Record<string, unknown>)?.at ?? "";
+        const tb = (b as Record<string, unknown>)?.createdAt ?? (b as Record<string, unknown>)?.at ?? "";
+        return Date.parse(String(tb)) - Date.parse(String(ta));
+      });
+
+      const sliced = filtered.slice(0, limit);
+      return ok(
+        `inspect_any[${input.target}] → ${sliced.length} of ${filtered.length} row${filtered.length === 1 ? "" : "s"} (total ${rows.length}).`,
+        { target: input.target, rows: sliced, totalMatched: filtered.length, totalScanned: rows.length }
+      );
+    },
+  },
+
+  // Draft-only composer for messages the system has no dedicated sender for.
+  // Returns the drafted body — the admin sends it through their normal channel.
+  {
+    name: "draft_message",
+    category: "read",
+    summary:
+      "Draft a message (email/slack/sms) body for admin review when no dedicated sender exists. Returns the text; does NOT send. Use for novel communications (supplier disputes, ad-hoc guest notes, internal memos).",
+    inputSchema: z.object({
+      audience: z.string().max(120),
+      purpose: z.string().max(500),
+      tone: z.enum(["formal", "friendly", "urgent", "apologetic", "neutral"]).optional(),
+      keyPoints: z.array(z.string().max(500)).max(10).optional(),
+      language: z.string().max(20).optional(),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          audience: z.string().max(120),
+          purpose: z.string().max(500),
+          tone: z.enum(["formal", "friendly", "urgent", "apologetic", "neutral"]).optional(),
+          keyPoints: z.array(z.string().max(500)).max(10).optional(),
+          language: z.string().max(20).optional(),
+        })
+        .parse(raw);
+      // The agent composes the body in its next turn from this structured
+      // brief — we just echo the structured request so it shows up in the
+      // tool-result stream and the agent can ground its draft.
+      return ok(
+        `Drafting brief prepared for ${input.audience}. Agent will compose the body in the next assistant message.`,
+        input
+      );
+    },
+  },
+
   {
     name: "list_payroll_runs",
     category: "read",

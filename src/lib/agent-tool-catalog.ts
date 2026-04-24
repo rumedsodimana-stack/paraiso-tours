@@ -133,6 +133,11 @@ export const TOOL_CATEGORY: Record<string, ToolCategory> = {
   update_ai_knowledge: "update",
   create_payroll_run: "create",
   update_payroll_run: "update",
+
+  // Universal fallback — lets the agent handle questions we haven't wired
+  // a specific tool for. Read-only; draft_message only returns text.
+  inspect_any: "read",
+  draft_message: "read",
 };
 
 export function getToolCategory(name: string): ToolCategory | null {
