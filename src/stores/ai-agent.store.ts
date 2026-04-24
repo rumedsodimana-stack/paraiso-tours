@@ -164,12 +164,39 @@ interface AgentState {
   clearWorking: () => void;
   forget: (id: string) => void;
 
+  /** Start a fresh chat: clears messages, clarifications, proposals,
+   *  and working memory. Long-term memory is preserved so the agent
+   *  keeps the admin's preferences across sessions. */
+  resetConversation: () => void;
   resetAll: () => void;
 }
 
 const MAX_MESSAGES = 200;
 const MAX_WORKING_MEMORY = 50;
 const MAX_LONG_TERM = 200;
+/** Proposals older than this (once resolved) are auto-swept on every
+ *  addProposal. Keeps the Record<id, proposal> map from growing without
+ *  bound across long-lived admin sessions. */
+const PROPOSAL_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+
+/** Drop resolved (executed / rejected / failed / approved-but-done)
+ *  proposals older than PROPOSAL_TTL_MS. Pending proposals are always
+ *  kept — they belong to the live UI. */
+function prunedProposals(
+  proposals: Record<string, AgentProposal>
+): Record<string, AgentProposal> {
+  const cutoff = Date.now() - PROPOSAL_TTL_MS;
+  const next: Record<string, AgentProposal> = {};
+  for (const [id, p] of Object.entries(proposals)) {
+    if (p.status === "pending") {
+      next[id] = p;
+      continue;
+    }
+    const ts = p.resolvedAt ?? p.createdAt;
+    if (ts >= cutoff) next[id] = p;
+  }
+  return next;
+}
 
 function makeId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -237,7 +264,7 @@ export const useAgent = create<AgentState>()(
           createdAt: Date.now(),
         };
         set((s) => ({
-          proposals: { ...s.proposals, [full.id]: full },
+          proposals: { ...prunedProposals(s.proposals), [full.id]: full },
         }));
         return full;
       },
@@ -333,6 +360,16 @@ export const useAgent = create<AgentState>()(
           longTermMemory: s.longTermMemory.filter((e) => e.id !== id),
         })),
 
+      resetConversation: () =>
+        set({
+          phase: "idle",
+          busy: false,
+          messages: [],
+          clarifications: {},
+          proposals: {},
+          workingMemory: [],
+          // Long-term memory preserved intentionally.
+        }),
       resetAll: () =>
         set({
           phase: "idle",

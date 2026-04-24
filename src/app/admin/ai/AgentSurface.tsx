@@ -6,6 +6,7 @@ import {
   Brain,
   Eye,
   MessageCircle,
+  RefreshCcw,
   Send,
   Sparkles,
   Target,
@@ -46,6 +47,7 @@ export function AgentSurface() {
   const setPhase = useAgent((s) => s.setPhase);
   const setBusy = useAgent((s) => s.setBusy);
   const rememberWorking = useAgent((s) => s.rememberWorking);
+  const resetConversation = useAgent((s) => s.resetConversation);
 
   const currentView = useAdminWorkspace((s) => s.currentView);
   const currentEntity = useAdminWorkspace((s) => s.currentEntity);
@@ -388,6 +390,28 @@ export function AgentSurface() {
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#8a9ba1]">
           <OodaPhasePill phase={phase} />
           {busy && <span className="text-[#c9922f]">thinking…</span>}
+          <button
+            type="button"
+            onClick={() => {
+              if (busy) return;
+              if (messages.length === 0) return;
+              if (
+                typeof window !== "undefined" &&
+                !window.confirm(
+                  "Start a fresh conversation? Long-term memory is kept."
+                )
+              ) {
+                return;
+              }
+              resetConversation();
+            }}
+            disabled={busy || messages.length === 0}
+            className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#e0e4dd] bg-[#fffbf4] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5e7279] transition hover:border-[#c9922f] hover:text-[#11272b] disabled:cursor-not-allowed disabled:opacity-50"
+            title="Start a new conversation (long-term memory preserved)"
+          >
+            <RefreshCcw className="h-3 w-3" />
+            New chat
+          </button>
         </div>
 
         {/* Conversation */}
