@@ -1,6 +1,12 @@
 import { getBookingBreakdownBySupplier } from "./booking-breakdown";
 import { calcOptionPrice, getFlatMealPlanOptions } from "./package-price";
-import type { HotelSupplier, Lead, PackageOption, TourPackage } from "./types";
+import type {
+  HotelMealPlan,
+  HotelSupplier,
+  Lead,
+  PackageOption,
+  TourPackage,
+} from "./types";
 
 function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -71,12 +77,23 @@ export function calculateBookingSelectionsTotal(input: {
   selectedAccommodationByNight?: Record<string, string>;
   selectedTransportOptionId?: string;
   selectedMealOptionId?: string;
+  /** Hotel-attached meal plan ids keyed by night index (as string).
+   *  When supplied, these are the meal plans picked inline with each
+   *  room choice and are charged per person per night against that
+   *  hotel's rate — NOT against the package-level `mealOptions`. */
+  selectedMealPlanByNight?: Record<string, string>;
+  /** Full hotel meal plan catalog. Callers that need accurate pricing
+   *  for hotel-attached plans pass this in (e.g. server actions);
+   *  legacy call sites that don't set meal plans per-night can omit it. */
+  hotelMealPlans?: HotelMealPlan[];
 }): { totalPrice: number; nights: number; errors: string[] } {
   const {
     pkg,
     selectedAccommodationOptionId,
     selectedTransportOptionId,
     selectedMealOptionId,
+    selectedMealPlanByNight,
+    hotelMealPlans = [],
   } = input;
   const pax = Math.max(1, input.pax || 1);
   const nights = parsePackageNights(pkg.duration) || 1;
@@ -93,6 +110,18 @@ export function calculateBookingSelectionsTotal(input: {
   const accommodationOptions = pkg.accommodationOptions ?? [];
   const nightSlots = getAccommodationNightSlots(pkg);
 
+  // Did the guest pick any hotel-attached meal plan? If so, the legacy
+  // package-level meal-plan step is bypassed on the client and shouldn't
+  // be required here either.
+  const hasHotelMealPlanSelections =
+    !!selectedMealPlanByNight &&
+    Object.values(selectedMealPlanByNight).some((v) => !!v);
+
+  // Quick lookup for hotel meal plans by id.
+  const hotelPlanById = new Map<string, HotelMealPlan>(
+    hotelMealPlans.map((mp) => [mp.id, mp])
+  );
+
   if (nightSlots.length > 0) {
     for (const slot of nightSlots) {
       const selectedId = normalizedByNight?.[String(slot.nightIndex)];
@@ -102,6 +131,16 @@ export function calculateBookingSelectionsTotal(input: {
         continue;
       }
       total += calcOptionPrice(selected, pax, 1);
+
+      // Add the night's hotel meal plan (if any). It's priced per person
+      // per night, so one night's charge = pricePerPerson * pax.
+      const mpId = selectedMealPlanByNight?.[String(slot.nightIndex)];
+      if (mpId) {
+        const mp = hotelPlanById.get(mpId);
+        if (mp && mp.hotelId === selected.supplierId) {
+          total += mp.pricePerPerson * pax;
+        }
+      }
     }
   } else if (accommodationOptions.length > 0) {
     const selected = accommodationOptions.find(
@@ -111,6 +150,15 @@ export function calculateBookingSelectionsTotal(input: {
       errors.push("Select accommodation");
     } else {
       total += calcOptionPrice(selected, pax, nights);
+      // Legacy single-accommodation packages reuse night index 0 for the
+      // meal-plan selection (one plan for the whole stay).
+      const mpId = selectedMealPlanByNight?.["0"];
+      if (mpId) {
+        const mp = hotelPlanById.get(mpId);
+        if (mp && mp.hotelId === selected.supplierId) {
+          total += mp.pricePerPerson * pax * nights;
+        }
+      }
     }
   }
 
@@ -125,7 +173,10 @@ export function calculateBookingSelectionsTotal(input: {
     }
   }
 
-  if (mealOptions.length > 0) {
+  // Package-level meal options are ONLY enforced when no hotel plan was
+  // picked — otherwise the guest has already chosen their meals with
+  // their room and we don't double-charge.
+  if (mealOptions.length > 0 && !hasHotelMealPlanSelections) {
     const selected = mealOptions.find(
       (option) => option.id === selectedMealOptionId
     );

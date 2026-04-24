@@ -13,11 +13,16 @@ import {
   Calendar,
   MessageSquare,
 } from "lucide-react";
-import type { TourPackage, PackageOption, HotelSupplier } from "@/lib/types";
+import type { TourPackage, PackageOption, HotelSupplier, HotelMealPlan } from "@/lib/types";
 import { calcOptionPrice, getFlatMealPlanOptions } from "@/lib/package-price";
 import { createClientBookingAction } from "@/app/actions/client-booking";
 import { debugClient } from "@/lib/debug";
 import { useBookingDraft } from "@/stores/booking-draft.store";
+
+/** Sentinel meal-plan choice: "no meal plan selected — room only / arranged
+ *  directly with the hotel". Rendered as a zero-cost option so guests can
+ *  always opt out without being forced into a paid plan. */
+const NO_MEAL_PLAN = "__no_meal_plan__";
 
 function parseNights(duration: string): number {
   const m = duration.match(/(\d+)\s*[Nn]ight/);
@@ -74,7 +79,19 @@ const BOOK_MY_OWN = "__book_my_own__";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
-export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hotels?: HotelSupplier[] }) {
+export function ClientBookingForm({
+  pkg,
+  hotels = [],
+  mealPlansByHotelId = {},
+}: {
+  pkg: TourPackage;
+  hotels?: HotelSupplier[];
+  /** Hospitality-style per-hotel meal plans (RO/BB/HB/FB/AI …) keyed by
+   *  hotel (supplier) id. When a night's accommodation option resolves to
+   *  a hotel that has plans configured, the form renders them inline with
+   *  the room choice — there's no separate meal-plan step. */
+  mealPlansByHotelId?: Record<string, HotelMealPlan[]>;
+}) {
   const getStarRating = (supplierId?: string) =>
     supplierId ? hotels.find((h) => h.id === supplierId)?.starRating : undefined;
   const router = useRouter();
@@ -135,6 +152,59 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
   const [bookMyOwnNights, setBookMyOwnNights] = useState<Record<number, boolean>>({});
   const [bookMyOwnNotes, setBookMyOwnNotes] = useState("");
 
+  // Per-night meal plan selections (hotel-attached plans). Keyed by night
+  // index. Missing entry / NO_MEAL_PLAN sentinel → no meal plan charge
+  // for that night (Room Only / guest arranges separately).
+  const [mealPlanByNight, setMealPlanByNight] = useState<Record<number, string>>({});
+
+  /**
+   * For a given night, return the meal plans offered by the currently
+   * selected accommodation option's hotel (if any). Drives the inline
+   * picker rendered next to the accommodation choice.
+   */
+  const mealPlansForNight = (nightIndex: number): HotelMealPlan[] => {
+    const accId = accommodationByNight[nightIndex];
+    if (!accId) return [];
+    const opt = perNightAccommodation
+      .find((slot) => slot.nightIndex === nightIndex)
+      ?.options.find((o) => o.id === accId);
+    const hotelId = opt?.supplierId;
+    if (!hotelId) return [];
+    return mealPlansByHotelId[hotelId] ?? [];
+  };
+
+  /** Same for the legacy single-option accommodation branch. */
+  const legacyMealPlans = useMemo((): HotelMealPlan[] => {
+    if (!legacyAccommodation) return [];
+    if (accommodationId === BOOK_MY_OWN || !accommodationId) return [];
+    const opt = legacyAccommodationOptions.find((o) => o.id === accommodationId);
+    const hotelId = opt?.supplierId;
+    if (!hotelId) return [];
+    return mealPlansByHotelId[hotelId] ?? [];
+  }, [
+    legacyAccommodation,
+    accommodationId,
+    legacyAccommodationOptions,
+    mealPlansByHotelId,
+  ]);
+
+  /** True when any hotel attached to this package has configured meal
+   *  plans. When true we show the inline picker and HIDE the legacy
+   *  package-level meal-plan step — plans are charged with the room. */
+  const hasHotelMealPlans = useMemo(() => {
+    if (legacyAccommodation) return legacyMealPlans.length > 0;
+    return perNightAccommodation.some((slot) =>
+      slot.options.some(
+        (opt) => opt.supplierId && (mealPlansByHotelId[opt.supplierId]?.length ?? 0) > 0
+      )
+    );
+  }, [
+    legacyAccommodation,
+    legacyMealPlans.length,
+    perNightAccommodation,
+    mealPlansByHotelId,
+  ]);
+
   const totalPrice = useMemo(() => {
     let total = pkg.price * pax;
     const opt = (opts: PackageOption[], id: string) => opts.find((o) => o.id === id);
@@ -146,6 +216,12 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
       if (accommodationId !== BOOK_MY_OWN) {
         const acc = opt(legacyAccommodationOptions, accommodationId);
         if (acc) total += calcOptionPrice(acc, pax, nights);
+        // Hotel-attached meal plan (charged per person per night).
+        const mpId = mealPlanByNight[0];
+        if (mpId && mpId !== NO_MEAL_PLAN) {
+          const mp = legacyMealPlans.find((m) => m.id === mpId);
+          if (mp) total += mp.pricePerPerson * pax * nights;
+        }
       }
     } else {
       perNightAccommodation.forEach(({ nightIndex, options }) => {
@@ -153,11 +229,27 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
         const id = accommodationByNight[nightIndex];
         const acc = opt(options, id);
         if (acc) total += calcOptionPrice(acc, pax, 1);
+        // Hotel-attached meal plan for this night. Inline the lookup (instead
+        // of calling the mealPlansForNight helper) so React Compiler can
+        // preserve the memo — a helper closure invoked here trips
+        // preserve-manual-memoization.
+        const mpId = mealPlanByNight[nightIndex];
+        if (mpId && mpId !== NO_MEAL_PLAN && acc?.supplierId) {
+          const hotelPlans = mealPlansByHotelId[acc.supplierId] ?? [];
+          const mp = hotelPlans.find((m) => m.id === mpId);
+          if (mp) total += mp.pricePerPerson * pax;
+        }
       });
     }
 
-    const me = opt(mealOptions, mealId);
-    if (me) total += calcOptionPrice(me, pax, nights);
+    // Legacy package-level meal-plan charge ONLY if the package has no
+    // hotel-attached meal plans. Once hotels carry their own plans the
+    // standalone step disappears and the charge is already rolled in
+    // above with the room.
+    if (!hasHotelMealPlans) {
+      const me = opt(mealOptions, mealId);
+      if (me) total += calcOptionPrice(me, pax, nights);
+    }
 
     return total;
   }, [
@@ -169,11 +261,15 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
     accommodationId,
     accommodationByNight,
     bookMyOwnNights,
+    mealPlanByNight,
     legacyAccommodation,
     legacyAccommodationOptions,
+    legacyMealPlans,
     perNightAccommodation,
     transportOptions,
     mealOptions,
+    hasHotelMealPlans,
+    mealPlansByHotelId,
   ]);
 
   const hasAnyAccommodation = legacyAccommodation ? legacyAccommodationOptions.length > 0 : perNightAccommodation.length > 0;
@@ -184,13 +280,18 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
   const steps = useMemo(() => {
     const list: { n: Step; label: string; icon: React.ElementType }[] = [
       { n: 1, label: "Your details", icon: Users },
-      { n: 2, label: "Accommodation", icon: Building2 },
+      { n: 2, label: "Stay & meals", icon: Building2 },
     ];
-    if (mealOptions.length > 0) list.push({ n: 3, label: "Meal plan", icon: UtensilsCrossed });
+    // Standalone meal-plan step only when the package has no hotel-attached
+    // plans. With hotel plans the choice is inline in Step 2 and there's
+    // no separate charge.
+    if (mealOptions.length > 0 && !hasHotelMealPlans) {
+      list.push({ n: 3, label: "Meal plan", icon: UtensilsCrossed });
+    }
     if (transportOptions.length > 0) list.push({ n: 4, label: "Transport", icon: Car });
     list.push({ n: 5, label: "Review", icon: Check });
     return list;
-  }, [mealOptions.length, transportOptions.length]);
+  }, [mealOptions.length, transportOptions.length, hasHotelMealPlans]);
 
   // ── Draft persistence ─────────────────────────────────────────────────
   // The Zustand `wizard` draft (localStorage-backed) lets a guest leave the
@@ -247,6 +348,12 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
       ) {
         setBookMyOwnNights(draft.bookMyOwnNights);
       }
+      if (
+        draft.mealPlanByNight &&
+        Object.keys(draft.mealPlanByNight).length > 0
+      ) {
+        setMealPlanByNight(draft.mealPlanByNight);
+      }
       if (draft.bookMyOwnNotes) setBookMyOwnNotes(draft.bookMyOwnNotes);
       if (draft.step && draft.step >= 1 && draft.step <= 5) {
         setStep(draft.step as Step);
@@ -271,6 +378,7 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
       mealId,
       accommodationId,
       accommodationByNight,
+      mealPlanByNight,
       bookMyOwnNights,
       bookMyOwnNotes,
       packageId: pkg.id,
@@ -288,6 +396,7 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
     mealId,
     accommodationId,
     accommodationByNight,
+    mealPlanByNight,
     bookMyOwnNights,
     bookMyOwnNotes,
     pkg.id,
@@ -313,7 +422,10 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
     : perNightAccommodation.every(
         ({ nightIndex }) => bookMyOwnNights[nightIndex] || !!accommodationByNight[nightIndex]
       );
-  const step3Valid = mealOptions.length === 0 || !!mealId;
+  // Step 3 (standalone meal-plan step) is only in play for legacy packages
+  // without hotel-attached plans. When hotel plans are used, meals are
+  // handled inline in Step 2 and this check trivially passes.
+  const step3Valid = hasHotelMealPlans || mealOptions.length === 0 || !!mealId;
   const step4Valid = transportOptions.length === 0 || !!transportId;
 
   const canAdvance = (() => {
@@ -387,6 +499,18 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
       }
       if (Object.keys(selected).length > 0) {
         formData.set("selectedAccommodationByNight", JSON.stringify(selected));
+      }
+    }
+
+    // Hotel-attached meal plans (room-priced). Drop the NO_MEAL_PLAN
+    // sentinel entries so the server sees only real selections.
+    if (hasHotelMealPlans) {
+      const planPayload: Record<string, string> = {};
+      for (const [k, v] of Object.entries(mealPlanByNight)) {
+        if (v && v !== NO_MEAL_PLAN) planPayload[k] = v;
+      }
+      if (Object.keys(planPayload).length > 0) {
+        formData.set("selectedMealPlanByNight", JSON.stringify(planPayload));
       }
     }
 
@@ -582,10 +706,17 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
           <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
             <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-[#11272b]">
               <Building2 className="h-5 w-5 text-[#12343b]" />
-              Choose accommodation
+              {hasHotelMealPlans ? "Choose your stay & meals" : "Choose accommodation"}
             </h2>
             <p className="mb-4 text-sm text-[#5e7279]">
-              Pick from our curated hotels below, or select <b>Book my own</b> if you prefer to arrange your own stay.
+              {hasHotelMealPlans
+                ? "Pick a hotel per night, then the meal plan (Room Only / Bed & Breakfast / Half Board / Full Board / All Inclusive) straight from that hotel. Meals are charged with the stay — no separate step."
+                : "Pick from our curated hotels below, or select "}
+              {!hasHotelMealPlans && (
+                <>
+                  <b>Book my own</b> if you prefer to arrange your own stay.
+                </>
+              )}
             </p>
 
             {legacyAccommodation ? (
@@ -636,6 +767,66 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
                   </span>
                   <span className="text-xs text-[#8c6a38]">Subtracted from total</span>
                 </label>
+
+                {/* Hotel-attached meal plans for the picked room. We reuse
+                    the night-0 key so one picker drives the whole stay. */}
+                {accommodationId !== BOOK_MY_OWN && legacyMealPlans.length > 0 && (
+                  <div className="mt-3 rounded-[1.15rem] border border-[#e5d7c4] bg-[#fbf7f1] p-3">
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-[#8c6a38]">
+                      <UtensilsCrossed className="h-3.5 w-3.5" />
+                      Meal plan (per person, per night)
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <label
+                        className={`flex cursor-pointer items-center justify-between gap-2 rounded-[0.95rem] border p-2.5 text-sm transition ${
+                          (mealPlanByNight[0] ?? NO_MEAL_PLAN) === NO_MEAL_PLAN
+                            ? "border-[#12343b] bg-white"
+                            : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="legacy_meal_plan"
+                          value={NO_MEAL_PLAN}
+                          checked={(mealPlanByNight[0] ?? NO_MEAL_PLAN) === NO_MEAL_PLAN}
+                          onChange={() =>
+                            setMealPlanByNight((prev) => ({ ...prev, 0: NO_MEAL_PLAN }))
+                          }
+                          className="sr-only"
+                        />
+                        <span className="font-medium text-[#11272b]">Room only</span>
+                        <span className="text-xs text-[#8c6a38]">No meals</span>
+                      </label>
+                      {legacyMealPlans.map((mp) => (
+                        <label
+                          key={mp.id}
+                          className={`flex cursor-pointer items-center justify-between gap-2 rounded-[0.95rem] border p-2.5 text-sm transition ${
+                            mealPlanByNight[0] === mp.id
+                              ? "border-[#12343b] bg-[#f3e3c7]"
+                              : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="legacy_meal_plan"
+                            value={mp.id}
+                            checked={mealPlanByNight[0] === mp.id}
+                            onChange={() =>
+                              setMealPlanByNight((prev) => ({ ...prev, 0: mp.id }))
+                            }
+                            className="sr-only"
+                          />
+                          <span className="font-medium text-[#11272b]">{mp.label}</span>
+                          <span className="text-xs font-medium text-[#12343b]">
+                            {mp.pricePerPerson > 0
+                              ? `+${(mp.pricePerPerson * pax * nights).toLocaleString()} ${mp.currency}`
+                              : "Included"}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
@@ -666,41 +857,120 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
                         </label>
                       </div>
                       {!nightBookOwn ? (
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {options.map((opt) => (
-                            <label
-                              key={opt.id}
-                              className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.15rem] border p-3 transition ${
-                                accommodationByNight[nightIndex] === opt.id
-                                  ? "border-[#12343b] bg-[#f3e3c7]"
-                                  : "border-[#ddc8b0] hover:border-[#b78c54]"
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name={`accommodation_night_${nightIndex}`}
-                                value={opt.id}
-                                checked={accommodationByNight[nightIndex] === opt.id}
-                                onChange={() =>
-                                  setAccommodationByNight((prev) => ({
-                                    ...prev,
-                                    [nightIndex]: opt.id,
-                                  }))
-                                }
-                                className="sr-only"
-                              />
-                              <div className="flex flex-col">
-                                <span className="font-medium text-[#11272b]">{opt.label}</span>
-                                {getStarRating(opt.supplierId) != null && (
-                                  <StarRating stars={getStarRating(opt.supplierId)!} />
-                                )}
+                        <>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {options.map((opt) => (
+                              <label
+                                key={opt.id}
+                                className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.15rem] border p-3 transition ${
+                                  accommodationByNight[nightIndex] === opt.id
+                                    ? "border-[#12343b] bg-[#f3e3c7]"
+                                    : "border-[#ddc8b0] hover:border-[#b78c54]"
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`accommodation_night_${nightIndex}`}
+                                  value={opt.id}
+                                  checked={accommodationByNight[nightIndex] === opt.id}
+                                  onChange={() =>
+                                    setAccommodationByNight((prev) => ({
+                                      ...prev,
+                                      [nightIndex]: opt.id,
+                                    }))
+                                  }
+                                  className="sr-only"
+                                />
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-[#11272b]">{opt.label}</span>
+                                  {getStarRating(opt.supplierId) != null && (
+                                    <StarRating stars={getStarRating(opt.supplierId)!} />
+                                  )}
+                                </div>
+                                <span className="text-sm font-medium text-[#12343b]">
+                                  +{calcOptionPrice(opt, pax, 1).toLocaleString()} {pkg.currency}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                          {/* Hotel-attached meal plans for the picked room —
+                              same page, charged together with the stay. */}
+                          {(() => {
+                            const plans = mealPlansForNight(nightIndex);
+                            if (plans.length === 0) return null;
+                            const selected =
+                              mealPlanByNight[nightIndex] ?? NO_MEAL_PLAN;
+                            return (
+                              <div className="mt-3 rounded-[1.15rem] border border-[#e5d7c4] bg-[#fbf7f1] p-3">
+                                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-[#8c6a38]">
+                                  <UtensilsCrossed className="h-3.5 w-3.5" />
+                                  Meal plan for this night
+                                </p>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  <label
+                                    className={`flex cursor-pointer items-center justify-between gap-2 rounded-[0.95rem] border p-2.5 text-sm transition ${
+                                      selected === NO_MEAL_PLAN
+                                        ? "border-[#12343b] bg-white"
+                                        : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                                    }`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={`meal_plan_night_${nightIndex}`}
+                                      value={NO_MEAL_PLAN}
+                                      checked={selected === NO_MEAL_PLAN}
+                                      onChange={() =>
+                                        setMealPlanByNight((prev) => ({
+                                          ...prev,
+                                          [nightIndex]: NO_MEAL_PLAN,
+                                        }))
+                                      }
+                                      className="sr-only"
+                                    />
+                                    <span className="font-medium text-[#11272b]">
+                                      Room only
+                                    </span>
+                                    <span className="text-xs text-[#8c6a38]">
+                                      No meals
+                                    </span>
+                                  </label>
+                                  {plans.map((mp) => (
+                                    <label
+                                      key={mp.id}
+                                      className={`flex cursor-pointer items-center justify-between gap-2 rounded-[0.95rem] border p-2.5 text-sm transition ${
+                                        selected === mp.id
+                                          ? "border-[#12343b] bg-[#f3e3c7]"
+                                          : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                                      }`}
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`meal_plan_night_${nightIndex}`}
+                                        value={mp.id}
+                                        checked={selected === mp.id}
+                                        onChange={() =>
+                                          setMealPlanByNight((prev) => ({
+                                            ...prev,
+                                            [nightIndex]: mp.id,
+                                          }))
+                                        }
+                                        className="sr-only"
+                                      />
+                                      <span className="font-medium text-[#11272b]">
+                                        {mp.label}
+                                      </span>
+                                      <span className="text-xs font-medium text-[#12343b]">
+                                        {mp.pricePerPerson > 0
+                                          ? `+${(mp.pricePerPerson * pax).toLocaleString()} ${mp.currency}`
+                                          : "Included"}
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
                               </div>
-                              <span className="text-sm font-medium text-[#12343b]">
-                                +{calcOptionPrice(opt, pax, 1).toLocaleString()} {pkg.currency}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
+                            );
+                          })()}
+                        </>
                       ) : (
                         <p className="rounded-xl bg-[#fffbf4] px-3 py-2 text-sm text-[#5e7279]">
                           You&apos;ll arrange this night yourself. Let us know the hotel in the notes so we can plan transfers.
@@ -728,7 +998,7 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
           </section>
         )}
 
-        {step === 3 && mealOptions.length > 0 && (
+        {step === 3 && mealOptions.length > 0 && !hasHotelMealPlans && (
           <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
             <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[#11272b]">
               <UtensilsCrossed className="h-5 w-5 text-[#12343b]" />
@@ -832,11 +1102,34 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
                     return labels.join(" · ");
                   })()}
                 />
-                {mealOptions.length > 0 && (
+                {hasHotelMealPlans ? (
                   <ReviewRow
                     label="Meal plan"
-                    value={mealOptions.find((o) => o.id === mealId)?.label ?? "—"}
+                    value={(() => {
+                      if (legacyAccommodation) {
+                        if (accommodationId === BOOK_MY_OWN) return "—";
+                        const id = mealPlanByNight[0];
+                        if (!id || id === NO_MEAL_PLAN) return "Room Only";
+                        return legacyMealPlans.find((m) => m.id === id)?.label ?? "Room Only";
+                      }
+                      const bits = perNightAccommodation.map(({ nightIndex }) => {
+                        if (bookMyOwnNights[nightIndex]) return `N${nightIndex + 1}: own`;
+                        const id = mealPlanByNight[nightIndex];
+                        if (!id || id === NO_MEAL_PLAN) return `N${nightIndex + 1}: Room Only`;
+                        const plans = mealPlansForNight(nightIndex);
+                        const label = plans.find((m) => m.id === id)?.label ?? "Room Only";
+                        return `N${nightIndex + 1}: ${label}`;
+                      });
+                      return bits.join(" · ");
+                    })()}
                   />
+                ) : (
+                  mealOptions.length > 0 && (
+                    <ReviewRow
+                      label="Meal plan"
+                      value={mealOptions.find((o) => o.id === mealId)?.label ?? "—"}
+                    />
+                  )
                 )}
                 {transportOptions.length > 0 && (
                   <ReviewRow

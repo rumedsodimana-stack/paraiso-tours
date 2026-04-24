@@ -12,6 +12,10 @@ export const clientBookingSchema = z.object({
   selectedAccommodationByNight: z.record(z.string(), z.string()).optional(),
   selectedTransportOptionId: z.string().max(200).optional(),
   selectedMealOptionId: z.string().max(200).optional(),
+  /** Hotel-attached meal plan ids keyed by night index (as string).
+   *  Populated for per-night packages where guests pick RO/BB/HB/FB/AI
+   *  straight from the room choice. */
+  selectedMealPlanByNight: z.record(z.string(), z.string()).optional(),
   totalPrice: z.number().finite().optional(),
 });
 

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, CalendarRange, MapPin, Star } from "lucide-react";
-import { getPackage, getHotels } from "@/lib/db";
+import { getPackage, getHotels, getAllMealPlans } from "@/lib/db";
+import type { HotelMealPlan } from "@/lib/types";
 import { ClientBookingForm } from "./ClientBookingForm";
 import { getClientPackageVisual } from "../../../client-visuals";
 
@@ -11,7 +12,20 @@ export default async function ClientBookPackagePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [pkg, hotels] = await Promise.all([getPackage(id), getHotels()]);
+  const [pkg, hotels, allMealPlans] = await Promise.all([
+    getPackage(id),
+    getHotels(),
+    getAllMealPlans(),
+  ]);
+
+  // Group hotel meal plans by hotel id so the form can render the right
+  // plan list the instant a guest picks a room. We only keep active plans
+  // and preserve the order admins set in the meal-plan manager.
+  const mealPlansByHotelId: Record<string, HotelMealPlan[]> = {};
+  for (const mp of allMealPlans) {
+    if (!mp.active) continue;
+    (mealPlansByHotelId[mp.hotelId] ??= []).push(mp);
+  }
 
   if (!pkg) {
     return (
@@ -108,7 +122,11 @@ export default async function ClientBookPackagePage({
             </p>
           </div>
 
-          <ClientBookingForm pkg={pkg} hotels={hotels} />
+          <ClientBookingForm
+            pkg={pkg}
+            hotels={hotels}
+            mealPlansByHotelId={mealPlansByHotelId}
+          />
         </section>
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createLead } from "@/lib/db";
+import { createLead, getAllMealPlans } from "@/lib/db";
 import { getPackage } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import { debugLog } from "@/lib/debug";
@@ -36,6 +36,19 @@ export async function createClientBookingAction(
     }
   }
 
+  // Hotel-attached meal plan ids per night (if the guest picked any).
+  const selectedMealPlanByNightRaw = (formData.get("selectedMealPlanByNight") as string)?.trim();
+  let selectedMealPlanByNightParsed: Record<string, string> | undefined;
+  if (selectedMealPlanByNightRaw) {
+    try {
+      const parsed = JSON.parse(selectedMealPlanByNightRaw);
+      if (parsed && typeof parsed === "object")
+        selectedMealPlanByNightParsed = parsed as Record<string, string>;
+    } catch {
+      /* ignore malformed JSON */
+    }
+  }
+
   // Validate with Zod
   const parsed = clientBookingSchema.safeParse({
     name: (formData.get("name") as string)?.trim(),
@@ -48,6 +61,7 @@ export async function createClientBookingAction(
     selectedAccommodationByNight: selectedAccommodationByNightParsed,
     selectedTransportOptionId: (formData.get("selectedTransportOptionId") as string)?.trim() || undefined,
     selectedMealOptionId: (formData.get("selectedMealOptionId") as string)?.trim() || undefined,
+    selectedMealPlanByNight: selectedMealPlanByNightParsed,
     totalPrice: isNaN(rawTotalPrice!) ? undefined : rawTotalPrice,
   });
 
@@ -66,6 +80,7 @@ export async function createClientBookingAction(
     selectedAccommodationByNight,
     selectedTransportOptionId,
     selectedMealOptionId,
+    selectedMealPlanByNight,
     totalPrice: clientReportedTotalPrice,
   } = parsed.data;
 
@@ -76,6 +91,14 @@ export async function createClientBookingAction(
 
   const normalizedAccommodationByNight =
     normalizeSelectedAccommodationByNight(selectedAccommodationByNight);
+
+  // Load all hotel meal plans ONCE and pass into pricing. This is how
+  // hotels actually sell rooms — RO/BB/HB/FB/AI are priced against the
+  // room, not as a separate line item — so the total has to reflect it.
+  const hotelMealPlans = selectedMealPlanByNight
+    ? await getAllMealPlans()
+    : [];
+
   const pricing = calculateBookingSelectionsTotal({
     pkg,
     pax: pax ?? 1,
@@ -83,6 +106,8 @@ export async function createClientBookingAction(
     selectedAccommodationByNight: normalizedAccommodationByNight,
     selectedTransportOptionId: selectedTransportOptionId || undefined,
     selectedMealOptionId: selectedMealOptionId || undefined,
+    selectedMealPlanByNight,
+    hotelMealPlans,
   });
 
   if (pricing.errors.length > 0) {
@@ -100,6 +125,25 @@ export async function createClientBookingAction(
     });
   }
 
+  // Human-readable "meal plans by night" summary that we append to the
+  // lead's notes so the admin sees exactly what the guest picked
+  // alongside each hotel (until we add a first-class field on the Lead).
+  let mealPlanNote = "";
+  if (selectedMealPlanByNight && hotelMealPlans.length > 0) {
+    const byId = new Map(hotelMealPlans.map((m) => [m.id, m]));
+    const bits = Object.entries(selectedMealPlanByNight)
+      .map(([night, mpId]) => {
+        const mp = byId.get(mpId);
+        if (!mp) return null;
+        return `Night ${Number(night) + 1}: ${mp.label}`;
+      })
+      .filter((v): v is string => !!v);
+    if (bits.length > 0) {
+      mealPlanNote = `Meal plans: ${bits.join(" · ")}`;
+    }
+  }
+  const combinedNotes = [notes || "", mealPlanNote].filter(Boolean).join(" | ");
+
   debugLog("createClientBooking", {
     packageId,
     pax,
@@ -114,7 +158,7 @@ export async function createClientBookingAction(
     destination: pkg.destination,
     travelDate: travelDate || undefined,
     pax: pax ?? 1,
-    notes: notes || undefined,
+    notes: combinedNotes || undefined,
     packageId: pkg.id,
     selectedAccommodationOptionId: selectedAccommodationOptionId || undefined,
     selectedAccommodationByNight: normalizedAccommodationByNight,

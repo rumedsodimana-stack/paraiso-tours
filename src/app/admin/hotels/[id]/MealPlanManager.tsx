@@ -1,12 +1,27 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Pencil, Plus, Trash2, UtensilsCrossed, X } from "lucide-react";
+import { Check, Pencil, Plus, Sparkles, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createMealPlanAction, deleteMealPlanAction, updateMealPlanAction } from "@/app/actions/meal-plans";
 import type { HotelMealPlan } from "@/lib/types";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "LKR"];
+
+/**
+ * Hospitality-standard meal plan codes. These are the five options every
+ * hotel in the world prices rooms against, so we offer them as one-click
+ * quick-add presets (admins still set the price themselves — defaults
+ * are zero). Any of them can be edited, renamed, or removed after
+ * creation; this list just saves the typing.
+ */
+const STANDARD_PLANS: { code: string; label: string; description: string }[] = [
+  { code: "RO", label: "Room Only (RO)", description: "No meals included" },
+  { code: "BB", label: "Bed & Breakfast (BB)", description: "Breakfast included" },
+  { code: "HB", label: "Half Board (HB)", description: "Breakfast + dinner" },
+  { code: "FB", label: "Full Board (FB)", description: "Breakfast + lunch + dinner" },
+  { code: "AI", label: "All Inclusive (AI)", description: "All meals + selected drinks" },
+];
 
 export function MealPlanManager({
   hotelId,
@@ -65,6 +80,42 @@ export function MealPlanManager({
     });
   }
 
+  /**
+   * One-click preset: creates a meal plan row with the standard label at
+   * zero price. The admin then edits the price inline. Skips presets that
+   * already exist (case-insensitive label match) so repeated clicks are
+   * idempotent.
+   */
+  function handleQuickAdd(preset: (typeof STANDARD_PLANS)[number]) {
+    const existing = initialMealPlans.some(
+      (mp) => mp.label.toLowerCase().trim() === preset.label.toLowerCase().trim()
+    );
+    if (existing) return;
+    const fd = new FormData();
+    fd.set("hotelId", hotelId);
+    fd.set("label", preset.label);
+    fd.set("pricePerPerson", "0");
+    fd.set("priceType", "per_person_per_day");
+    fd.set("currency", hotelCurrency);
+    fd.set("description", preset.description);
+    setError(null);
+    startTransition(async () => {
+      const result = await createMealPlanAction(fd);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  const missingPresets = STANDARD_PLANS.filter(
+    (p) =>
+      !initialMealPlans.some(
+        (mp) => mp.label.toLowerCase().trim() === p.label.toLowerCase().trim()
+      )
+  );
+
   const inputCls =
     "mt-1 w-full rounded-lg border border-[#e0e4dd] bg-[#fffbf4] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9922f]";
   const labelCls =
@@ -88,6 +139,37 @@ export function MealPlanManager({
           </button>
         )}
       </div>
+
+      {/* Standard hospitality presets (RO / BB / HB / FB / AI).
+          Shown only when some are still missing — keeps the row from
+          feeling noisy once the hotel is fully configured. */}
+      {!showForm && missingPresets.length > 0 && (
+        <div className="rounded-2xl border border-dashed border-[#ddd3c4] bg-[#faf6ef] p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">
+            <Sparkles className="h-3.5 w-3.5" />
+            Quick-add standard plans
+          </div>
+          <p className="mt-1 text-xs text-[#5e7279]">
+            Hotels typically price rooms against these five plans. One click seeds
+            the row at zero; edit the price inline after.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {missingPresets.map((preset) => (
+              <button
+                key={preset.code}
+                type="button"
+                disabled={pending}
+                onClick={() => handleQuickAdd(preset)}
+                title={preset.description}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#ddc8b0] bg-white px-3 py-1.5 text-xs font-medium text-[#12343b] transition hover:border-[#12343b] hover:bg-[#f3e3c7] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Plus className="h-3 w-3" />
+                {preset.code} — {preset.description}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>

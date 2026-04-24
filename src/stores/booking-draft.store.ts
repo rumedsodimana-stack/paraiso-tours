@@ -60,6 +60,9 @@ export interface WizardDraft {
   mealId: string;
   accommodationId: string; // legacy single-option, or BOOK_MY_OWN sentinel
   accommodationByNight: Record<number, string>;
+  /** Per-night HotelMealPlan id (or the NO_MEAL_PLAN sentinel managed by
+   *  the form). Empty when the package doesn't use hotel-attached plans. */
+  mealPlanByNight: Record<number, string>;
   bookMyOwnNights: Record<number, boolean>;
   bookMyOwnNotes: string;
   /** Tag the package this draft belongs to so we don't bleed state across
@@ -113,6 +116,7 @@ const EMPTY_WIZARD: WizardDraft = {
   mealId: "",
   accommodationId: "",
   accommodationByNight: {},
+  mealPlanByNight: {},
   bookMyOwnNights: {},
   bookMyOwnNotes: "",
   packageId: null,
@@ -151,7 +155,8 @@ export const useBookingDraft = create<BookingDraftState>()(
         typeof window !== "undefined" ? localStorage : memoryStorage
       ),
       // Bump this when the shape changes to purge stale drafts gracefully.
-      version: 2,
+      // v3 adds `mealPlanByNight` for hotel-attached meal plans.
+      version: 3,
       partialize: (state) => ({
         journey: state.journey,
         wizard: state.wizard,
