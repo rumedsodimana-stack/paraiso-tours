@@ -18,6 +18,15 @@ import { calcOptionPrice, getFlatMealPlanOptions } from "@/lib/package-price";
 import { createClientBookingAction } from "@/app/actions/client-booking";
 import { debugClient } from "@/lib/debug";
 import { useBookingDraft } from "@/stores/booking-draft.store";
+import {
+  WizardShell,
+  WizardPriceBar,
+  StepSelector,
+  type WizardPriceBarBreakdownItem,
+  type StepSelectorItem,
+} from "../../../_ui";
+import { buildPackageRouteMapPoints } from "@/lib/route-coords";
+import { ReviewMap } from "../../../journey-builder/ReviewMap";
 
 /** Sentinel meal-plan choice: "no meal plan selected — room only / arranged
  *  directly with the hotel". Rendered as a zero-cost option so guests can
@@ -273,6 +282,138 @@ export function ClientBookingForm({
   ]);
 
   const hasAnyAccommodation = legacyAccommodation ? legacyAccommodationOptions.length > 0 : perNightAccommodation.length > 0;
+
+  /**
+   * Line items for the sticky `<WizardPriceBar>` breakdown sheet. Mirrors
+   * the same pricing logic as `totalPrice` so the expander and the grand
+   * total can never disagree. Items use display-ready labels and pre-
+   * formatted currency strings — the price bar is presentational.
+   */
+  const priceBreakdown = useMemo<WizardPriceBarBreakdownItem[]>(() => {
+    const items: WizardPriceBarBreakdownItem[] = [];
+    const fmt = (n: number) => `${n.toLocaleString()} ${pkg.currency}`;
+    const optById = (opts: PackageOption[], id: string) =>
+      opts.find((o) => o.id === id);
+
+    items.push({
+      id: "base",
+      label: `Package × ${pax}`,
+      amount: fmt(pkg.price * pax),
+    });
+
+    const tr = optById(transportOptions, transportId);
+    if (tr) {
+      items.push({
+        id: "transport",
+        label: `Transport: ${tr.label}`,
+        amount: fmt(calcOptionPrice(tr, pax, nights)),
+      });
+    }
+
+    if (legacyAccommodation) {
+      if (accommodationId !== BOOK_MY_OWN) {
+        const acc = optById(legacyAccommodationOptions, accommodationId);
+        if (acc) {
+          items.push({
+            id: "acc",
+            label: `Stay: ${acc.label}`,
+            amount: fmt(calcOptionPrice(acc, pax, nights)),
+          });
+        }
+        const mpId = mealPlanByNight[0];
+        if (mpId && mpId !== NO_MEAL_PLAN) {
+          const mp = legacyMealPlans.find((m) => m.id === mpId);
+          if (mp && mp.pricePerPerson > 0) {
+            items.push({
+              id: "meal-legacy-hotel",
+              label: `Meals: ${mp.label}`,
+              amount: fmt(mp.pricePerPerson * pax * nights),
+            });
+          }
+        }
+      } else {
+        items.push({
+          id: "acc-own",
+          label: "Stay: guest-arranged",
+          amount: "—",
+          muted: true,
+        });
+      }
+    } else {
+      perNightAccommodation.forEach(({ nightIndex, options }) => {
+        if (bookMyOwnNights[nightIndex]) {
+          items.push({
+            id: `acc-own-${nightIndex}`,
+            label: `Night ${nightIndex + 1}: guest-arranged`,
+            amount: "—",
+            muted: true,
+          });
+          return;
+        }
+        const id = accommodationByNight[nightIndex];
+        const acc = optById(options, id);
+        if (acc) {
+          items.push({
+            id: `acc-${nightIndex}`,
+            label: `Night ${nightIndex + 1}: ${acc.label}`,
+            amount: fmt(calcOptionPrice(acc, pax, 1)),
+          });
+        }
+        const mpId = mealPlanByNight[nightIndex];
+        if (mpId && mpId !== NO_MEAL_PLAN && acc?.supplierId) {
+          const hotelPlans = mealPlansByHotelId[acc.supplierId] ?? [];
+          const mp = hotelPlans.find((m) => m.id === mpId);
+          if (mp && mp.pricePerPerson > 0) {
+            items.push({
+              id: `meal-${nightIndex}`,
+              label: `Meals N${nightIndex + 1}: ${mp.label}`,
+              amount: fmt(mp.pricePerPerson * pax),
+            });
+          }
+        }
+      });
+    }
+
+    if (!hasHotelMealPlans) {
+      const me = optById(mealOptions, mealId);
+      if (me) {
+        items.push({
+          id: "meal",
+          label: `Meal plan: ${me.label}`,
+          amount: fmt(calcOptionPrice(me, pax, nights)),
+        });
+      }
+    }
+
+    return items;
+  }, [
+    pkg.price,
+    pkg.currency,
+    pax,
+    nights,
+    transportId,
+    mealId,
+    accommodationId,
+    accommodationByNight,
+    bookMyOwnNights,
+    mealPlanByNight,
+    legacyAccommodation,
+    legacyAccommodationOptions,
+    legacyMealPlans,
+    perNightAccommodation,
+    transportOptions,
+    mealOptions,
+    hasHotelMealPlans,
+    mealPlansByHotelId,
+  ]);
+
+  /**
+   * Destination-based route-map points for the review step. Resolved from
+   * the itinerary against the planner destination catalog (no per-day
+   * coords stored on the package). Returns `[]` when fewer than two
+   * destinations resolve — the review UI falls back to a text summary.
+   */
+  const reviewRoutePoints = useMemo(() => buildPackageRouteMapPoints(pkg), [pkg]);
 
   // Step progression logic — computed before any early return so React's
   // rules-of-hooks aren't violated when the "no accommodation configured"
@@ -543,57 +684,47 @@ export function ClientBookingForm({
     });
   }
 
+  const stepSelectorItems: StepSelectorItem[] = steps.map((s) => ({
+    id: s.n,
+    label: s.label,
+    icon: s.icon,
+  }));
+
   return (
-    <div className="has-sticky-bottom-bar pb-36 sm:pb-32">
-      {/* Mobile progress indicator: compact "Step N of M" + current step label */}
-      <div className="sm:hidden mb-4 rounded-2xl border border-[#e5d7c4] bg-[#fbf7f1] px-4 py-3">
-        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-[#8c6a38]">
-          <span>Step {currentIndex + 1} of {steps.length}</span>
-          <span className="text-[#11272b]">
-            {steps[currentIndex]?.label}
-          </span>
-        </div>
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#f4ecdd]">
-          <div
-            className="h-full bg-[#12343b] transition-all"
-            style={{ width: `${((currentIndex + 1) / steps.length) * 100}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Desktop/tablet step indicator (horizontal, scrollable if tight) */}
-      <ol className="hidden sm:flex mb-6 flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wider text-[#8c6a38]">
-        {steps.map((s, i) => {
-          const Icon = s.icon;
-          const active = s.n === step;
-          const done = currentIndex > i;
-          return (
-            <li key={s.n} className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  // Only allow jumping backward or to already-valid steps
-                  if (i <= currentIndex) setStep(s.n);
-                }}
-                className={`flex items-center gap-2 rounded-full px-3 py-1.5 transition ${
-                  active
-                    ? "bg-[#12343b] text-[#f6ead6]"
-                    : done
-                      ? "bg-[#dce8dc] text-[#375a3f]"
-                      : "bg-[#f4ecdd] text-[#8c6a38]"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {s.label}
-              </button>
-              {i < steps.length - 1 && <ChevronRight className="h-3 w-3 text-[#b78c54]" />}
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* Step content */}
-      <div className="space-y-6">
+    <>
+      <WizardShell>
+        <WizardShell.Header>
+          {/* Mobile: compact "Step N of M" + progress bar; desktop hides in favor of StepSelector */}
+          <div className="sm:hidden px-4 pt-4 pb-2">
+            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-[var(--portal-eyebrow)]">
+              <span>Step {currentIndex + 1} of {steps.length}</span>
+              <span className="text-[var(--portal-ink)]">
+                {steps[currentIndex]?.label}
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--portal-paper)]">
+              <div
+                className="h-full bg-[var(--portal-ink)] transition-all"
+                style={{ width: `${((currentIndex + 1) / steps.length) * 100}%` }}
+              />
+            </div>
+          </div>
+          <div className="hidden sm:block px-4 pt-4 pb-3 sm:px-6">
+            <StepSelector
+              steps={stepSelectorItems}
+              currentIndex={currentIndex}
+              onSelect={(idx) => {
+                // StepSelector only calls this for completed steps — but
+                // keep the defensive clamp to steps[].n in case the shape
+                // of `steps` changes.
+                const target = steps[idx]?.n;
+                if (target) setStep(target);
+              }}
+            />
+          </div>
+        </WizardShell.Header>
+        <WizardShell.Body>
+          <div className="space-y-6">
         {step === 1 && (
           <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
             <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[#11272b]">
@@ -1068,6 +1199,21 @@ export function ClientBookingForm({
 
         {step === 5 && (
           <section className="space-y-4">
+            {reviewRoutePoints.length >= 2 ? (
+              <div className="overflow-hidden rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1]">
+                <div className="flex items-center justify-between gap-2 px-5 pt-4 sm:px-6">
+                  <h3 className="text-sm font-medium uppercase tracking-[0.14em] text-[#8c6a38]">
+                    Your route
+                  </h3>
+                  <span className="text-xs text-[#5e7279]">
+                    {reviewRoutePoints.length} stops · {nights} nights
+                  </span>
+                </div>
+                <div className="h-64 sm:h-80">
+                  <ReviewMap points={reviewRoutePoints} />
+                </div>
+              </div>
+            ) : null}
             <div className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
               <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[#11272b]">
                 <Check className="h-5 w-5 text-[#12343b]" />
@@ -1147,31 +1293,22 @@ export function ClientBookingForm({
             )}
           </section>
         )}
-      </div>
-
-      {/* Persistent bottom price bar — mobile compacts into a two-row layout */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-[#d7c2a4] bg-[#fdf7eb]/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md shadow-[0_-10px_40px_-20px_rgba(43,32,15,0.35)] sm:px-4 sm:pb-4 sm:pt-4"
-      >
-        <div className="mx-auto flex max-w-3xl flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-          <div className="flex items-baseline justify-between gap-2 sm:flex-col sm:min-w-0 sm:items-start sm:gap-0.5">
-            <span className="text-[10px] uppercase tracking-[0.18em] text-[#8c6a38] sm:text-xs">
-              Running total
-            </span>
-            <span className="text-lg font-semibold text-[#12343b] sm:truncate sm:text-xl">
-              {totalPrice.toLocaleString()} {pkg.currency}
-            </span>
-            <span className="hidden text-xs text-[#5e7279] sm:inline">
-              {pax} traveler{pax !== 1 ? "s" : ""} · {nights} nights
-            </span>
           </div>
-          <div className="flex shrink-0 items-center justify-end gap-2">
+        </WizardShell.Body>
+      </WizardShell>
+      <WizardPriceBar
+        label="Running total"
+        totalLabel={`${totalPrice.toLocaleString()} ${pkg.currency}`}
+        summary={`${pax} traveler${pax !== 1 ? "s" : ""} · ${nights} night${nights !== 1 ? "s" : ""}`}
+        breakdown={priceBreakdown}
+        actions={
+          <>
             <button
               type="button"
               onClick={goBack}
               disabled={currentIndex === 0}
               aria-label="Back"
-              className="inline-flex h-11 items-center gap-1.5 rounded-full border border-[#ddc8b0] bg-white px-4 text-sm font-medium text-[#5e7279] transition hover:bg-[#fbf7f1] disabled:opacity-40"
+              className="inline-flex h-11 items-center gap-1.5 rounded-full border border-[var(--portal-border)] bg-white px-4 text-sm font-medium text-stone-600 transition hover:bg-[var(--portal-paper)] disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" />
               <span className="hide-tiny">Back</span>
@@ -1181,7 +1318,7 @@ export function ClientBookingForm({
                 type="button"
                 onClick={goNext}
                 disabled={!canAdvance}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#12343b] px-5 text-sm font-semibold text-[#f6ead6] transition hover:bg-[#0f2b31] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-[var(--portal-ink)] px-5 text-sm font-semibold text-[var(--portal-cream)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Next
                 <ChevronRight className="h-4 w-4" />
@@ -1191,16 +1328,16 @@ export function ClientBookingForm({
                 type="button"
                 onClick={submitBooking}
                 disabled={loading || !canSubmit}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#c9922f] px-5 text-sm font-semibold text-white transition hover:bg-[#a87a22] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-[var(--portal-accent,#c9922f)] px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Submitting…" : "Submit booking"}
                 <Check className="h-4 w-4" />
               </button>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+          </>
+        }
+      />
+    </>
   );
 }
 
