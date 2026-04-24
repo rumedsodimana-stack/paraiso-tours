@@ -1,7 +1,5 @@
-import Link from "next/link";
-import Image from "next/image";
-import { Compass, Mail, Phone } from "lucide-react";
 import { ClientHeader } from "./ClientHeader";
+import { ClientFooter } from "./ClientFooter";
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import "./_ui/tokens.css";
 
@@ -50,108 +48,24 @@ export default async function ClientLayout({
       <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 print:max-w-none print:px-0 print:py-0">
         {children}
       </main>
-      <footer className="relative mt-auto border-t border-[var(--portal-border)] bg-[var(--portal-paper-strong)]/92 backdrop-blur-xl print:hidden">
-        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16">
-          <div className="grid gap-10 lg:grid-cols-[1.2fr_2.8fr]">
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-[var(--portal-ink)] text-[var(--portal-cream)]">
-                  {settings.company.logoUrl ? (
-                    <Image
-                      src={settings.company.logoUrl}
-                      alt={brandName}
-                      fill
-                      className="rounded-2xl object-cover"
-                      sizes="40px"
-                    />
-                  ) : (
-                    <Compass className="h-4 w-4" />
-                  )}
-                </div>
-                <span className="text-base font-semibold tracking-tight text-stone-900">
-                  {brandName}
-                </span>
-              </div>
-              <p className="mt-4 max-w-sm text-sm leading-6 text-stone-600">
-                {settings.portal.clientPortalDescription}
-              </p>
-            </div>
-            <div className="grid gap-8 sm:grid-cols-3">
-              <div>
-                <h4 className="text-sm font-semibold tracking-tight text-stone-900">
-                  {settings.portal.footerExploreTitle}
-                </h4>
-                <ul className="mt-3 space-y-2 text-sm text-stone-600">
-                  <li>
-                    <Link
-                      href="/packages"
-                      className="transition hover:text-[var(--portal-ink)]"
-                    >
-                      {settings.portal.packagesLabel}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/journey-builder"
-                      className="transition hover:text-[var(--portal-ink)]"
-                    >
-                      {settings.portal.journeyBuilderLabel}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/my-bookings"
-                      className="transition hover:text-[var(--portal-ink)]"
-                    >
-                      {settings.portal.myBookingsLabel}
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold tracking-tight text-stone-900">
-                  {settings.portal.footerContactTitle}
-                </h4>
-                <ul className="mt-3 space-y-2 text-sm text-stone-600">
-                  {settings.company.email ? (
-                    <li className="flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5 text-[var(--portal-gold-deep)]" />
-                      {settings.company.email}
-                    </li>
-                  ) : null}
-                  {settings.company.phone ? (
-                    <li className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-[var(--portal-gold-deep)]" />
-                      {settings.company.phone}
-                    </li>
-                  ) : null}
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold tracking-tight text-stone-900">
-                  {settings.portal.footerBaseTitle}
-                </h4>
-                <p className="mt-3 text-sm leading-6 text-stone-600">
-                  {settings.company.address}
-                  {settings.portal.footerBaseDescription ? (
-                    <>
-                      <br />
-                      {settings.portal.footerBaseDescription}
-                    </>
-                  ) : null}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-12 border-t border-[var(--portal-border)] pt-6 text-center text-xs text-stone-500">
-            © {new Date().getFullYear()} {brandName}
-            {settings.portal.copyrightSuffix
-              ? ` · ${settings.portal.copyrightSuffix}`
-              : ""}
-          </div>
-        </div>
-      </footer>
+      <ClientFooter
+        settings={{
+          brandName,
+          companyLogoUrl: settings.company.logoUrl,
+          companyEmail: settings.company.email,
+          companyPhone: settings.company.phone,
+          companyAddress: settings.company.address,
+          clientPortalDescription: settings.portal.clientPortalDescription,
+          footerExploreTitle: settings.portal.footerExploreTitle,
+          footerContactTitle: settings.portal.footerContactTitle,
+          footerBaseTitle: settings.portal.footerBaseTitle,
+          footerBaseDescription: settings.portal.footerBaseDescription,
+          packagesLabel: settings.portal.packagesLabel,
+          journeyBuilderLabel: settings.portal.journeyBuilderLabel,
+          myBookingsLabel: settings.portal.myBookingsLabel,
+          copyrightSuffix: settings.portal.copyrightSuffix,
+        }}
+      />
     </div>
   );
 }
