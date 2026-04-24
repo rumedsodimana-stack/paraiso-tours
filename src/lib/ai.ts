@@ -6,6 +6,55 @@ import { createTodo, getAiInteractions, getTodos } from "./db";
 import { decryptStoredSecret } from "./settings-secrets";
 import type { AiModelMode, AiProviderKind } from "./types";
 
+/**
+ * Fetch wrapper with bounded retry-with-backoff for transient upstream
+ * failures. Retries on:
+ *   - network / abort errors (DNS glitch, partial TCP reset, provider blip)
+ *   - HTTP 408 / 425 / 429 (rate limit) / 500 / 502 / 503 / 504
+ * Does NOT retry on 4xx auth/validation errors (400/401/403/404) since
+ * those indicate a real bug that a retry can't fix.
+ *
+ * Backoff: 400ms → 1200ms (jittered). Max 2 retries so worst-case wall
+ * time stays under 5s above the per-attempt 60s timeout.
+ */
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  opts: { maxRetries?: number; retryLabel?: string } = {}
+): Promise<Response> {
+  const maxRetries = opts.maxRetries ?? 2;
+  const retryOnStatus = new Set([408, 425, 429, 500, 502, 503, 504]);
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const response = await fetch(url, init);
+      if (response.ok || !retryOnStatus.has(response.status)) {
+        return response;
+      }
+      // Transient upstream — drain body for logging and retry.
+      const drained = await response.text().catch(() => "");
+      lastError = new Error(
+        `Upstream ${response.status} on ${opts.retryLabel ?? url}: ${drained.slice(0, 160)}`
+      );
+    } catch (err) {
+      lastError = err;
+    }
+
+    if (attempt < maxRetries) {
+      const base = 400 * Math.pow(3, attempt); // 400, 1200
+      const jitter = Math.floor(Math.random() * 200);
+      await new Promise((r) => setTimeout(r, base + jitter));
+    }
+  }
+
+  // Out of attempts — surface the last failure.
+  if (lastError instanceof Error) throw lastError;
+  throw new Error(
+    `AI request failed after ${maxRetries + 1} attempts (${opts.retryLabel ?? url}).`
+  );
+}
+
 export type AiFeature =
   | "booking_brief"
   | "package_writer"
@@ -545,7 +594,9 @@ async function requestAnthropicText(
     modelMode: Exclude<AiModelMode, "auto">;
   }
 ): Promise<AiTextResponse> {
-  const response = await fetch(normalizeAnthropicMessagesUrl(input.runtime.baseUrl), {
+  const response = await fetchWithRetry(
+    normalizeAnthropicMessagesUrl(input.runtime.baseUrl),
+    {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -577,7 +628,9 @@ async function requestAnthropicText(
           : undefined,
     }),
     signal: AbortSignal.timeout(60000),
-  });
+    },
+    { retryLabel: "anthropic.messages" }
+  );
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -617,7 +670,7 @@ async function requestGeminiText(
     modelMode: Exclude<AiModelMode, "auto">;
   }
 ): Promise<AiTextResponse> {
-  const response = await fetch(
+  const response = await fetchWithRetry(
     normalizeGeminiGenerateContentUrl(input.runtime.baseUrl, input.model),
     {
       method: "POST",
@@ -654,7 +707,8 @@ async function requestGeminiText(
         },
       }),
       signal: AbortSignal.timeout(60000),
-    }
+    },
+    { retryLabel: "gemini.generateContent" }
   );
 
   if (!response.ok) {
@@ -691,7 +745,7 @@ async function requestOpenAiCompatibleText(
     modelMode: Exclude<AiModelMode, "auto">;
   }
 ): Promise<AiTextResponse> {
-  const response = await fetch(
+  const response = await fetchWithRetry(
     normalizeOpenAiCompletionsUrl(input.runtime.baseUrl),
     {
       method: "POST",
@@ -720,7 +774,8 @@ async function requestOpenAiCompatibleText(
         ],
       }),
       signal: AbortSignal.timeout(60000),
-    }
+    },
+    { retryLabel: "openai.chat.completions" }
   );
 
   if (!response.ok) {
