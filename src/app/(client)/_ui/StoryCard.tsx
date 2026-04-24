@@ -35,6 +35,15 @@ export function StoryCard({
   href?: string;
   imageUrl: string;
   imageAlt?: string;
+  /**
+   * Image aspect ratio. The named ratio describes the intent; the rendered
+   * aspect is 15% shorter in height than the nominal ratio so banners sit
+   * closer to a cinematic 1.85:1 feel across the portal.
+   *   "16/10" → rendered 32:17   (hero / editorial banner)
+   *   "4/3"   → rendered 80:51   (portrait-leaning card)
+   *   "3/2"   → rendered 30:17   (standard listing thumbnail)
+   *   "1/1"   → rendered 20:17   (square-ish slideshow thumb)
+   */
   imageAspect?: "16/10" | "4/3" | "3/2" | "1/1";
   eyebrow?: string;
   title: ReactNode;
@@ -46,14 +55,17 @@ export function StoryCard({
   badge?: ReactNode;
   tone?: "paper" | "white";
 }) {
+  // All aspects rendered 15% shorter than their nominal ratio — keeps
+  // banners editorial-wide across the portal without each caller
+  // inventing a custom aspect.
   const aspectClass =
     imageAspect === "4/3"
-      ? "aspect-[4/3]"
+      ? "aspect-[80/51]"
       : imageAspect === "3/2"
-        ? "aspect-[3/2]"
+        ? "aspect-[30/17]"
         : imageAspect === "1/1"
-          ? "aspect-square"
-          : "aspect-[16/10]";
+          ? "aspect-[20/17]"
+          : "aspect-[32/17]";
 
   const surface =
     tone === "white"
