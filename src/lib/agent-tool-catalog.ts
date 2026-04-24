@@ -99,6 +99,40 @@ export const TOOL_CATEGORY: Record<string, ToolCategory> = {
   list_activities: "read",
   list_meal_plans: "read",
   suggest_package_pricing: "read",
+
+  // Communications history (sent/failed emails, derived from audit log)
+  list_communications: "read",
+
+  // Full-coverage reads
+  list_employees: "read",
+  get_employee: "read",
+  list_quotations: "read",
+  get_quotation: "read",
+  get_payment: "read",
+  get_todo: "read",
+  list_audit_logs: "read",
+  list_ai_interactions: "read",
+  list_ai_knowledge: "read",
+  list_client_bookings: "read",
+  get_app_settings: "read",
+
+  // Full-coverage writes
+  create_quotation: "create",
+  update_quotation: "update",
+  create_payment: "create",
+  update_payment: "update",
+  delete_payment: "delete",
+  update_invoice: "update",
+  delete_invoice: "delete",
+  update_tour: "update",
+  update_todo: "update",
+  create_planner_activity: "create",
+  update_planner_activity: "update",
+  delete_planner_activity: "delete",
+  create_ai_knowledge: "create",
+  update_ai_knowledge: "update",
+  create_payroll_run: "create",
+  update_payroll_run: "update",
 };
 
 export function getToolCategory(name: string): ToolCategory | null {

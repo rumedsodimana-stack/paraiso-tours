@@ -1117,6 +1117,615 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
   },
 
   // ── PAYROLL ────────────────────────────────────────────────────────
+  // ── FULL-COVERAGE READS ─────────────────────────────────────────────
+  {
+    name: "list_employees",
+    category: "read",
+    summary: "List every employee (with role, employment type, salary).",
+    inputSchema: z.object({ limit: LimitS }),
+    handler: async (raw) => {
+      const { limit } = z.object({ limit: LimitS }).parse(raw);
+      const { getEmployees } = await import("./db");
+      const all = await getEmployees();
+      return ok(`Found ${all.length} employee${all.length === 1 ? "" : "s"}.`, all.slice(0, limit ?? 50));
+    },
+  },
+  {
+    name: "get_employee",
+    category: "read",
+    summary: "Fetch a single employee by ID.",
+    inputSchema: EmployeeRef,
+    handler: async (raw) => {
+      const { id } = EmployeeRef.parse(raw);
+      const { getEmployee } = await import("./db");
+      const row = await getEmployee(id);
+      return row ? ok(`Employee: ${row.name}.`, row) : fail(`Employee ${id} not found.`);
+    },
+  },
+  {
+    name: "list_quotations",
+    category: "read",
+    summary: "List quotations (drafts, sent, accepted, rejected). Newest first.",
+    inputSchema: z.object({
+      status: z.enum(["draft", "sent", "accepted", "rejected"]).optional(),
+      limit: LimitS,
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          status: z.enum(["draft", "sent", "accepted", "rejected"]).optional(),
+          limit: LimitS,
+        })
+        .parse(raw);
+      const { getQuotations } = await import("./db");
+      const all = await getQuotations();
+      const rows = input.status ? all.filter((q) => q.status === input.status) : all;
+      return ok(`Found ${rows.length} quotation${rows.length === 1 ? "" : "s"}.`, rows.slice(0, input.limit ?? 40));
+    },
+  },
+  {
+    name: "get_quotation",
+    category: "read",
+    summary: "Fetch a single quotation by ID.",
+    inputSchema: QuotationRef,
+    handler: async (raw) => {
+      const { id } = QuotationRef.parse(raw);
+      const { getQuotation } = await import("./db");
+      const row = await getQuotation(id);
+      return row ? ok(`Quotation: ${row.reference ?? row.id}.`, row) : fail(`Quotation ${id} not found.`);
+    },
+  },
+  {
+    name: "get_payment",
+    category: "read",
+    summary: "Fetch a single payment by ID.",
+    inputSchema: PaymentRef,
+    handler: async (raw) => {
+      const { id } = PaymentRef.parse(raw);
+      const { getPayment } = await import("./db");
+      const row = await getPayment(id);
+      return row ? ok(`Payment ${row.id}.`, row) : fail(`Payment ${id} not found.`);
+    },
+  },
+  {
+    name: "get_todo",
+    category: "read",
+    summary: "Fetch a single todo by ID.",
+    inputSchema: TodoRef,
+    handler: async (raw) => {
+      const { id } = TodoRef.parse(raw);
+      const { getTodos } = await import("./db");
+      const all = await getTodos();
+      const row = all.find((t) => t.id === id);
+      return row ? ok(`Todo: ${row.title}.`, row) : fail(`Todo ${id} not found.`);
+    },
+  },
+  {
+    name: "list_audit_logs",
+    category: "read",
+    summary: "Raw audit log — every action recorded across the business. Filter by entity type or IDs.",
+    inputSchema: z.object({
+      entityType: z.enum(["lead", "quotation", "package", "tour", "invoice", "payment", "supplier", "employee", "activity", "meal_plan", "system", "agent"]).optional(),
+      entityId: z.string().max(200).optional(),
+      limit: LimitS,
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          entityType: z.enum(["lead", "quotation", "package", "tour", "invoice", "payment", "supplier", "employee", "activity", "meal_plan", "system", "agent"]).optional(),
+          entityId: z.string().max(200).optional(),
+          limit: LimitS,
+        })
+        .parse(raw);
+      const { getAuditLogs } = await import("./db");
+      const logs = await getAuditLogs({
+        entityTypes: input.entityType ? [input.entityType] : undefined,
+        entityIds: input.entityId ? [input.entityId] : undefined,
+        limit: input.limit ?? 40,
+      });
+      return ok(`Found ${logs.length} audit log entr${logs.length === 1 ? "y" : "ies"}.`, logs);
+    },
+  },
+  {
+    name: "list_ai_interactions",
+    category: "read",
+    summary: "Recent AI tool calls (request + response + tool name). Useful for 'what did the AI just do' inspections.",
+    inputSchema: z.object({ limit: LimitS }),
+    handler: async (raw) => {
+      const { limit } = z.object({ limit: LimitS }).parse(raw);
+      const { getAiInteractions } = await import("./db");
+      const rows = await getAiInteractions(limit ?? 30);
+      return ok(`Found ${rows.length} AI interaction${rows.length === 1 ? "" : "s"}.`, rows);
+    },
+  },
+  {
+    name: "list_ai_knowledge",
+    category: "read",
+    summary: "Curated AI knowledge documents (distilled responses promoted to reference).",
+    inputSchema: z.object({ limit: LimitS }),
+    handler: async (raw) => {
+      const { limit } = z.object({ limit: LimitS }).parse(raw);
+      const { getAiKnowledgeDocuments } = await import("./db");
+      const rows = await getAiKnowledgeDocuments();
+      return ok(`Found ${rows.length} knowledge document${rows.length === 1 ? "" : "s"}.`, rows.slice(0, limit ?? 40));
+    },
+  },
+  {
+    name: "list_client_bookings",
+    category: "read",
+    summary: "Every booking tied to a guest email (reopens their client-portal view server-side).",
+    inputSchema: z.object({ email: z.string().email().max(320) }),
+    handler: async (raw) => {
+      const { email } = z.object({ email: z.string().email().max(320) }).parse(raw);
+      const { getClientBookings } = await import("./db");
+      const data = await getClientBookings(email);
+      return ok(`Client ${email}: ${data.requests.length} request${data.requests.length === 1 ? "" : "s"}, ${data.tours.length} tour${data.tours.length === 1 ? "" : "s"}.`, data);
+    },
+  },
+  {
+    name: "get_app_settings",
+    category: "read",
+    summary: "Read the application settings (branding, portal copy, AI config, etc.).",
+    inputSchema: z.object({}),
+    handler: async () => {
+      const { getAppSettings } = await import("./app-config");
+      const settings = await getAppSettings();
+      return ok("Loaded application settings.", settings);
+    },
+  },
+
+  // ── FULL-COVERAGE WRITES ────────────────────────────────────────────
+  {
+    name: "create_quotation",
+    category: "create",
+    summary: "Create a draft quotation.",
+    inputSchema: z.object({
+      contactName: z.string().min(1).max(200),
+      contactEmail: z.string().email().max(320),
+      pax: z.number().int().min(1).max(500),
+      destination: z.string().max(200).optional(),
+      title: z.string().max(300).optional(),
+      notes: z.string().max(4000).optional(),
+      currency: z.string().max(10).optional(),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          contactName: z.string().min(1).max(200),
+          contactEmail: z.string().email().max(320),
+          pax: z.number().int().min(1).max(500),
+          destination: z.string().max(200).optional(),
+          title: z.string().max(300).optional(),
+          notes: z.string().max(4000).optional(),
+          currency: z.string().max(10).optional(),
+        })
+        .parse(raw);
+      return safe("create_quotation", async () => {
+        const { createQuotation } = await import("./db");
+        return await createQuotation({
+          contactName: input.contactName,
+          contactEmail: input.contactEmail,
+          pax: input.pax,
+          destination: input.destination,
+          title: input.title,
+          notes: input.notes,
+          itinerary: [],
+          lineItems: [],
+          subtotal: 0,
+          totalAmount: 0,
+          currency: input.currency ?? "USD",
+          status: "draft",
+        } as unknown as Parameters<typeof createQuotation>[0]);
+      });
+    },
+  },
+  {
+    name: "update_quotation",
+    category: "update",
+    summary: "Update a quotation's notes, line items, start date, or currency.",
+    inputSchema: z.object({
+      id: Id,
+      startDate: Iso.optional(),
+      currency: z.string().max(10).optional(),
+      notes: z.string().max(4000).optional(),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          id: Id,
+          startDate: Iso.optional(),
+          currency: z.string().max(10).optional(),
+          notes: z.string().max(4000).optional(),
+        })
+        .parse(raw);
+      return safe("update_quotation", async () => {
+        const { updateQuotation } = await import("./db");
+        return await updateQuotation(input.id, input);
+      });
+    },
+  },
+  {
+    name: "create_payment",
+    category: "create",
+    summary: "Record an incoming or outgoing payment.",
+    inputSchema: z.object({
+      tourId: Id.optional(),
+      invoiceId: Id.optional(),
+      supplierId: Id.optional(),
+      amount: z.number().nonnegative(),
+      currency: z.string().max(10),
+      direction: z.enum(["incoming", "outgoing"]),
+      status: z.enum(["pending", "received", "paid"]).optional(),
+      paidAt: Iso.optional(),
+      notes: z.string().max(2000).optional(),
+    }),
+    handler: async (raw) => {
+      return safe("create_payment", async () => {
+        const { createPayment } = await import("./db");
+        return await createPayment(raw as Parameters<typeof createPayment>[0]);
+      });
+    },
+  },
+  {
+    name: "update_payment",
+    category: "update",
+    summary: "Update a payment (amount, status, paidAt, notes).",
+    inputSchema: z.object({
+      id: Id,
+      amount: z.number().nonnegative().optional(),
+      status: z.enum(["pending", "completed", "cancelled"]).optional(),
+      paidAt: Iso.optional(),
+      notes: z.string().max(2000).optional(),
+    }),
+    handler: async (raw) => {
+      const { id, ...rest } = z
+        .object({
+          id: Id,
+          amount: z.number().nonnegative().optional(),
+          status: z.enum(["pending", "completed", "cancelled"]).optional(),
+          paidAt: Iso.optional(),
+          notes: z.string().max(2000).optional(),
+        })
+        .parse(raw);
+      return safe("update_payment", async () => {
+        const { updatePayment } = await import("./db");
+        return await updatePayment(id, rest);
+      });
+    },
+  },
+  {
+    name: "delete_payment",
+    category: "delete",
+    summary: "Delete a payment record. Irreversible.",
+    inputSchema: PaymentRef,
+    handler: async (raw) => {
+      const { id } = PaymentRef.parse(raw);
+      return safe("delete_payment", async () => {
+        const { deletePayment } = await import("./db");
+        return await deletePayment(id);
+      });
+    },
+  },
+  {
+    name: "update_invoice",
+    category: "update",
+    summary: "Update invoice fields (amount, dueDate, notes, lineItems).",
+    inputSchema: z.object({
+      id: Id,
+      amount: z.number().nonnegative().optional(),
+      currency: z.string().max(10).optional(),
+      dueDate: Iso.optional(),
+      notes: z.string().max(2000).optional(),
+    }),
+    handler: async (raw) => {
+      const { id, ...rest } = z
+        .object({
+          id: Id,
+          amount: z.number().nonnegative().optional(),
+          currency: z.string().max(10).optional(),
+          dueDate: Iso.optional(),
+          notes: z.string().max(2000).optional(),
+        })
+        .parse(raw);
+      return safe("update_invoice", async () => {
+        const { updateInvoice } = await import("./db");
+        return await updateInvoice(id, rest);
+      });
+    },
+  },
+  {
+    name: "delete_invoice",
+    category: "delete",
+    summary: "Delete an invoice. Irreversible.",
+    inputSchema: InvoiceRef,
+    handler: async (raw) => {
+      const { id } = InvoiceRef.parse(raw);
+      return safe("delete_invoice", async () => {
+        const { deleteInvoice } = await import("./db");
+        return await deleteInvoice(id);
+      });
+    },
+  },
+  {
+    name: "update_tour",
+    category: "update",
+    summary: "Update tour fields (startDate, endDate, pax, notes, itinerary, etc.). For status-only changes use update_tour_status.",
+    inputSchema: z.object({
+      id: Id,
+      startDate: Iso.optional(),
+      endDate: Iso.optional(),
+      pax: z.number().int().min(1).max(500).optional(),
+      notes: z.string().max(4000).optional(),
+    }),
+    handler: async (raw) => {
+      const { id, ...rest } = z
+        .object({
+          id: Id,
+          startDate: Iso.optional(),
+          endDate: Iso.optional(),
+          pax: z.number().int().min(1).max(500).optional(),
+          notes: z.string().max(4000).optional(),
+        })
+        .parse(raw);
+      return safe("update_tour", async () => {
+        const { updateTour } = await import("./db");
+        return await updateTour(id, rest);
+      });
+    },
+  },
+  {
+    name: "update_todo",
+    category: "update",
+    summary: "Update a todo's title (not its checked state — use toggle_todo for that).",
+    inputSchema: z.object({ id: Id, title: z.string().min(1).max(500) }),
+    handler: async (raw) => {
+      const input = z.object({ id: Id, title: z.string().min(1).max(500) }).parse(raw);
+      return safe("update_todo", async () => {
+        const { updateTodo } = await import("./db");
+        return await updateTodo(input.id, { title: input.title });
+      });
+    },
+  },
+  {
+    name: "create_planner_activity",
+    category: "create",
+    summary: "Create a planner activity for custom-journey day builder.",
+    inputSchema: z.object({
+      destinationId: Id,
+      title: z.string().min(1).max(300),
+      summary: z.string().max(2000).optional(),
+      durationLabel: z.string().max(100).optional(),
+      energy: z.enum(["easy", "moderate", "active"]).optional(),
+      estimatedPrice: z.number().nonnegative().optional(),
+    }),
+    handler: async (raw) => {
+      return safe("create_planner_activity", async () => {
+        const { createPlannerActivity } = await import("./db");
+        return await createPlannerActivity(raw as Parameters<typeof createPlannerActivity>[0]);
+      });
+    },
+  },
+  {
+    name: "update_planner_activity",
+    category: "update",
+    summary: "Update a planner activity's title, summary, energy level, or price.",
+    inputSchema: z.object({
+      id: Id,
+      title: z.string().min(1).max(300).optional(),
+      summary: z.string().max(2000).optional(),
+      durationLabel: z.string().max(100).optional(),
+      energy: z.enum(["easy", "moderate", "active"]).optional(),
+      estimatedPrice: z.number().nonnegative().optional(),
+    }),
+    handler: async (raw) => {
+      const { id, ...rest } = z
+        .object({
+          id: Id,
+          title: z.string().min(1).max(300).optional(),
+          summary: z.string().max(2000).optional(),
+          durationLabel: z.string().max(100).optional(),
+          energy: z.enum(["easy", "moderate", "active"]).optional(),
+          estimatedPrice: z.number().nonnegative().optional(),
+        })
+        .parse(raw);
+      return safe("update_planner_activity", async () => {
+        const { updatePlannerActivity } = await import("./db");
+        return await updatePlannerActivity(id, rest);
+      });
+    },
+  },
+  {
+    name: "delete_planner_activity",
+    category: "delete",
+    summary: "Delete a planner activity. Irreversible.",
+    inputSchema: z.object({ id: Id }),
+    handler: async (raw) => {
+      const { id } = z.object({ id: Id }).parse(raw);
+      return safe("delete_planner_activity", async () => {
+        const { deletePlannerActivity } = await import("./db");
+        return await deletePlannerActivity(id);
+      });
+    },
+  },
+  {
+    name: "create_ai_knowledge",
+    category: "create",
+    summary: "Save a curated AI answer into the knowledge base for future reuse.",
+    inputSchema: z.object({
+      title: z.string().min(1).max(300),
+      content: z.string().min(1).max(20000),
+      tags: z.array(z.string().max(60)).optional(),
+    }),
+    handler: async (raw) => {
+      return safe("create_ai_knowledge", async () => {
+        const { createAiKnowledgeDocument } = await import("./db");
+        return await createAiKnowledgeDocument(raw as Parameters<typeof createAiKnowledgeDocument>[0]);
+      });
+    },
+  },
+  {
+    name: "update_ai_knowledge",
+    category: "update",
+    summary: "Edit an AI knowledge document's title, content, or tags.",
+    inputSchema: z.object({
+      id: Id,
+      title: z.string().min(1).max(300).optional(),
+      content: z.string().min(1).max(20000).optional(),
+      tags: z.array(z.string().max(60)).optional(),
+    }),
+    handler: async (raw) => {
+      const { id, ...rest } = z
+        .object({
+          id: Id,
+          title: z.string().min(1).max(300).optional(),
+          content: z.string().min(1).max(20000).optional(),
+          tags: z.array(z.string().max(60)).optional(),
+        })
+        .parse(raw);
+      return safe("update_ai_knowledge", async () => {
+        const { updateAiKnowledgeDocument } = await import("./db");
+        return await updateAiKnowledgeDocument(id, rest);
+      });
+    },
+  },
+  {
+    name: "create_payroll_run",
+    category: "create",
+    summary: "Create a new payroll run (period + employees).",
+    inputSchema: z.object({
+      periodStart: Iso,
+      periodEnd: Iso,
+      notes: z.string().max(2000).optional(),
+    }),
+    handler: async (raw) => {
+      return safe("create_payroll_run", async () => {
+        const { createPayrollRun } = await import("./db");
+        return await createPayrollRun(raw as Parameters<typeof createPayrollRun>[0]);
+      });
+    },
+  },
+  {
+    name: "update_payroll_run",
+    category: "update",
+    summary: "Update a payroll run's notes, status, or line items.",
+    inputSchema: z.object({
+      id: Id,
+      notes: z.string().max(2000).optional(),
+      status: z.enum(["draft", "approved", "paid"]).optional(),
+    }),
+    handler: async (raw) => {
+      const { id, ...rest } = z
+        .object({
+          id: Id,
+          notes: z.string().max(2000).optional(),
+          status: z.enum(["draft", "approved", "paid"]).optional(),
+        })
+        .parse(raw);
+      return safe("update_payroll_run", async () => {
+        const { updatePayrollRun } = await import("./db");
+        return await updatePayrollRun(id, rest);
+      });
+    },
+  },
+
+  // ── COMMUNICATIONS HISTORY ─────────────────────────────────────────
+  {
+    name: "list_communications",
+    category: "read",
+    summary:
+      "List emails that went out (to guests OR suppliers), derived from the audit log. Filter by recipient email, leadId, tourId, template, status (sent/failed), or limit. Returns most-recent first. Use this for 'what was the last email we sent to…' questions.",
+    inputSchema: z.object({
+      recipient: z.string().max(320).optional(),
+      leadId: z.string().max(200).optional(),
+      tourId: z.string().max(200).optional(),
+      template: z
+        .enum([
+          "tour_confirmation_with_invoice",
+          "supplier_reservation",
+          "payment_receipt",
+          "invoice",
+          "itinerary",
+          "pre_trip_reminder",
+          "post_trip_followup",
+          "booking_change_notice",
+          "supplier_change_notice",
+          "supplier_remittance",
+        ])
+        .optional(),
+      status: z.enum(["sent", "failed", "skipped", "all"]).optional(),
+      limit: LimitS,
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          recipient: z.string().max(320).optional(),
+          leadId: z.string().max(200).optional(),
+          tourId: z.string().max(200).optional(),
+          template: z.string().max(60).optional(),
+          status: z.enum(["sent", "failed", "skipped", "all"]).optional(),
+          limit: LimitS,
+        })
+        .parse(raw);
+      const { getAuditLogs } = await import("./db");
+      const logs = await getAuditLogs({ limit: 500 });
+      const EMAIL_SUFFIXES = ["_emailed", "_email_failed", "_email_skipped"];
+      const recipientNeedle = (input.recipient ?? "").trim().toLowerCase();
+      const rows = logs
+        .filter((log) => EMAIL_SUFFIXES.some((s) => log.action.endsWith(s)))
+        .map((log) => {
+          const meta = (log.metadata ?? {}) as Record<string, unknown>;
+          const recipient =
+            typeof meta.recipient === "string" ? meta.recipient : "";
+          const template =
+            typeof meta.template === "string" ? meta.template : "other";
+          const status: "sent" | "failed" | "skipped" = log.action.endsWith(
+            "_failed"
+          )
+            ? "failed"
+            : log.action.endsWith("_skipped")
+              ? "skipped"
+              : "sent";
+          return {
+            id: log.id,
+            sentAt: log.createdAt,
+            action: log.action,
+            template,
+            status,
+            recipient,
+            summary: log.summary,
+            entityType: log.entityType,
+            entityId: log.entityId,
+            error: typeof meta.error === "string" ? meta.error : undefined,
+          };
+        })
+        .filter((r) => {
+          if (input.leadId && !(r.entityType === "lead" && r.entityId === input.leadId))
+            return false;
+          if (input.tourId && !(r.entityType === "tour" && r.entityId === input.tourId))
+            return false;
+          if (input.template && r.template !== input.template) return false;
+          if (input.status && input.status !== "all" && r.status !== input.status)
+            return false;
+          if (recipientNeedle && !r.recipient.toLowerCase().includes(recipientNeedle))
+            return false;
+          return true;
+        })
+        .slice(0, input.limit ?? 20);
+
+      if (rows.length === 0) {
+        return ok(
+          `No matching emails found${input.recipient ? ` for recipient "${input.recipient}"` : ""}.`,
+          []
+        );
+      }
+      const latest = rows[0];
+      return ok(
+        `${rows.length} email${rows.length === 1 ? "" : "s"} — most recent: ${latest.status} "${latest.template}" → ${latest.recipient || "(no recipient)"} at ${latest.sentAt}.`,
+        rows
+      );
+    },
+  },
+
   // ── FLOW-AWARE CATALOG READS ───────────────────────────────────────
   {
     name: "list_destinations",
