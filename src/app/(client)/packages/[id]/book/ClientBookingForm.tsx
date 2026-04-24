@@ -726,46 +726,46 @@ export function ClientBookingForm({
         <WizardShell.Body>
           <div className="space-y-6">
         {step === 1 && (
-          <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[#11272b]">
-              <Users className="h-5 w-5 text-[#12343b]" />
+          <section className="rounded-[1.75rem] border border-[var(--portal-border)] bg-[var(--portal-paper)] p-5 sm:p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--portal-ink)]">
+              <Users className="h-5 w-5 text-[var(--portal-ink)]" />
               Your details
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-[#11272b]">Primary guest name *</label>
+                <label className="block text-sm font-medium text-[var(--portal-ink)]">Primary guest name *</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
+                  className="mt-1 w-full rounded-[1rem] border border-[var(--portal-border)] bg-white px-4 py-3 focus:border-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-ink)]/20"
                   placeholder="John Doe"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#11272b]">Email *</label>
+                <label className="block text-sm font-medium text-[var(--portal-ink)]">Email *</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
+                  className="mt-1 w-full rounded-[1rem] border border-[var(--portal-border)] bg-white px-4 py-3 focus:border-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-ink)]/20"
                   placeholder="your@email.com"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#11272b]">Phone</label>
+                <label className="block text-sm font-medium text-[var(--portal-ink)]">Phone</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
+                  className="mt-1 w-full rounded-[1rem] border border-[var(--portal-border)] bg-white px-4 py-3 focus:border-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-ink)]/20"
                   placeholder="+1 234 567 8900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#11272b]">
+                <label className="block text-sm font-medium text-[var(--portal-ink)]">
                   <Calendar className="inline h-3.5 w-3.5 mr-1" />
                   Preferred travel date
                 </label>
@@ -773,29 +773,29 @@ export function ClientBookingForm({
                   type="date"
                   value={travelDate}
                   onChange={(e) => setTravelDate(e.target.value)}
-                  className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
+                  className="mt-1 w-full rounded-[1rem] border border-[var(--portal-border)] bg-white px-4 py-3 focus:border-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-ink)]/20"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#11272b]">Number of travelers *</label>
+                <label className="block text-sm font-medium text-[var(--portal-ink)]">Number of travelers *</label>
                 <input
                   type="number"
                   min={1}
                   max={20}
                   value={pax}
                   onChange={(e) => syncGuestNames(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="mt-1 w-28 rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
+                  className="mt-1 w-28 rounded-[1rem] border border-[var(--portal-border)] bg-white px-4 py-3 focus:border-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-ink)]/20"
                 />
               </div>
             </div>
 
             {pax > 1 && (
               <div className="mt-5 space-y-2">
-                <p className="text-sm font-medium text-[#11272b]">
+                <p className="text-sm font-medium text-[var(--portal-ink)]">
                   Additional traveler names{" "}
-                  <span className="font-normal text-[#8c6a38]">(optional)</span>
+                  <span className="font-normal text-[var(--portal-eyebrow)]">(optional)</span>
                 </p>
-                <p className="text-xs text-[#5e7279]">
+                <p className="text-xs text-[var(--portal-text-muted)]">
                   Leave blank if you prefer to confirm names later.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -810,7 +810,7 @@ export function ClientBookingForm({
                         setGuestNames(next);
                       }}
                       placeholder={`Traveler ${i + 2} name`}
-                      className="w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 text-sm focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
+                      className="w-full rounded-[1rem] border border-[var(--portal-border)] bg-white px-4 py-3 text-sm focus:border-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-ink)]/20"
                     />
                   ))}
                 </div>
@@ -818,7 +818,7 @@ export function ClientBookingForm({
             )}
 
             <div className="mt-5">
-              <label className="block text-sm font-medium text-[#11272b]">
+              <label className="block text-sm font-medium text-[var(--portal-ink)]">
                 <MessageSquare className="inline h-3.5 w-3.5 mr-1" />
                 Special requests
               </label>
@@ -826,7 +826,7 @@ export function ClientBookingForm({
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 text-sm focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
+                className="mt-1 w-full rounded-[1rem] border border-[var(--portal-border)] bg-white px-4 py-3 text-sm focus:border-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-ink)]/20"
                 placeholder="Dietary needs, accessibility, celebrations…"
               />
             </div>
@@ -834,12 +834,12 @@ export function ClientBookingForm({
         )}
 
         {step === 2 && (
-          <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
-            <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-[#11272b]">
-              <Building2 className="h-5 w-5 text-[#12343b]" />
+          <section className="rounded-[1.75rem] border border-[var(--portal-border)] bg-[var(--portal-paper)] p-5 sm:p-6">
+            <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-[var(--portal-ink)]">
+              <Building2 className="h-5 w-5 text-[var(--portal-ink)]" />
               {hasHotelMealPlans ? "Choose your stay & meals" : "Choose accommodation"}
             </h2>
-            <p className="mb-4 text-sm text-[#5e7279]">
+            <p className="mb-4 text-sm text-[var(--portal-text-muted)]">
               {hasHotelMealPlans
                 ? "Pick a hotel per night, then the meal plan (Room Only / Bed & Breakfast / Half Board / Full Board / All Inclusive) straight from that hotel. Meals are charged with the stay — no separate step."
                 : "Pick from our curated hotels below, or select "}
@@ -858,8 +858,8 @@ export function ClientBookingForm({
                       key={opt.id}
                       className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] border p-4 transition ${
                         accommodationId === opt.id
-                          ? "border-[#12343b] bg-[#f3e3c7]"
-                          : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                          ? "border-[var(--portal-ink)] bg-[var(--portal-highlight)]"
+                          : "border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold)]"
                       }`}
                     >
                       <input
@@ -869,12 +869,12 @@ export function ClientBookingForm({
                         className="sr-only"
                       />
                       <div className="flex flex-col">
-                        <span className="font-medium text-[#11272b]">{opt.label}</span>
+                        <span className="font-medium text-[var(--portal-ink)]">{opt.label}</span>
                         {getStarRating(opt.supplierId) != null && (
                           <StarRating stars={getStarRating(opt.supplierId)!} />
                         )}
                       </div>
-                      <span className="text-sm font-medium text-[#12343b]">
+                      <span className="text-sm font-medium text-[var(--portal-ink)]">
                         +{calcOptionPrice(opt, pax, nights).toLocaleString()} {pkg.currency}
                       </span>
                     </label>
@@ -883,8 +883,8 @@ export function ClientBookingForm({
                 <label
                   className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] border p-4 transition ${
                     accommodationId === BOOK_MY_OWN
-                      ? "border-[#c9922f] bg-[#fffbf4]"
-                      : "border-dashed border-[#ddc8b0] bg-white hover:border-[#c9922f]"
+                      ? "border-[var(--portal-gold-deep)] bg-[var(--portal-highlight-soft)]"
+                      : "border-dashed border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold-deep)]"
                   }`}
                 >
                   <input
@@ -893,17 +893,17 @@ export function ClientBookingForm({
                     onChange={() => setAccommodationId(BOOK_MY_OWN)}
                     className="sr-only"
                   />
-                  <span className="font-medium text-[#11272b]">
+                  <span className="font-medium text-[var(--portal-ink)]">
                     Book my own accommodation
                   </span>
-                  <span className="text-xs text-[#8c6a38]">Subtracted from total</span>
+                  <span className="text-xs text-[var(--portal-eyebrow)]">Subtracted from total</span>
                 </label>
 
                 {/* Hotel-attached meal plans for the picked room. We reuse
                     the night-0 key so one picker drives the whole stay. */}
                 {accommodationId !== BOOK_MY_OWN && legacyMealPlans.length > 0 && (
-                  <div className="mt-3 rounded-[1.15rem] border border-[#e5d7c4] bg-[#fbf7f1] p-3">
-                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-[#8c6a38]">
+                  <div className="mt-3 rounded-[1.15rem] border border-[var(--portal-border)] bg-[var(--portal-paper)] p-3">
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-[var(--portal-eyebrow)]">
                       <UtensilsCrossed className="h-3.5 w-3.5" />
                       Meal plan (per person, per night)
                     </p>
@@ -911,8 +911,8 @@ export function ClientBookingForm({
                       <label
                         className={`flex cursor-pointer items-center justify-between gap-2 rounded-[0.95rem] border p-2.5 text-sm transition ${
                           (mealPlanByNight[0] ?? NO_MEAL_PLAN) === NO_MEAL_PLAN
-                            ? "border-[#12343b] bg-white"
-                            : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                            ? "border-[var(--portal-ink)] bg-white"
+                            : "border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold)]"
                         }`}
                       >
                         <input
@@ -925,16 +925,16 @@ export function ClientBookingForm({
                           }
                           className="sr-only"
                         />
-                        <span className="font-medium text-[#11272b]">Room only</span>
-                        <span className="text-xs text-[#8c6a38]">No meals</span>
+                        <span className="font-medium text-[var(--portal-ink)]">Room only</span>
+                        <span className="text-xs text-[var(--portal-eyebrow)]">No meals</span>
                       </label>
                       {legacyMealPlans.map((mp) => (
                         <label
                           key={mp.id}
                           className={`flex cursor-pointer items-center justify-between gap-2 rounded-[0.95rem] border p-2.5 text-sm transition ${
                             mealPlanByNight[0] === mp.id
-                              ? "border-[#12343b] bg-[#f3e3c7]"
-                              : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                              ? "border-[var(--portal-ink)] bg-[var(--portal-highlight)]"
+                              : "border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold)]"
                           }`}
                         >
                           <input
@@ -947,8 +947,8 @@ export function ClientBookingForm({
                             }
                             className="sr-only"
                           />
-                          <span className="font-medium text-[#11272b]">{mp.label}</span>
-                          <span className="text-xs font-medium text-[#12343b]">
+                          <span className="font-medium text-[var(--portal-ink)]">{mp.label}</span>
+                          <span className="text-xs font-medium text-[var(--portal-ink)]">
                             {mp.pricePerPerson > 0
                               ? `+${(mp.pricePerPerson * pax * nights).toLocaleString()} ${mp.currency}`
                               : "Included"}
@@ -966,13 +966,13 @@ export function ClientBookingForm({
                   return (
                     <div
                       key={nightIndex}
-                      className="rounded-[1.35rem] border border-[#ddc8b0] bg-white p-4"
+                      className="rounded-[1.35rem] border border-[var(--portal-border)] bg-white p-4"
                     >
                       <div className="mb-3 flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium uppercase tracking-[0.14em] text-[#8c6a38]">
+                        <p className="text-sm font-medium uppercase tracking-[0.14em] text-[var(--portal-eyebrow)]">
                           Night {nightIndex + 1}
                         </p>
-                        <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-[#5e7279]">
+                        <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-[var(--portal-text-muted)]">
                           <input
                             type="checkbox"
                             checked={nightBookOwn}
@@ -982,7 +982,7 @@ export function ClientBookingForm({
                                 [nightIndex]: e.target.checked,
                               }))
                             }
-                            className="h-3.5 w-3.5 rounded border-[#ddc8b0] text-[#12343b] focus:ring-[#c9922f]"
+                            className="h-3.5 w-3.5 rounded border-[var(--portal-border)] text-[var(--portal-ink)] focus:ring-[var(--portal-gold-deep)]"
                           />
                           I&apos;ll book my own
                         </label>
@@ -995,8 +995,8 @@ export function ClientBookingForm({
                                 key={opt.id}
                                 className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.15rem] border p-3 transition ${
                                   accommodationByNight[nightIndex] === opt.id
-                                    ? "border-[#12343b] bg-[#f3e3c7]"
-                                    : "border-[#ddc8b0] hover:border-[#b78c54]"
+                                    ? "border-[var(--portal-ink)] bg-[var(--portal-highlight)]"
+                                    : "border-[var(--portal-border)] hover:border-[var(--portal-gold)]"
                                 }`}
                               >
                                 <input
@@ -1013,12 +1013,12 @@ export function ClientBookingForm({
                                   className="sr-only"
                                 />
                                 <div className="flex flex-col">
-                                  <span className="font-medium text-[#11272b]">{opt.label}</span>
+                                  <span className="font-medium text-[var(--portal-ink)]">{opt.label}</span>
                                   {getStarRating(opt.supplierId) != null && (
                                     <StarRating stars={getStarRating(opt.supplierId)!} />
                                   )}
                                 </div>
-                                <span className="text-sm font-medium text-[#12343b]">
+                                <span className="text-sm font-medium text-[var(--portal-ink)]">
                                   +{calcOptionPrice(opt, pax, 1).toLocaleString()} {pkg.currency}
                                 </span>
                               </label>
@@ -1032,8 +1032,8 @@ export function ClientBookingForm({
                             const selected =
                               mealPlanByNight[nightIndex] ?? NO_MEAL_PLAN;
                             return (
-                              <div className="mt-3 rounded-[1.15rem] border border-[#e5d7c4] bg-[#fbf7f1] p-3">
-                                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-[#8c6a38]">
+                              <div className="mt-3 rounded-[1.15rem] border border-[var(--portal-border)] bg-[var(--portal-paper)] p-3">
+                                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-[var(--portal-eyebrow)]">
                                   <UtensilsCrossed className="h-3.5 w-3.5" />
                                   Meal plan for this night
                                 </p>
@@ -1041,8 +1041,8 @@ export function ClientBookingForm({
                                   <label
                                     className={`flex cursor-pointer items-center justify-between gap-2 rounded-[0.95rem] border p-2.5 text-sm transition ${
                                       selected === NO_MEAL_PLAN
-                                        ? "border-[#12343b] bg-white"
-                                        : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                                        ? "border-[var(--portal-ink)] bg-white"
+                                        : "border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold)]"
                                     }`}
                                   >
                                     <input
@@ -1058,10 +1058,10 @@ export function ClientBookingForm({
                                       }
                                       className="sr-only"
                                     />
-                                    <span className="font-medium text-[#11272b]">
+                                    <span className="font-medium text-[var(--portal-ink)]">
                                       Room only
                                     </span>
-                                    <span className="text-xs text-[#8c6a38]">
+                                    <span className="text-xs text-[var(--portal-eyebrow)]">
                                       No meals
                                     </span>
                                   </label>
@@ -1070,8 +1070,8 @@ export function ClientBookingForm({
                                       key={mp.id}
                                       className={`flex cursor-pointer items-center justify-between gap-2 rounded-[0.95rem] border p-2.5 text-sm transition ${
                                         selected === mp.id
-                                          ? "border-[#12343b] bg-[#f3e3c7]"
-                                          : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                                          ? "border-[var(--portal-ink)] bg-[var(--portal-highlight)]"
+                                          : "border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold)]"
                                       }`}
                                     >
                                       <input
@@ -1087,10 +1087,10 @@ export function ClientBookingForm({
                                         }
                                         className="sr-only"
                                       />
-                                      <span className="font-medium text-[#11272b]">
+                                      <span className="font-medium text-[var(--portal-ink)]">
                                         {mp.label}
                                       </span>
-                                      <span className="text-xs font-medium text-[#12343b]">
+                                      <span className="text-xs font-medium text-[var(--portal-ink)]">
                                         {mp.pricePerPerson > 0
                                           ? `+${(mp.pricePerPerson * pax).toLocaleString()} ${mp.currency}`
                                           : "Included"}
@@ -1103,7 +1103,7 @@ export function ClientBookingForm({
                           })()}
                         </>
                       ) : (
-                        <p className="rounded-xl bg-[#fffbf4] px-3 py-2 text-sm text-[#5e7279]">
+                        <p className="rounded-xl bg-[var(--portal-highlight-soft)] px-3 py-2 text-sm text-[var(--portal-text-muted)]">
                           You&apos;ll arrange this night yourself. Let us know the hotel in the notes so we can plan transfers.
                         </p>
                       )}
@@ -1112,7 +1112,7 @@ export function ClientBookingForm({
                 })}
                 {Object.values(bookMyOwnNights).some(Boolean) && (
                   <div>
-                    <label className="block text-sm font-medium text-[#11272b]">
+                    <label className="block text-sm font-medium text-[var(--portal-ink)]">
                       Tell us which hotel(s) you&apos;re arranging (optional)
                     </label>
                     <input
@@ -1120,7 +1120,7 @@ export function ClientBookingForm({
                       value={bookMyOwnNotes}
                       onChange={(e) => setBookMyOwnNotes(e.target.value)}
                       placeholder="e.g. Cinnamon Grand Colombo (Night 1), Own villa (Nights 2-3)"
-                      className="mt-1 w-full rounded-[1rem] border border-[#ddc8b0] bg-white px-4 py-3 text-sm focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
+                      className="mt-1 w-full rounded-[1rem] border border-[var(--portal-border)] bg-white px-4 py-3 text-sm focus:border-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-ink)]/20"
                     />
                   </div>
                 )}
@@ -1130,9 +1130,9 @@ export function ClientBookingForm({
         )}
 
         {step === 3 && mealOptions.length > 0 && !hasHotelMealPlans && (
-          <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[#11272b]">
-              <UtensilsCrossed className="h-5 w-5 text-[#12343b]" />
+          <section className="rounded-[1.75rem] border border-[var(--portal-border)] bg-[var(--portal-paper)] p-5 sm:p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--portal-ink)]">
+              <UtensilsCrossed className="h-5 w-5 text-[var(--portal-ink)]" />
               Choose meal plan
             </h2>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -1141,8 +1141,8 @@ export function ClientBookingForm({
                   key={opt.id}
                   className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] border p-4 transition ${
                     mealId === opt.id
-                      ? "border-[#12343b] bg-[#f3e3c7]"
-                      : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                      ? "border-[var(--portal-ink)] bg-[var(--portal-highlight)]"
+                      : "border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold)]"
                   }`}
                 >
                   <input
@@ -1153,8 +1153,8 @@ export function ClientBookingForm({
                     onChange={() => setMealId(opt.id)}
                     className="sr-only"
                   />
-                  <span className="font-medium text-[#11272b]">{opt.label}</span>
-                  <span className="text-sm font-medium text-[#12343b]">
+                  <span className="font-medium text-[var(--portal-ink)]">{opt.label}</span>
+                  <span className="text-sm font-medium text-[var(--portal-ink)]">
                     +{calcOptionPrice(opt, pax, nights).toLocaleString()} {pkg.currency}
                   </span>
                 </label>
@@ -1164,9 +1164,9 @@ export function ClientBookingForm({
         )}
 
         {step === 4 && transportOptions.length > 0 && (
-          <section className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[#11272b]">
-              <Car className="h-5 w-5 text-[#12343b]" />
+          <section className="rounded-[1.75rem] border border-[var(--portal-border)] bg-[var(--portal-paper)] p-5 sm:p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--portal-ink)]">
+              <Car className="h-5 w-5 text-[var(--portal-ink)]" />
               Choose transportation
             </h2>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -1175,8 +1175,8 @@ export function ClientBookingForm({
                   key={opt.id}
                   className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] border p-4 transition ${
                     transportId === opt.id
-                      ? "border-[#12343b] bg-[#f3e3c7]"
-                      : "border-[#ddc8b0] bg-white hover:border-[#b78c54]"
+                      ? "border-[var(--portal-ink)] bg-[var(--portal-highlight)]"
+                      : "border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold)]"
                   }`}
                 >
                   <input
@@ -1187,8 +1187,8 @@ export function ClientBookingForm({
                     onChange={() => setTransportId(opt.id)}
                     className="sr-only"
                   />
-                  <span className="font-medium text-[#11272b]">{opt.label}</span>
-                  <span className="text-sm font-medium text-[#12343b]">
+                  <span className="font-medium text-[var(--portal-ink)]">{opt.label}</span>
+                  <span className="text-sm font-medium text-[var(--portal-ink)]">
                     +{calcOptionPrice(opt, pax, nights).toLocaleString()} {pkg.currency}
                   </span>
                 </label>
@@ -1200,12 +1200,12 @@ export function ClientBookingForm({
         {step === 5 && (
           <section className="space-y-4">
             {reviewRoutePoints.length >= 2 ? (
-              <div className="overflow-hidden rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1]">
+              <div className="overflow-hidden rounded-[1.75rem] border border-[var(--portal-border)] bg-[var(--portal-paper)]">
                 <div className="flex items-center justify-between gap-2 px-5 pt-4 sm:px-6">
-                  <h3 className="text-sm font-medium uppercase tracking-[0.14em] text-[#8c6a38]">
+                  <h3 className="text-sm font-medium uppercase tracking-[0.14em] text-[var(--portal-eyebrow)]">
                     Your route
                   </h3>
-                  <span className="text-xs text-[#5e7279]">
+                  <span className="text-xs text-[var(--portal-text-muted)]">
                     {reviewRoutePoints.length} stops · {nights} nights
                   </span>
                 </div>
@@ -1214,9 +1214,9 @@ export function ClientBookingForm({
                 </div>
               </div>
             ) : null}
-            <div className="rounded-[1.75rem] border border-[#e5d7c4] bg-[#fbf7f1] p-5 sm:p-6">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[#11272b]">
-                <Check className="h-5 w-5 text-[#12343b]" />
+            <div className="rounded-[1.75rem] border border-[var(--portal-border)] bg-[var(--portal-paper)] p-5 sm:p-6">
+              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--portal-ink)]">
+                <Check className="h-5 w-5 text-[var(--portal-ink)]" />
                 Review &amp; confirm
               </h2>
               <dl className="grid gap-4 text-sm sm:grid-cols-2">
@@ -1328,7 +1328,7 @@ export function ClientBookingForm({
                 type="button"
                 onClick={submitBooking}
                 disabled={loading || !canSubmit}
-                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-[var(--portal-accent,#c9922f)] px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-[var(--portal-accent,var(--portal-gold-deep))] px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Submitting…" : "Submit booking"}
                 <Check className="h-4 w-4" />
@@ -1344,8 +1344,8 @@ export function ClientBookingForm({
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <>
-      <dt className="text-[#8c6a38]">{label}</dt>
-      <dd className="font-medium text-[#11272b]">{value}</dd>
+      <dt className="text-[var(--portal-eyebrow)]">{label}</dt>
+      <dd className="font-medium text-[var(--portal-ink)]">{value}</dd>
     </>
   );
 }

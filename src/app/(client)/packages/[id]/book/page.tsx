@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowLeft, CalendarRange, MapPin, Star } from "lucide-react";
 import { getPackage, getHotels, getAllMealPlans } from "@/lib/db";
 import type { HotelMealPlan } from "@/lib/types";
@@ -33,7 +32,7 @@ export default async function ClientBookPackagePage({
         <p className="text-stone-600">Package not found</p>
         <Link
           href="/packages"
-          className="text-teal-600 hover:text-teal-700 font-medium"
+          className="font-medium text-[var(--portal-ink)] hover:opacity-80"
         >
           ← Back to packages
         </Link>
@@ -43,92 +42,53 @@ export default async function ClientBookPackagePage({
 
   const visual = getClientPackageVisual(pkg);
 
+  // Compact context strip above the viewport-fit wizard shell. The
+  // marketing-style split hero was collapsing the shell's 100svh
+  // target — the booking flow now owns the viewport and this strip
+  // hands off essential package context in a single row.
   return (
-    <div className="space-y-8 pb-10">
-      <Link
-        href={`/packages/${id}`}
-        className="inline-flex items-center gap-2 rounded-full border border-[#ddc8b0] bg-white/70 px-4 py-2 text-sm font-medium text-stone-700 backdrop-blur-sm transition hover:text-[#12343b]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to tour details
-      </Link>
-
-      <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
-        <aside className="overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_28px_70px_-34px_rgba(18,52,59,0.95)]">
-          <div className="relative min-h-[26rem]">
-            <Image
-              src={visual.imageUrl}
-              alt={pkg.name}
-              fill
-
-              className="absolute inset-0 object-cover"
-              sizes="100vw"
-            />
-            <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(11,33,38,0.92)_10%,rgba(11,33,38,0.6)_48%,rgba(11,33,38,0.22)_100%)]" />
-
-            <div className="relative flex h-full flex-col justify-between p-6 sm:p-8">
-              <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-[#e5c48e]">
-                  {visual.eyebrow}
-                </p>
-                <h1 className="mt-3 text-3xl font-semibold tracking-tight">
-                  {pkg.name}
-                </h1>
-                <p className="mt-4 text-sm leading-7 text-[#e5dccd]">
-                  {visual.highlight}
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
-                  <div className="flex items-center gap-2 text-sm text-[#ece1cf]">
-                    <MapPin className="h-4 w-4 text-[#f2dfbf]" />
-                    {pkg.region ?? pkg.destination}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[#ece1cf]">
-                    <CalendarRange className="h-4 w-4 text-[#f2dfbf]" />
-                    {pkg.duration}
-                  </div>
-                  {(pkg.rating ?? 0) > 0 && (
-                    <div className="flex items-center gap-2 text-sm text-[#f7d895]">
-                      <Star className="h-4 w-4 fill-current" />
-                      {pkg.rating?.toFixed(1)} guest rating
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-[1.5rem] bg-[#f5e2c3] p-4 text-[#12343b]">
-                  <p className="text-xs uppercase tracking-[0.22em] text-[#7d5b2a]">
-                    Route note
-                  </p>
-                  <p className="mt-2 text-sm leading-6">{visual.microcopy}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <section className="rounded-[2rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm sm:p-8">
-          <div className="mb-8">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
-              Booking Request
+    <div className="-mx-4 -my-8 sm:-mx-6 sm:-my-12">
+      <div className="border-b border-[var(--portal-border)]/60 bg-[var(--portal-paper)]/70 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
+          <Link
+            href={`/packages/${id}`}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--portal-border)] bg-white/80 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:text-[var(--portal-ink)]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back
+          </Link>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-[var(--portal-eyebrow)]">
+              {visual.eyebrow}
             </p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900">
-              Shape the stay before you submit
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-600">
-              Choose your transport, accommodation style, and meal plan, then
-              leave your preferred date and contact details.
-            </p>
+            <h1 className="portal-display truncate text-base font-semibold tracking-tight text-[var(--portal-ink)] sm:text-lg">
+              {pkg.name}
+            </h1>
           </div>
-
-          <ClientBookingForm
-            pkg={pkg}
-            hotels={hotels}
-            mealPlansByHotelId={mealPlansByHotelId}
-          />
-        </section>
+          <div className="hidden flex-wrap items-center gap-2 text-xs text-stone-600 sm:flex">
+            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--portal-border)] bg-white/70 px-2.5 py-1">
+              <MapPin className="h-3 w-3 text-[var(--portal-gold-deep)]" />
+              {pkg.region ?? pkg.destination}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--portal-border)] bg-white/70 px-2.5 py-1">
+              <CalendarRange className="h-3 w-3 text-[var(--portal-gold-deep)]" />
+              {pkg.duration}
+            </span>
+            {(pkg.rating ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--portal-border)] bg-white/70 px-2.5 py-1 text-[var(--portal-gold-deep)]">
+                <Star className="h-3 w-3 fill-current" />
+                {pkg.rating?.toFixed(1)}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
+
+      <ClientBookingForm
+        pkg={pkg}
+        hotels={hotels}
+        mealPlansByHotelId={mealPlansByHotelId}
+      />
     </div>
   );
 }
