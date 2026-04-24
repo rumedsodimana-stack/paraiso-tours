@@ -1,7 +1,16 @@
-import Link from "next/link";
-import { ArrowRight, CheckCircle2, Mail, Search } from "lucide-react";
+import { CheckCircle2, Mail, Search } from "lucide-react";
 import { homeHeroScene } from "../client-visuals";
+import {
+  ContentCard,
+  HeroBand,
+  PortalButton,
+  PortalShell,
+} from "../_ui";
 
+/**
+ * Post-submit confirmation screen. Reached after the booking wizard
+ * posts a lead. The wizard itself is untouched.
+ */
 export default async function BookingConfirmedPage({
   searchParams,
 }: {
@@ -9,92 +18,81 @@ export default async function BookingConfirmedPage({
 }) {
   const { ref } = await searchParams;
 
-  return (
-    <div className="space-y-8 pb-10">
-      <section
-        className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_28px_70px_-34px_rgba(18,52,59,0.95)]"
-        style={{
-          backgroundImage: `linear-gradient(120deg, rgba(11,33,38,0.92) 10%, rgba(11,33,38,0.64) 48%, rgba(11,33,38,0.22) 100%), url(${homeHeroScene.imageUrl})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <div className="relative px-6 py-10 sm:px-8 sm:py-12 lg:px-10">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.28em] text-[#efd5aa] backdrop-blur-sm">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Request received
-            </div>
-            <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
-              Your route request is in
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#e5dccd] sm:text-base">
-              Our team will review the trip setup, confirm availability, and
-              follow up with the next step from the admin side.
-            </p>
+  const steps = [
+    {
+      icon: CheckCircle2,
+      iconClass: "text-emerald-600",
+      title: "Step 1 · Request logged",
+      text: "Your booking is now in the same operations pipeline the admin team uses for leads and scheduling.",
+    },
+    {
+      icon: Mail,
+      iconClass: "text-[var(--portal-ink)]",
+      title: "Step 2 · Watch your inbox",
+      text: "We'll confirm availability and send the next update to your email once the team reviews the request.",
+    },
+    {
+      icon: Search,
+      iconClass: "text-[var(--portal-ink)]",
+      title: "Step 3 · Track the status",
+      text: "Use your email or reference in the client area to see when the request becomes a confirmed tour.",
+    },
+  ];
 
-            {ref ? (
-              <div className="mt-6 inline-flex flex-col rounded-[1.5rem] border border-white/12 bg-white/10 px-5 py-4 backdrop-blur-sm">
-                <span className="text-xs uppercase tracking-[0.26em] text-[#e5c48e]">
-                  Booking reference
-                </span>
-                <span className="mt-2 font-mono text-2xl font-semibold text-white">
-                  {ref}
-                </span>
-              </div>
-            ) : null}
+  return (
+    <PortalShell spacing="tight">
+      <HeroBand
+        imageUrl={homeHeroScene.imageUrl}
+        imageAlt="Booking request received"
+        variant="full"
+      >
+        <HeroBand.Eyebrow>Request received</HeroBand.Eyebrow>
+        <HeroBand.Title>Your route request is in</HeroBand.Title>
+        <HeroBand.Summary>
+          Our team will review the trip setup, confirm availability, and
+          follow up with the next step from the admin side.
+        </HeroBand.Summary>
+        <HeroBand.Actions>
+          <PortalButton
+            href="/my-bookings"
+            variant="on-dark"
+            size="lg"
+            withArrow
+          >
+            View my bookings
+          </PortalButton>
+          <PortalButton
+            href="/packages"
+            variant="secondary"
+            size="lg"
+            className="border-white/25 bg-white/10 text-white hover:bg-white/18"
+          >
+            Browse more packages
+          </PortalButton>
+        </HeroBand.Actions>
+        {ref ? (
+          <div className="mt-8 inline-flex flex-col rounded-[var(--portal-radius-md)] border border-white/14 bg-white/10 px-5 py-4 backdrop-blur-sm">
+            <span className="text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--portal-gold)]">
+              Booking reference
+            </span>
+            <span className="portal-display mt-2 font-mono text-2xl font-semibold text-white">
+              {ref}
+            </span>
           </div>
-        </div>
-      </section>
+        ) : null}
+      </HeroBand>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
-          <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-          <h2 className="mt-4 text-lg font-semibold text-stone-900">
-            Step 1: Request logged
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-stone-600">
-            Your booking is now in the same operations pipeline the admin team
-            uses for leads and scheduling.
-          </p>
-        </div>
-        <div className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
-          <Mail className="h-6 w-6 text-[#12343b]" />
-          <h2 className="mt-4 text-lg font-semibold text-stone-900">
-            Step 2: Watch your inbox
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-stone-600">
-            We&apos;ll confirm availability and send the next update to your
-            email once the team reviews the request.
-          </p>
-        </div>
-        <div className="rounded-[1.75rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
-          <Search className="h-6 w-6 text-[#12343b]" />
-          <h2 className="mt-4 text-lg font-semibold text-stone-900">
-            Step 3: Track the status
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-stone-600">
-            Use your email or reference in the client area to see when the
-            request becomes a confirmed tour.
-          </p>
-        </div>
+        {steps.map(({ icon: Icon, iconClass, title, text }) => (
+          <ContentCard key={title} variant="paper">
+            <Icon className={`h-6 w-6 ${iconClass}`} />
+            <h2 className="portal-display mt-4 text-lg font-semibold tracking-tight text-stone-900">
+              {title}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-stone-600">{text}</p>
+          </ContentCard>
+        ))}
       </section>
-
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Link
-          href="/my-bookings"
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#12343b] px-6 py-3.5 text-sm font-semibold text-[#f6ead6] shadow-[0_16px_40px_-26px_rgba(18,52,59,0.95)]"
-        >
-          View my bookings
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-        <Link
-          href="/packages"
-          className="inline-flex items-center justify-center rounded-full border border-[#ddc8b0] bg-white/72 px-6 py-3.5 text-sm font-semibold text-stone-800 backdrop-blur-sm"
-        >
-          Browse more packages
-        </Link>
-      </div>
-    </div>
+    </PortalShell>
   );
 }

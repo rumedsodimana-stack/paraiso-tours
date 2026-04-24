@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   Calendar,
@@ -83,12 +84,9 @@ export function MyBookingsClient() {
     ((data.requests?.length ?? 0) > 0 || (data.tours?.length ?? 0) > 0);
 
   return (
-    <div className="mt-4 space-y-6">
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-[1.75rem] border border-[#ddc8b0] bg-[#fbf7f1] p-5 sm:p-6"
-      >
-        <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+    <div className="space-y-8">
+      <form onSubmit={handleSubmit}>
+        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <label
               htmlFor="email"
@@ -105,57 +103,57 @@ export function MyBookingsClient() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                className="w-full rounded-[1rem] border border-[#ddc8b0] bg-white py-3 pl-11 pr-4 focus:border-[#12343b] focus:outline-none focus:ring-2 focus:ring-[#12343b]/20"
+                className="w-full rounded-full border border-[var(--portal-border)] bg-white/90 py-3 pl-11 pr-4 text-sm text-stone-900 placeholder:text-stone-500 focus:border-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-ink)]/15"
               />
             </div>
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="rounded-full bg-[#12343b] px-6 py-3 font-semibold text-[#f6ead6] shadow-[0_16px_40px_-26px_rgba(18,52,59,0.95)] transition hover:bg-[#0f2b31] disabled:opacity-70"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--portal-ink)] px-6 py-3 text-sm font-semibold text-[var(--portal-cream)] shadow-[0_14px_34px_-18px_rgba(18,52,59,0.95)] transition hover:bg-[var(--portal-ink-soft)] disabled:opacity-70"
           >
             {loading ? "Checking…" : "View my bookings"}
           </button>
         </div>
       </form>
 
-      {error && (
-        <div className="rounded-[1rem] bg-red-50 px-4 py-3 text-sm text-red-700">
+      {error ? (
+        <div className="rounded-[var(--portal-radius-md)] bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
-      )}
+      ) : null}
 
-      {data && !hasResults && (
-        <div className="rounded-[2rem] border border-[#ddc8b0] bg-white/72 p-8 text-center shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
-          <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+      {data && !hasResults ? (
+        <div className="flex flex-col items-center gap-4 rounded-[var(--portal-radius-lg)] border border-[var(--portal-border)]/60 bg-white/70 px-6 py-12 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--portal-eyebrow)]">
             Nothing found
           </p>
-          <p className="mt-3 text-2xl font-semibold tracking-tight text-stone-900">
+          <h3 className="portal-display text-2xl font-semibold tracking-tight text-stone-900">
             No bookings match this email yet
-          </p>
-          <p className="mt-2 text-sm leading-6 text-stone-600">
+          </h3>
+          <p className="max-w-md text-sm leading-6 text-stone-600">
             Try another email or start with a new Sri Lanka route.
           </p>
           <Link
             href="/packages"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#12343b] px-5 py-3 text-sm font-semibold text-[#f6ead6]"
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--portal-ink)] px-5 py-3 text-sm font-semibold text-[var(--portal-cream)] transition hover:bg-[var(--portal-ink-soft)]"
           >
             Browse packages
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-      )}
+      ) : null}
 
-      {hasResults && data && "requests" in data && (
+      {hasResults && data && "requests" in data ? (
         <div className="space-y-10">
-          {(data.requests?.length ?? 0) > 0 && (
+          {(data.requests?.length ?? 0) > 0 ? (
             <section>
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
                   <Clock3 className="h-5 w-5 text-amber-700" />
                 </span>
                 <div>
-                  <h3 className="text-lg font-semibold text-stone-900">
+                  <h3 className="portal-display text-lg font-semibold tracking-tight text-stone-900">
                     Pending requests
                   </h3>
                   <p className="text-sm text-stone-600">
@@ -164,23 +162,23 @@ export function MyBookingsClient() {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 {data.requests.map((lead) => (
                   <Link
                     key={lead.id}
                     href={`/booking/${encodeURIComponent(lead.reference ?? lead.id)}?email=${encodeURIComponent(email.trim())}`}
-                    className="rounded-[1.85rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm transition hover:-translate-y-0.5"
+                    className="group rounded-[var(--portal-radius-lg)] border border-[var(--portal-border)]/60 bg-white/85 p-6 shadow-[var(--portal-shadow-md)] transition hover:-translate-y-0.5 hover:shadow-[var(--portal-shadow-lg)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs uppercase tracking-[0.24em] text-[#8c6a38]">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--portal-eyebrow)]">
                           Reference
                         </p>
-                        <p className="mt-2 font-mono text-lg font-semibold text-[#12343b]">
+                        <p className="portal-display mt-2 font-mono text-lg font-semibold text-[var(--portal-ink)]">
                           {lead.reference ?? lead.id}
                         </p>
                       </div>
-                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-800">
+                      <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-800">
                         Pending
                       </span>
                     </div>
@@ -189,30 +187,30 @@ export function MyBookingsClient() {
                       <p>{lead.destination ?? "Tour request"}</p>
                       {lead.travelDate ? (
                         <p className="inline-flex items-center gap-1.5">
-                          <Calendar className="h-4 w-4 text-[#12343b]" />
+                          <Calendar className="h-4 w-4 text-[var(--portal-ink)]" />
                           Preferred: {formatDate(lead.travelDate)}
                         </p>
                       ) : null}
                     </div>
 
-                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#12343b]">
+                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--portal-ink)]">
                       Open request
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                     </span>
                   </Link>
                 ))}
               </div>
             </section>
-          )}
+          ) : null}
 
-          {data.tours.length > 0 && (
+          {data.tours.length > 0 ? (
             <section>
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
                   <MapPin className="h-5 w-5 text-emerald-700" />
                 </span>
                 <div>
-                  <h3 className="text-lg font-semibold text-stone-900">
+                  <h3 className="portal-display text-lg font-semibold tracking-tight text-stone-900">
                     Confirmed tours
                   </h3>
                   <p className="text-sm text-stone-600">
@@ -221,7 +219,7 @@ export function MyBookingsClient() {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 {data.tours.map(({ tour, package: pkg, invoice, payment }) => {
                   const visual = getClientPackageVisual(pkg);
 
@@ -229,36 +227,40 @@ export function MyBookingsClient() {
                     <Link
                       key={tour.id}
                       href={`/booking/${encodeURIComponent(tour.id)}?email=${encodeURIComponent(email.trim())}`}
-                      className="group overflow-hidden rounded-[2rem] border border-white/20 bg-[#12343b] text-[#f7ead7] shadow-[0_24px_60px_-34px_rgba(18,52,59,0.95)]"
-                      style={{
-                        backgroundImage: `linear-gradient(120deg, rgba(11,33,38,0.92) 10%, rgba(11,33,38,0.62) 48%, rgba(11,33,38,0.24) 100%), url(${visual.imageUrl})`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                      }}
+                      className="group relative overflow-hidden rounded-[var(--portal-radius-lg)] border border-white/15 bg-[var(--portal-ink-dark)] text-[var(--portal-sand-warm)] shadow-[var(--portal-shadow-lg)] transition hover:-translate-y-0.5"
                     >
-                      <div className="p-6">
+                      <Image
+                        src={visual.imageUrl}
+                        alt={pkg.name}
+                        fill
+                        sizes="(min-width: 1024px) 50vw, 100vw"
+                        className="object-cover opacity-70 transition duration-700 group-hover:scale-[1.02]"
+                      />
+                      <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(11,33,38,0.92)_10%,rgba(11,33,38,0.62)_48%,rgba(11,33,38,0.24)_100%)]" />
+                      <div className="relative p-6">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="text-xs uppercase tracking-[0.24em] text-[#e5c48e]">
+                            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--portal-gold)]">
                               {visual.eyebrow}
                             </p>
-                            <h4 className="mt-3 text-2xl font-semibold tracking-tight">
+                            <h4 className="portal-display mt-3 text-2xl font-semibold leading-tight tracking-tight text-white">
                               {tour.packageName}
                             </h4>
                           </div>
                           <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
-                              statusColors[tour.status] ?? "bg-stone-100 text-stone-700"
+                            className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                              statusColors[tour.status] ??
+                              "bg-stone-100 text-stone-700"
                             }`}
                           >
                             {toLabel(tour.status)}
                           </span>
                         </div>
 
-                        <div className="mt-5 flex flex-wrap gap-2 text-sm text-[#ece1cf]">
+                        <div className="mt-5 flex flex-wrap gap-2 text-sm text-[var(--portal-sand-warm)]">
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/14 bg-white/10 px-3 py-1.5">
                             <Calendar className="h-4 w-4" />
-                            {formatDate(tour.startDate)} to {formatDate(tour.endDate)}
+                            {formatDate(tour.startDate)} → {formatDate(tour.endDate)}
                           </span>
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/14 bg-white/10 px-3 py-1.5">
                             <MapPin className="h-4 w-4" />
@@ -266,11 +268,11 @@ export function MyBookingsClient() {
                           </span>
                         </div>
 
-                        {(invoice || payment) && (
+                        {invoice || payment ? (
                           <div className="mt-5 flex flex-wrap gap-2">
                             {invoice ? (
                               <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold ${
                                   statusColors[invoice.status] ??
                                   "bg-stone-100 text-stone-700"
                                 }`}
@@ -281,7 +283,7 @@ export function MyBookingsClient() {
                             ) : null}
                             {payment ? (
                               <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold ${
                                   statusColors[payment.status] ??
                                   "bg-stone-100 text-stone-700"
                                 }`}
@@ -291,9 +293,9 @@ export function MyBookingsClient() {
                               </span>
                             ) : null}
                           </div>
-                        )}
+                        ) : null}
 
-                        <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#f6ead6]">
+                        <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[var(--portal-cream)]">
                           Open itinerary
                           <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                         </span>
@@ -303,9 +305,9 @@ export function MyBookingsClient() {
                 })}
               </div>
             </section>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
