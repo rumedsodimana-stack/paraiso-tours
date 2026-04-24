@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -17,6 +17,7 @@ import type { TourPackage, PackageOption, HotelSupplier } from "@/lib/types";
 import { calcOptionPrice, getFlatMealPlanOptions } from "@/lib/package-price";
 import { createClientBookingAction } from "@/app/actions/client-booking";
 import { debugClient } from "@/lib/debug";
+import { useBookingDraft } from "@/stores/booking-draft.store";
 
 function parseNights(duration: string): number {
   const m = duration.match(/(\d+)\s*[Nn]ight/);
@@ -177,17 +178,9 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
 
   const hasAnyAccommodation = legacyAccommodation ? legacyAccommodationOptions.length > 0 : perNightAccommodation.length > 0;
 
-  if (!hasAnyAccommodation) {
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
-        <p className="text-amber-800">
-          This package does not have accommodation configured yet. Please contact us for a quote.
-        </p>
-      </div>
-    );
-  }
-
-  // Step progression logic
+  // Step progression logic — computed before any early return so React's
+  // rules-of-hooks aren't violated when the "no accommodation configured"
+  // branch short-circuits.
   const steps = useMemo(() => {
     const list: { n: Step; label: string; icon: React.ElementType }[] = [
       { n: 1, label: "Your details", icon: Users },
@@ -198,6 +191,117 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
     list.push({ n: 5, label: "Review", icon: Check });
     return list;
   }, [mealOptions.length, transportOptions.length]);
+
+  // ── Draft persistence ─────────────────────────────────────────────────
+  // The Zustand `wizard` draft (localStorage-backed) lets a guest leave the
+  // page and resume later without losing their selections. We use a
+  // ref-guarded two-phase hydration so the first SSR paint matches the
+  // first client paint (no hydration mismatch), then pull persisted values
+  // on mount and write every subsequent change back to the store.
+  //
+  // `react-hooks/set-state-in-effect` is disabled for the hydration effect
+  // because bridging an external persisted store into local React state on
+  // mount is the canonical exception to that rule — the cascading render
+  // it warns about is exactly the desired behavior here (one re-render to
+  // apply the persisted draft, then steady-state).
+  const hasHydratedRef = useRef(false);
+
+  useEffect(() => {
+    // Reset the draft if the guest jumped to a different package, otherwise
+    // keep whatever was persisted for this package.
+    useBookingDraft.getState().loadWizardForPackage(pkg.id);
+    const draft = useBookingDraft.getState().wizard;
+
+    if (draft.packageId === pkg.id) {
+      /* eslint-disable react-hooks/set-state-in-effect */
+      if (draft.name) setName(draft.name);
+      if (draft.email) setEmail(draft.email);
+      if (draft.phone) setPhone(draft.phone);
+      if (draft.travelDate) setTravelDate(draft.travelDate);
+      if (draft.notes) setNotes(draft.notes);
+      if (draft.pax && draft.pax >= 1) {
+        setPax(draft.pax);
+        const extras = Math.max(0, draft.pax - 1);
+        setGuestNames(() => {
+          const base =
+            draft.guestNames && draft.guestNames.length > 0
+              ? [...draft.guestNames]
+              : [""];
+          while (base.length < extras) base.push("");
+          while (base.length > extras) base.pop();
+          return base.length === 0 ? [""] : base;
+        });
+      }
+      if (draft.transportId) setTransportId(draft.transportId);
+      if (draft.mealId) setMealId(draft.mealId);
+      if (draft.accommodationId) setAccommodationId(draft.accommodationId);
+      if (
+        draft.accommodationByNight &&
+        Object.keys(draft.accommodationByNight).length > 0
+      ) {
+        setAccommodationByNight(draft.accommodationByNight);
+      }
+      if (
+        draft.bookMyOwnNights &&
+        Object.keys(draft.bookMyOwnNights).length > 0
+      ) {
+        setBookMyOwnNights(draft.bookMyOwnNights);
+      }
+      if (draft.bookMyOwnNotes) setBookMyOwnNotes(draft.bookMyOwnNotes);
+      if (draft.step && draft.step >= 1 && draft.step <= 5) {
+        setStep(draft.step as Step);
+      }
+      /* eslint-enable react-hooks/set-state-in-effect */
+    }
+    hasHydratedRef.current = true;
+  }, [pkg.id]);
+
+  useEffect(() => {
+    if (!hasHydratedRef.current) return;
+    useBookingDraft.getState().patchWizard({
+      step,
+      name,
+      email,
+      phone,
+      travelDate,
+      notes,
+      pax,
+      guestNames,
+      transportId,
+      mealId,
+      accommodationId,
+      accommodationByNight,
+      bookMyOwnNights,
+      bookMyOwnNotes,
+      packageId: pkg.id,
+    });
+  }, [
+    step,
+    name,
+    email,
+    phone,
+    travelDate,
+    notes,
+    pax,
+    guestNames,
+    transportId,
+    mealId,
+    accommodationId,
+    accommodationByNight,
+    bookMyOwnNights,
+    bookMyOwnNotes,
+    pkg.id,
+  ]);
+
+  if (!hasAnyAccommodation) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
+        <p className="text-amber-800">
+          This package does not have accommodation configured yet. Please contact us for a quote.
+        </p>
+      </div>
+    );
+  }
 
   const visibleStepNums = steps.map((s) => s.n);
   const currentIndex = visibleStepNums.indexOf(step);
@@ -293,6 +397,8 @@ export function ClientBookingForm({ pkg, hotels = [] }: { pkg: TourPackage; hote
       setLoading(false);
       return;
     }
+    // Clear the persisted draft so the next booking starts clean.
+    useBookingDraft.getState().resetWizard();
     router.push(
       result.reference
         ? `/booking-confirmed?ref=${encodeURIComponent(result.reference)}`

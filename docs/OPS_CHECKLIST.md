@@ -62,6 +62,8 @@ If `RESEND_API_KEY` is unset, every send returns
 breaks, but no email goes out. Check Vercel env vars.
 
 `RESEND_FROM_EMAIL` is optional; if unset we fall back to
-`"Paraíso Ceylon Tours <onboarding@resend.dev>"` which is Resend's
-shared sandbox sender. Set your verified domain sender before going
-live with real customers.
+`"Paraíso Ceylon Tours <hello@paraiso.tours>"`. The `paraiso.tours`
+domain is verified in Resend (DKIM + SPF + DMARC on Vercel DNS,
+sending region `eu-west-1`). To send from a different address,
+set `RESEND_FROM_EMAIL` in Vercel env vars
+(format: `Display Name <inbox@paraiso.tours>`).
