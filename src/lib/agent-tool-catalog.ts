@@ -93,6 +93,12 @@ export const TOOL_CATEGORY: Record<string, ToolCategory> = {
 
   // Payroll
   list_payroll_runs: "read",
+
+  // Flow-aware catalog reads (destinations, activities, meal plans, pricing)
+  list_destinations: "read",
+  list_activities: "read",
+  list_meal_plans: "read",
+  suggest_package_pricing: "read",
 };
 
 export function getToolCategory(name: string): ToolCategory | null {

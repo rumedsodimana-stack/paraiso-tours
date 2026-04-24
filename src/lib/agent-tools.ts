@@ -1117,6 +1117,147 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
   },
 
   // ── PAYROLL ────────────────────────────────────────────────────────
+  // ── FLOW-AWARE CATALOG READS ───────────────────────────────────────
+  {
+    name: "list_destinations",
+    category: "read",
+    summary:
+      "List unique destinations/regions across all packages (with the count of packages per destination). Use during custom-tour and package creation to suggest where to go.",
+    inputSchema: z.object({ limit: LimitS }),
+    handler: async (raw) => {
+      const { limit } = z.object({ limit: LimitS }).parse(raw);
+      const { getPackages } = await import("./db");
+      const packages = await getPackages();
+      const counts = new Map<string, { region?: string; count: number }>();
+      for (const p of packages) {
+        const key = (p.destination ?? "").trim();
+        if (!key) continue;
+        const existing = counts.get(key) ?? {
+          region: p.region ?? undefined,
+          count: 0,
+        };
+        counts.set(key, {
+          region: existing.region ?? p.region ?? undefined,
+          count: existing.count + 1,
+        });
+      }
+      const rows = Array.from(counts.entries())
+        .map(([destination, v]) => ({
+          destination,
+          region: v.region,
+          packageCount: v.count,
+        }))
+        .sort((a, b) => b.packageCount - a.packageCount)
+        .slice(0, limit ?? 40);
+      return ok(
+        `Found ${rows.length} distinct destination${rows.length === 1 ? "" : "s"}.`,
+        rows
+      );
+    },
+  },
+  {
+    name: "list_activities",
+    category: "read",
+    summary:
+      "List planner activities, optionally filtered to a specific destination. Use when building a custom day-by-day plan.",
+    inputSchema: z.object({
+      destination: z.string().max(200).optional(),
+      limit: LimitS,
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({ destination: z.string().max(200).optional(), limit: LimitS })
+        .parse(raw);
+      const {
+        getPlannerActivityRecords,
+        getPlannerActivityRecordsByDestination,
+      } = await import("./db");
+      const all = input.destination
+        ? await getPlannerActivityRecordsByDestination(input.destination)
+        : await getPlannerActivityRecords();
+      const rows = all.slice(0, input.limit ?? 40);
+      return ok(
+        `Found ${all.length} activit${all.length === 1 ? "y" : "ies"}${input.destination ? ` in ${input.destination}` : ""}.`,
+        rows
+      );
+    },
+  },
+  {
+    name: "list_meal_plans",
+    category: "read",
+    summary:
+      "List all meal plans across hotels. Use when building a package or booking and the admin asks about BB/HB/FB/AI options.",
+    inputSchema: z.object({ limit: LimitS }),
+    handler: async (raw) => {
+      const { limit } = z.object({ limit: LimitS }).parse(raw);
+      const { getAllMealPlans } = await import("./db");
+      const all = await getAllMealPlans();
+      return ok(
+        `Found ${all.length} meal plan${all.length === 1 ? "" : "s"}.`,
+        all.slice(0, limit ?? 60)
+      );
+    },
+  },
+  {
+    name: "suggest_package_pricing",
+    category: "read",
+    summary:
+      "Suggest a from-price band (p25 / median / p75) for a new package by analyzing existing packages that match the destination + duration window. Use BEFORE create_package so the admin has a grounded price anchor.",
+    inputSchema: z.object({
+      destination: z.string().min(1).max(200),
+      durationNights: z.number().int().min(1).max(60).optional(),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          destination: z.string().min(1).max(200),
+          durationNights: z.number().int().min(1).max(60).optional(),
+        })
+        .parse(raw);
+      const { getPackages } = await import("./db");
+      const { getFromPrice } = await import("./package-price");
+      const all = await getPackages();
+      const needle = input.destination.toLowerCase();
+      const matches = all.filter((p) => {
+        const dest = (p.destination ?? "").toLowerCase();
+        const region = (p.region ?? "").toLowerCase();
+        if (!dest.includes(needle) && !region.includes(needle)) return false;
+        if (input.durationNights != null) {
+          const m = (p.duration ?? "").match(/(\d+)\s*[Nn]ight/);
+          const nights = m ? parseInt(m[1], 10) : 0;
+          if (Math.abs(nights - input.durationNights) > 2) return false;
+        }
+        return true;
+      });
+      if (matches.length === 0) {
+        return ok(
+          `No comparable packages found for "${input.destination}"${input.durationNights ? ` at ~${input.durationNights} nights` : ""}. Price the package from scratch.`,
+          { matches: [], p25: null, median: null, p75: null, sample: 0 }
+        );
+      }
+      const prices = matches
+        .map((p) => ({ id: p.id, name: p.name, price: getFromPrice(p), currency: p.currency }))
+        .filter((r) => Number.isFinite(r.price) && r.price > 0)
+        .sort((a, b) => a.price - b.price);
+      const pick = (q: number) => {
+        if (prices.length === 0) return null;
+        const idx = Math.min(
+          prices.length - 1,
+          Math.max(0, Math.floor(prices.length * q))
+        );
+        return prices[idx].price;
+      };
+      const summary = `Comparable packages: ${prices.length}. Price band (${prices[0]?.currency ?? ""}): p25 ${pick(0.25)} · median ${pick(0.5)} · p75 ${pick(0.75)}.`;
+      return ok(summary, {
+        sample: prices.length,
+        p25: pick(0.25),
+        median: pick(0.5),
+        p75: pick(0.75),
+        matches: prices.slice(0, 10),
+      });
+    },
+  },
+
   {
     name: "list_payroll_runs",
     category: "read",
