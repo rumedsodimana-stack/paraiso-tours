@@ -63,6 +63,82 @@ test("custom journey pricing combines guidance, hotel, transport, and meals", ()
   assert.equal(summary.total, 1420);
 });
 
+test("custom journey pricing adds hotel-attached meal plans per stop", () => {
+  const summary = calculateCustomJourneyPricing({
+    pax: 2,
+    routeStops: [
+      {
+        nights: 2,
+        hotel: {
+          id: "h1",
+          name: "Sigiriya Stay",
+          pricePerNight: 100,
+          currency: "USD",
+        },
+        // 2 pax × 2 nights × 15 = 60
+        mealPlan: {
+          id: "mp_bb",
+          label: "Bed & Breakfast",
+          pricePerPerson: 15,
+          currency: "USD",
+        },
+      },
+      {
+        nights: 1,
+        hotel: {
+          id: "h2",
+          name: "Kandy Stay",
+          pricePerNight: 120,
+          currency: "USD",
+        },
+        // 2 pax × 1 night × 30 = 60
+        mealPlan: {
+          id: "mp_fb",
+          label: "Full Board",
+          pricePerPerson: 30,
+          currency: "USD",
+        },
+      },
+    ],
+    guidanceFee: 0,
+    guidanceLabel: "Planning fee",
+  });
+
+  // Hotels: 100 × 2 × 1 room + 120 × 1 × 1 room = 320
+  assert.equal(summary.hotelTotal, 320);
+  // Meals: 60 + 60 from per-stop plans, no trip-wide mealOption = 120
+  assert.equal(summary.mealTotal, 120);
+  // Line item label should surface both plan labels
+  const mealLine = summary.lineItems.find((li) => li.id === "journey_meals");
+  assert.ok(mealLine?.label.includes("Bed & Breakfast"));
+  assert.ok(mealLine?.label.includes("Full Board"));
+});
+
+test("custom journey pricing falls back to trip-wide meal option when no stop plans", () => {
+  const summary = calculateCustomJourneyPricing({
+    pax: 2,
+    routeStops: [
+      {
+        nights: 2,
+        hotel: { id: "h1", name: "Stay", pricePerNight: 100, currency: "USD" },
+      },
+    ],
+    mealOption: {
+      id: "m1",
+      label: "Half board",
+      description: "Package",
+      price: 20,
+      priceType: "per_person_per_day",
+      currency: "USD",
+      source: "package_library",
+    },
+  });
+
+  // per_person_per_day charges over totalDays (nights + 1) to mirror
+  // travel-day meal coverage: 2 pax × 3 days × 20 = 120.
+  assert.equal(summary.mealTotal, 120);
+});
+
 test("transport options prefer suppliers and fall back when no data exists", () => {
   const suppliers: HotelSupplier[] = [
     {

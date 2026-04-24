@@ -40,6 +40,7 @@ export async function createMealPlanAction(formData: FormData) {
   });
 
   revalidatePath(`/admin/hotels/${hotelId}`);
+  revalidatePath(`/admin/hotels/${hotelId}/edit`);
   return { success: true, id: record.id };
 }
 
@@ -65,7 +66,10 @@ export async function updateMealPlanAction(id: string, formData: FormData) {
   });
   if (!ok) return { error: "Failed to update meal plan." };
 
-  if (hotelId) revalidatePath(`/admin/hotels/${hotelId}`);
+  if (hotelId) {
+    revalidatePath(`/admin/hotels/${hotelId}`);
+    revalidatePath(`/admin/hotels/${hotelId}/edit`);
+  }
   revalidatePath("/admin/hotels");
   return { success: true };
 }
@@ -76,5 +80,6 @@ export async function deleteMealPlanAction(id: string, hotelId: string) {
   if (!ok) return { error: "Failed to archive meal plan." };
 
   revalidatePath(`/admin/hotels/${hotelId}`);
+  revalidatePath(`/admin/hotels/${hotelId}/edit`);
   return { success: true };
 }

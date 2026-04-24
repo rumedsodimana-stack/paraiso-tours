@@ -21,7 +21,7 @@ import {
   Waves,
 } from "lucide-react";
 import { generateClientJourneyPlanAction } from "@/app/actions/client-ai";
-import type { HotelSupplier, TourPackage } from "@/lib/types";
+import type { HotelMealPlan, HotelSupplier, TourPackage } from "@/lib/types";
 import type { ClientJourneyPlan } from "@/lib/client-ai-concierge";
 import {
   calculateCustomJourneyPricing,
@@ -182,12 +182,19 @@ function OptionPill({
 export function JourneyPlanner({
   hotels,
   packages,
+  mealPlansByHotelId = {},
   guidanceFee = DEFAULT_CUSTOM_JOURNEY_GUIDANCE_FEE,
   guidanceLabel = DEFAULT_CUSTOM_JOURNEY_GUIDANCE_LABEL,
   aiConciergeEnabled = false,
 }: {
   hotels: HotelSupplier[];
   packages: TourPackage[];
+  /** Hotel-attached meal plans (RO/BB/HB/FB/AI …) keyed by hotel id.
+   *  When a day's picked hotel has plans configured in the admin
+   *  catalog, they render inline with the hotel choice and replace the
+   *  trip-wide meal option for that day's nights in the price breakdown.
+   */
+  mealPlansByHotelId?: Record<string, HotelMealPlan[]>;
   guidanceFee?: number;
   guidanceLabel?: string;
   aiConciergeEnabled?: boolean;
@@ -360,27 +367,87 @@ export function JourneyPlanner({
     });
   }, [days, hotels, packages]);
 
-  // Convert day-based model to route-stop model for pricing
+  // Convert day-based model to route-stop model for pricing.
+  //
+  // Consecutive nights at the same destination merge into one stop when
+  // the hotel selection and the hotel-attached meal plan both match —
+  // that way picking HB on night 1 and FB on night 2 correctly splits
+  // into two stops so each night gets its own per-person-per-night
+  // charge from the meal-plan catalog.
   const routeStops = useMemo(() => {
-    const stops: { destinationId: string; nights: number; hotel: { id: string; name: string; pricePerNight: number; currency: string } | null }[] = [];
+    type StopMealPlan = { id: string; label: string; pricePerPerson: number; currency: string };
+    type Stop = {
+      destinationId: string;
+      nights: number;
+      hotel: { id: string; name: string; pricePerNight: number; currency: string } | null;
+      mealPlan: StopMealPlan | null;
+    };
+    const stops: Stop[] = [];
     for (const day of enrichedDays) {
       if (!day.destinationId) continue;
       const hotelForPricing = day.hotelMode === "own" ? null
         : day.selectedHotel ? { id: day.selectedHotel.id, name: day.selectedHotel.name, pricePerNight: day.selectedHotel.pricePerNight, currency: day.selectedHotel.currency }
         : null;
+
+      // Hotel-attached meal plan for this day: look up the selected
+      // hotel's plans in the catalog and match against `day.mealPlanId`.
+      // Only applies when the guest actually picked a hotel (not
+      // "book my own"), and when the hotel has plans configured.
+      const plansForHotel = hotelForPricing
+        ? mealPlansByHotelId[hotelForPricing.id] ?? []
+        : [];
+      const resolvedPlan = plansForHotel.find((p) => p.id === day.mealPlanId);
+      const mealPlanForStop: StopMealPlan | null = resolvedPlan
+        ? {
+            id: resolvedPlan.id,
+            label: resolvedPlan.label,
+            pricePerPerson: resolvedPlan.pricePerPerson,
+            currency: resolvedPlan.currency,
+          }
+        : null;
+
       const last = stops[stops.length - 1];
-      if (last && last.destinationId === day.destinationId && ((last.hotel === null) === (hotelForPricing === null))) {
+      const sameDestination = last && last.destinationId === day.destinationId;
+      const sameHotelShape = last && (last.hotel === null) === (hotelForPricing === null);
+      const sameHotelId = last && last.hotel?.id === hotelForPricing?.id;
+      const sameMealPlanId = last && (last.mealPlan?.id ?? null) === (mealPlanForStop?.id ?? null);
+      if (
+        last &&
+        sameDestination &&
+        sameHotelShape &&
+        sameHotelId &&
+        sameMealPlanId
+      ) {
         last.nights += 1;
       } else {
         stops.push({
           destinationId: day.destinationId,
           nights: 1,
           hotel: hotelForPricing,
+          mealPlan: mealPlanForStop,
         });
       }
     }
     return stops;
-  }, [enrichedDays]);
+  }, [enrichedDays, mealPlansByHotelId]);
+
+  /**
+   * Resolve the label for a day's meal-plan id. First tries the day's
+   * hotel catalog (hotel_meal_plans), then falls back to the trip-wide
+   * mealOptions list. Returns null when nothing matches so callers can
+   * gracefully skip rendering the badge.
+   */
+  const resolveMealPlanLabel = (hotelId: string | undefined, mealPlanId: string): string | null => {
+    if (!mealPlanId || mealPlanId === "none") return null;
+    if (hotelId) {
+      const hotelPlan = (mealPlansByHotelId[hotelId] ?? []).find(
+        (p) => p.id === mealPlanId
+      );
+      if (hotelPlan) return hotelPlan.label;
+    }
+    const fallback = mealOptions.find((o) => o.id === mealPlanId);
+    return fallback?.label ?? null;
+  };
 
   const pricing = useMemo(
     () =>
@@ -937,7 +1004,10 @@ export function JourneyPlanner({
                           {day.destination.name}
                           {day.selectedActivities.length > 0 && ` · ${day.selectedActivities.length} activit${day.selectedActivities.length === 1 ? "y" : "ies"}`}
                           {day.hotelMode === "own" && " · Own stay"}
-                          {day.mealPlanId !== "none" && (() => { const m = mealOptions.find((o) => o.id === day.mealPlanId); return m ? ` · ${m.label}` : ""; })()}
+                          {(() => {
+                            const label = resolveMealPlanLabel(day.hotelId, day.mealPlanId);
+                            return label ? ` · ${label}` : "";
+                          })()}
                         </>
                       ) : (
                         "Tap to choose destination"
@@ -1084,34 +1154,77 @@ export function JourneyPlanner({
                           </button>
                         </div>
 
-                        {/* Meal plan for this day */}
-                        {day.hotelMode === "pick" && (
-                          <div className="mt-3">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">
-                              Meal plan
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              <button type="button" onClick={() => updateDay(day.id, { mealPlanId: "none" })}
-                                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                                  day.mealPlanId === "none"
-                                    ? "border-[#12343b] bg-[#12343b] text-white"
-                                    : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
-                                }`}>
-                                No meals
-                              </button>
-                              {mealOptions.map((m) => (
-                                <button key={m.id} type="button" onClick={() => updateDay(day.id, { mealPlanId: m.id })}
+                        {/* Meal plan for this day.
+                         *
+                         * Source priority:
+                         *   1. If the day's picked hotel has meal plans in
+                         *      the admin catalog (hotel_meal_plans), show
+                         *      those inline — per-person-per-night
+                         *      pricing, labels from the hotel's catalog.
+                         *   2. Otherwise fall back to the global
+                         *      mealOptions list (supplier / package
+                         *      library fallback).
+                         * Selecting a catalog plan stores its id in
+                         * day.mealPlanId so routeStops can resolve the
+                         * pricePerPerson for the pricing function.
+                         */}
+                        {day.hotelMode === "pick" && (() => {
+                          const hotelPlans =
+                            (day.hotelId && mealPlansByHotelId[day.hotelId]) || [];
+                          const hasHotelPlans = hotelPlans.length > 0;
+                          const planSource: Array<{
+                            id: string;
+                            label: string;
+                            priceLabel?: string;
+                          }> = hasHotelPlans
+                            ? hotelPlans.map((plan) => ({
+                                id: plan.id,
+                                label: plan.label,
+                                priceLabel:
+                                  plan.pricePerPerson > 0
+                                    ? `${plan.pricePerPerson} ${plan.currency}/pp/day`
+                                    : undefined,
+                              }))
+                            : mealOptions.map((m) => ({ id: m.id, label: m.label }));
+
+                          return (
+                            <div className="mt-3">
+                              <p className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">
+                                Meal plan
+                                {hasHotelPlans ? (
+                                  <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                                    from hotel catalog
+                                  </span>
+                                ) : null}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                <button type="button" onClick={() => updateDay(day.id, { mealPlanId: "none" })}
                                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                                    day.mealPlanId === m.id
+                                    day.mealPlanId === "none"
                                       ? "border-[#12343b] bg-[#12343b] text-white"
                                       : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
                                   }`}>
-                                  {m.label}
+                                  No meals
                                 </button>
-                              ))}
+                                {planSource.map((m) => (
+                                  <button key={m.id} type="button" onClick={() => updateDay(day.id, { mealPlanId: m.id })}
+                                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                                      day.mealPlanId === m.id
+                                        ? "border-[#12343b] bg-[#12343b] text-white"
+                                        : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
+                                    }`}>
+                                    {m.label}
+                                    {m.priceLabel ? (
+                                      <span className={`ml-1 ${day.mealPlanId === m.id ? "text-stone-300" : "text-stone-500"}`}>
+                                        · {m.priceLabel}
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -1289,7 +1402,14 @@ export function JourneyPlanner({
                         .map((a) => (
                           <span key={a.id} className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600">{a.title}</span>
                         ))}
-                      {day.mealPlanId !== "none" && (() => { const m = mealOptions.find((o) => o.id === day.mealPlanId); return m ? <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] text-amber-700">{m.label}</span> : null; })()}
+                      {(() => {
+                        const label = resolveMealPlanLabel(day.hotelId, day.mealPlanId);
+                        return label ? (
+                          <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] text-amber-700">
+                            {label}
+                          </span>
+                        ) : null;
+                      })()}
                       {day.hotelMode === "own" && <span className="rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] text-blue-700">Own stay</span>}
                     </div>
                   )}

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
-import { getHotel } from "@/lib/db";
+import { getHotel, getHotelMealPlans } from "@/lib/db";
 import { HotelForm } from "../../HotelForm";
 import { updateHotelAction } from "@/app/actions/hotels";
 import { SaveSuccessBanner } from "../../../SaveSuccessBanner";
 import { DeleteHotelButton } from "../../DeleteHotelButton";
+import { MealPlanManager } from "../MealPlanManager";
 
 export default async function EditHotelPage({
   params,
@@ -18,6 +19,12 @@ export default async function EditHotelPage({
   const { saved } = searchParams ? await searchParams : {};
   const hotel = await getHotel(id);
   if (!hotel) notFound();
+
+  // Meal plans only exist on `hotel`-type suppliers. Skip the Supabase
+  // round-trip for transport / meal-provider / generic suppliers where
+  // the manager won't render anyway.
+  const mealPlans =
+    hotel.type === "hotel" ? await getHotelMealPlans(id) : [];
 
   async function action(formData: FormData) {
     "use server";
@@ -41,6 +48,21 @@ export default async function EditHotelPage({
         </div>
         <HotelForm hotel={hotel} action={action} />
       </div>
+
+      {/* Meal plans live on the same edit surface so operators can set
+          prices while updating the hotel. Only renders for hotel-type
+          suppliers (transport / meal-provider / generic suppliers don't
+          have attached meal plans). The manager handles its own CRUD via
+          server actions and calls router.refresh() after each mutation. */}
+      {hotel.type === "hotel" && (
+        <div className="paraiso-card rounded-2xl p-6">
+          <MealPlanManager
+            hotelId={hotel.id}
+            hotelCurrency={hotel.currency}
+            initialMealPlans={mealPlans}
+          />
+        </div>
+      )}
     </div>
   );
 }

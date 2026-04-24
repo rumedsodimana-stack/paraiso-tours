@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getAppSettings } from "@/lib/app-config";
 import { getAiRuntimeStatus } from "@/lib/ai";
-import { getHotels, getPackagesForClient } from "@/lib/db";
+import { getAllMealPlans, getHotels, getPackagesForClient } from "@/lib/db";
+import type { HotelMealPlan } from "@/lib/types";
 import { JourneyPlanner } from "./JourneyPlanner";
 import { PortalShell } from "../_ui";
 
@@ -15,12 +16,24 @@ import { PortalShell } from "../_ui";
  * explicitly out of scope for the portal redesign.
  */
 export default async function JourneyBuilderPage() {
-  const [hotels, packages, settings, aiRuntime] = await Promise.all([
+  const [hotels, packages, settings, aiRuntime, allMealPlans] = await Promise.all([
     getHotels(),
     getPackagesForClient(),
     getAppSettings(),
     getAiRuntimeStatus(),
+    // Pull the full meal-plan catalog and group by hotelId so the planner
+    // can render the right plans the moment a guest picks a day's hotel.
+    // Same shape the booking wizard consumes — keeps behaviour consistent
+    // across both flows (booking form and journey-builder) per the
+    // "meal plan pops up the same step as the hotel" directive.
+    getAllMealPlans(),
   ]);
+
+  const mealPlansByHotelId: Record<string, HotelMealPlan[]> = {};
+  for (const mp of allMealPlans) {
+    if (!mp.active) continue;
+    (mealPlansByHotelId[mp.hotelId] ??= []).push(mp);
+  }
 
   return (
     <PortalShell spacing="tight" className="pb-10">
@@ -35,6 +48,7 @@ export default async function JourneyBuilderPage() {
       <JourneyPlanner
         hotels={hotels}
         packages={packages}
+        mealPlansByHotelId={mealPlansByHotelId}
         guidanceFee={settings.portal.customJourneyGuidanceFee}
         guidanceLabel={settings.portal.customJourneyGuidanceLabel}
         aiConciergeEnabled={

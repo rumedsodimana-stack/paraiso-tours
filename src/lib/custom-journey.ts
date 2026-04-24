@@ -27,11 +27,26 @@ export interface CustomJourneyHotelLike {
   currency: string;
 }
 
+/**
+ * Per-stop meal plan — charged per person, per night of the stop. This
+ * is how hotel-attached plans (RO / BB / HB / FB / AI from the hotel's
+ * own catalog) roll into the trip total when a guest picks the plan
+ * inline with the day's accommodation. Optional: stops without a plan
+ * (room only / guest arranges meals separately) contribute zero.
+ */
+export interface CustomJourneyStopMealPlan {
+  id: string;
+  label: string;
+  pricePerPerson: number;
+  currency: string;
+}
+
 export interface CustomJourneyPricingInput {
   pax: number;
   routeStops: Array<{
     nights: number;
     hotel?: CustomJourneyHotelLike | null;
+    mealPlan?: CustomJourneyStopMealPlan | null;
   }>;
   transportOption?: CustomJourneyOption | null;
   mealOption?: CustomJourneyOption | null;
@@ -263,6 +278,29 @@ function getRoomsForPax(pax: number) {
   return Math.max(1, Math.ceil(Math.max(1, pax) / 2));
 }
 
+/**
+ * Produce a human-readable label for the meals line item. If the trip
+ * has any hotel-attached plans we surface those (e.g. "Meals: HB, BB")
+ * with up to two plans listed and a "+N more" suffix beyond that; if
+ * only a trip-wide meal option is set we fall back to its label; if
+ * neither, we show "Meals: none".
+ */
+function describeMealLineItem(input: CustomJourneyPricingInput): string {
+  const stopPlans = input.routeStops
+    .map((stop) => stop.mealPlan?.label)
+    .filter((label): label is string => Boolean(label));
+  const uniquePlans = Array.from(new Set(stopPlans));
+
+  if (uniquePlans.length > 0) {
+    const shown = uniquePlans.slice(0, 2).join(", ");
+    const remaining = uniquePlans.length - 2;
+    const suffix = remaining > 0 ? ` +${remaining} more` : "";
+    return `Meals: ${shown}${suffix}${input.mealOption ? ` · ${input.mealOption.label}` : ""}`;
+  }
+  if (input.mealOption) return `Meals: ${input.mealOption.label}`;
+  return "Meals: none";
+}
+
 export function calculateCustomJourneyPricing(
   input: CustomJourneyPricingInput
 ): CustomJourneyPricingSummary {
@@ -290,9 +328,21 @@ export function calculateCustomJourneyPricing(
     ? roundCurrency(calcOptionPrice(input.transportOption, pax, totalNights))
     : 0;
 
-  const mealTotal = input.mealOption
-    ? roundCurrency(calcOptionPrice(input.mealOption, pax, totalNights))
-    : 0;
+  // Meal total blends two sources:
+  //   (a) a trip-wide meal supplier / package meal option (legacy flow),
+  //   (b) per-stop hotel-attached plans picked inline with the room.
+  // Both can coexist — a day with no hotel-attached plan silently falls
+  // back to (a), and (b) is pure catalog data priced per person per
+  // night of the stop.
+  const stopMealTotal = input.routeStops.reduce((sum, stop) => {
+    if (!stop.mealPlan) return sum;
+    const nights = Math.max(1, stop.nights || 1);
+    return sum + stop.mealPlan.pricePerPerson * pax * nights;
+  }, 0);
+  const mealTotal = roundCurrency(
+    (input.mealOption ? calcOptionPrice(input.mealOption, pax, totalNights) : 0) +
+      stopMealTotal
+  );
 
   const guidanceFee = roundCurrency(
     input.guidanceFee ?? DEFAULT_CUSTOM_JOURNEY_GUIDANCE_FEE
@@ -334,9 +384,7 @@ export function calculateCustomJourneyPricing(
       },
       {
         id: "journey_meals",
-        label: input.mealOption
-          ? `Meals: ${input.mealOption.label}`
-          : "Meals: none",
+        label: describeMealLineItem(input),
         amount: mealTotal,
       },
     ],
