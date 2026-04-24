@@ -17,4 +17,10 @@ export { PillRow } from "./PillRow";
 export { StatRow, type StatItem } from "./StatRow";
 export { PortalButton } from "./PortalButton";
 export { DestinationsShowcase } from "./DestinationsShowcase";
+export { WizardShell } from "./WizardShell";
+export {
+  WizardPriceBar,
+  type WizardPriceBarBreakdownItem,
+} from "./WizardPriceBar";
+export { StepSelector, type StepSelectorItem } from "./StepSelector";
 export { portalColors, portalHeroGradient } from "./tokens";
