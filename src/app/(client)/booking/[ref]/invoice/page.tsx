@@ -48,7 +48,7 @@ export default async function ClientInvoicePage({
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link
           href={`/booking/${encodeURIComponent(ref)}${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-          className="inline-flex items-center gap-2 rounded-full border border-[#ddc8b0] bg-white/70 px-4 py-2 text-sm font-medium text-stone-700 backdrop-blur-sm transition hover:text-[#12343b]"
+          className="inline-flex items-center gap-2 rounded-full border border-[var(--portal-border)] bg-white/70 px-4 py-2 text-sm font-medium text-stone-700 backdrop-blur-sm transition hover:text-[var(--portal-ink)]"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to itinerary
@@ -60,8 +60,8 @@ export default async function ClientInvoicePage({
       </div>
 
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr] print:hidden">
-        <div className="rounded-[1.8rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
-          <p className="text-xs uppercase tracking-[0.28em] text-[#8c6a38]">
+        <div className="rounded-[1.8rem] border border-[var(--portal-border)] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+          <p className="text-xs uppercase tracking-[0.28em] text-[var(--portal-eyebrow)]">
             Invoice view
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900">
@@ -73,9 +73,9 @@ export default async function ClientInvoicePage({
           </p>
         </div>
 
-        <div className="rounded-[1.8rem] border border-[#ddc8b0] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
+        <div className="rounded-[1.8rem] border border-[var(--portal-border)] bg-white/72 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-[#12343b]" />
+            <FileText className="h-5 w-5 text-[var(--portal-ink)]" />
             <h2 className="text-lg font-semibold text-stone-900">Booking summary</h2>
           </div>
           <div className="mt-4 space-y-2 text-sm text-stone-600">
@@ -93,7 +93,7 @@ export default async function ClientInvoicePage({
             </p>
             {payment ? (
               <p className="flex items-center gap-2 pt-1">
-                <CreditCard className="h-4 w-4 text-[#12343b]" />
+                <CreditCard className="h-4 w-4 text-[var(--portal-ink)]" />
                 Payment:{" "}
                 <span className="font-medium capitalize text-stone-900">
                   {toLabel(payment.status)}
@@ -104,7 +104,7 @@ export default async function ClientInvoicePage({
         </div>
       </section>
 
-      <div className="rounded-[2rem] border border-[#ddc8b0] bg-white/82 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm print:border-0 print:bg-white print:p-0 print:shadow-none">
+      <div className="rounded-[2rem] border border-[var(--portal-border)] bg-white/82 p-6 shadow-[0_18px_44px_-32px_rgba(43,32,15,0.5)] backdrop-blur-sm print:border-0 print:bg-white print:p-0 print:shadow-none">
         <InvoiceDocument
           invoice={invoice}
           letterhead={{

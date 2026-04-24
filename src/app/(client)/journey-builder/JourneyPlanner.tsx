@@ -112,7 +112,7 @@ function SectionAccordion({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#ddc8b0] bg-white/80 shadow-sm backdrop-blur-sm">
+    <section className="overflow-hidden rounded-2xl border border-[var(--portal-border)] bg-white/80 shadow-sm backdrop-blur-sm">
       <button
         type="button"
         onClick={onToggle}
@@ -121,9 +121,9 @@ function SectionAccordion({
         <span
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
             done
-              ? "bg-[#12343b] text-[#f7ead7]"
+              ? "bg-[var(--portal-ink)] text-[var(--portal-cream)]"
               : open
-                ? "bg-[#12343b] text-[#f7ead7]"
+                ? "bg-[var(--portal-ink)] text-[var(--portal-cream)]"
                 : "bg-stone-100 text-stone-500"
           }`}
         >
@@ -139,7 +139,7 @@ function SectionAccordion({
           <ChevronDown className="h-5 w-5 shrink-0 text-stone-400" />
         )}
       </button>
-      {open && <div className="border-t border-[#ead7be] px-5 pb-6 pt-5">{children}</div>}
+      {open && <div className="border-t border-[var(--portal-border-soft)] px-5 pb-6 pt-5">{children}</div>}
     </section>
   );
 }
@@ -161,8 +161,8 @@ function OptionPill({
       onClick={onClick}
       className={`rounded-xl border px-4 py-3 text-left transition ${
         selected
-          ? "border-[#12343b] bg-[#12343b] text-white shadow-md"
-          : "border-[#ddc8b0] bg-white text-stone-800 hover:border-stone-400"
+          ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white shadow-md"
+          : "border-[var(--portal-border)] bg-white text-stone-800 hover:border-stone-400"
       }`}
     >
       <span className="block text-sm font-semibold">{label}</span>
@@ -748,8 +748,8 @@ export function JourneyPlanner({
   return (
     <div className="mx-auto max-w-2xl space-y-4 pb-32">
       {/* ---- Hero ---- */}
-      <section className="rounded-2xl bg-[#12343b] px-5 py-6 text-[#f7ead7]">
-        <p className="text-xs uppercase tracking-[0.28em] text-[#efd5aa]">
+      <section className="rounded-2xl bg-[var(--portal-ink)] px-5 py-6 text-[var(--portal-cream)]">
+        <p className="text-xs uppercase tracking-[0.28em] text-[var(--portal-highlight)]">
           Custom trip builder
         </p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
@@ -762,28 +762,28 @@ export function JourneyPlanner({
 
       {/* ---- AI Quick Build ---- */}
       {aiConciergeEnabled && (
-        <details className="group rounded-2xl border border-[#ddc8b0] bg-white/80 backdrop-blur-sm">
+        <details className="group rounded-2xl border border-[var(--portal-border)] bg-white/80 backdrop-blur-sm">
           <summary className="flex cursor-pointer items-center gap-3 px-5 py-4 text-left">
-            <Sparkles className="h-5 w-5 shrink-0 text-[#8c6a38]" />
+            <Sparkles className="h-5 w-5 shrink-0 text-[var(--portal-eyebrow)]" />
             <span className="flex-1">
               <span className="block text-sm font-semibold text-stone-900">AI Quick Build</span>
               <span className="block text-xs text-stone-500">Describe your trip and let AI plan each day</span>
             </span>
             <ChevronDown className="h-4 w-4 text-stone-400 transition group-open:rotate-180" />
           </summary>
-          <div className="border-t border-[#ead7be] px-5 pb-5 pt-4">
+          <div className="border-t border-[var(--portal-border-soft)] px-5 pb-5 pt-4">
             <textarea
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               rows={3}
               placeholder="E.g. 2 adults, 7 nights in July — Sigiriya, Kandy, Ella, south coast beach. Boutique hotels, half board, chauffeur car."
-              className="w-full rounded-xl border border-[#ddc8b0] bg-[#fffaf4] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/10"
+              className="w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-paper)] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[var(--portal-ink)] focus:ring-2 focus:ring-[var(--portal-ink)]/10"
             />
             <button
               type="button"
               onClick={handleAiDraft}
               disabled={aiGenerating}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#12343b] px-4 py-3 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31] disabled:opacity-60 sm:w-auto"
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--portal-ink)] px-4 py-3 text-sm font-semibold text-[var(--portal-cream)] transition hover:bg-[var(--portal-ink-soft)] disabled:opacity-60 sm:w-auto"
             >
               {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {aiGenerating ? "Building..." : "Build my trip"}
@@ -841,7 +841,7 @@ export function JourneyPlanner({
               value={travelDate}
               min={new Date().toISOString().slice(0, 10)}
               onChange={(e) => setTravelDate(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-[#ddc8b0] bg-[#fffaf4] px-4 py-3 text-stone-900 outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/10"
+              className="mt-1 w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-paper)] px-4 py-3 text-stone-900 outline-none focus:border-[var(--portal-ink)] focus:ring-2 focus:ring-[var(--portal-ink)]/10"
             />
           </label>
 
@@ -853,7 +853,7 @@ export function JourneyPlanner({
                   setPax(next);
                   setGuestNames((cur) => cur.slice(0, next));
                 }}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-300 text-stone-600 transition hover:border-[#12343b]">
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-300 text-stone-600 transition hover:border-[var(--portal-ink)]">
                 <Minus className="h-4 w-4" />
               </button>
               <span className="min-w-[3rem] text-center text-2xl font-bold text-stone-900">{pax}</span>
@@ -862,7 +862,7 @@ export function JourneyPlanner({
                   setPax(next);
                   setGuestNames((cur) => [...cur, ""]);
                 }}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-300 text-stone-600 transition hover:border-[#12343b]">
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-300 text-stone-600 transition hover:border-[var(--portal-ink)]">
                 <Plus className="h-4 w-4" />
               </button>
             </div>
@@ -883,7 +883,7 @@ export function JourneyPlanner({
                     setGuestNames(next);
                   }}
                   placeholder={idx === 0 ? "Lead guest (full name) *" : `Guest ${idx + 1} name (optional)`}
-                  className="w-full rounded-xl border border-[#ddc8b0] bg-[#fffaf4] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/10"
+                  className="w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-paper)] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[var(--portal-ink)] focus:ring-2 focus:ring-[var(--portal-ink)]/10"
                 />
               ))}
             </div>
@@ -891,7 +891,7 @@ export function JourneyPlanner({
 
           <button type="button"
             onClick={() => { if (!travelDate) { setError("Pick a date first."); return; } if (!guestNames[0]?.trim()) { setError("Lead guest name is required."); return; } setError(""); setOpenSection(2); }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12343b] py-3 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31]">
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--portal-ink)] py-3 text-sm font-semibold text-[var(--portal-cream)] transition hover:bg-[var(--portal-ink-soft)]">
             Next: Choose your vehicle <ArrowRight className="h-4 w-4" />
           </button>
         </div>
@@ -924,8 +924,8 @@ export function JourneyPlanner({
                     !fits
                       ? "border-stone-200 bg-stone-50 opacity-50 cursor-not-allowed"
                       : transportSelectionId === opt.id
-                        ? "border-[#12343b] bg-[#12343b] text-white shadow-md"
-                        : "border-[#ddc8b0] bg-white text-stone-800 hover:border-stone-400"
+                        ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white shadow-md"
+                        : "border-[var(--portal-border)] bg-white text-stone-800 hover:border-stone-400"
                   }`}
                 >
                   <span className="block text-sm font-semibold">{opt.label}</span>
@@ -943,7 +943,7 @@ export function JourneyPlanner({
           </div>
           <button type="button"
             onClick={() => { setError(""); setOpenSection(3); }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12343b] py-3 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31]">
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--portal-ink)] py-3 text-sm font-semibold text-[var(--portal-cream)] transition hover:bg-[var(--portal-ink-soft)]">
             Next: Plan your days <ArrowRight className="h-4 w-4" />
           </button>
         </div>
@@ -962,10 +962,10 @@ export function JourneyPlanner({
       >
         <div className="space-y-3">
           {/* Arrival marker */}
-          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#12343b]/30 bg-[#12343b]/5 px-4 py-3">
-            <PlaneLanding className="h-4 w-4 text-[#12343b]" />
+          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[var(--portal-ink)]/30 bg-[var(--portal-ink)]/5 px-4 py-3">
+            <PlaneLanding className="h-4 w-4 text-[var(--portal-ink)]" />
             <div>
-              <p className="text-sm font-semibold text-[#12343b]">Arrival — Bandaranaike Airport</p>
+              <p className="text-sm font-semibold text-[var(--portal-ink)]">Arrival — Bandaranaike Airport</p>
               {travelDate && <p className="text-xs text-stone-500">{formatDate(travelDate, 0)}</p>}
             </div>
           </div>
@@ -974,14 +974,14 @@ export function JourneyPlanner({
           {enrichedDays.map((day) => {
             const isOpen = expandedDay === day.id;
             return (
-              <div key={day.id} className="rounded-xl border border-[#ddc8b0] bg-white overflow-hidden">
+              <div key={day.id} className="rounded-xl border border-[var(--portal-border)] bg-white overflow-hidden">
                 {/* Day header — always visible */}
                 <button
                   type="button"
                   onClick={() => setExpandedDay(isOpen ? null : day.id)}
                   className="flex w-full items-center gap-3 px-4 py-3 text-left transition active:bg-stone-50"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#12343b] text-xs font-bold text-[#f7ead7]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--portal-ink)] text-xs font-bold text-[var(--portal-cream)]">
                     {day.dayNumber}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -997,7 +997,7 @@ export function JourneyPlanner({
                       {day.destination ? (
                         <>
                           {day.isTransfer && day.leg && (
-                            <span className="text-[#8c6a38]">
+                            <span className="text-[var(--portal-eyebrow)]">
                               {day.leg.distanceKm}km · {day.leg.driveHours.toFixed(1)}h →{" "}
                             </span>
                           )}
@@ -1019,7 +1019,7 @@ export function JourneyPlanner({
 
                 {/* Day expanded content */}
                 {isOpen && (
-                  <div className="border-t border-[#ead7be] px-4 pb-4 pt-4 space-y-4">
+                  <div className="border-t border-[var(--portal-border-soft)] px-4 pb-4 pt-4 space-y-4">
                     {/* Transfer banner */}
                     {day.isTransfer && day.leg && (
                       <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
@@ -1039,7 +1039,7 @@ export function JourneyPlanner({
                             onClick={() => updateDay(day.id, { destinationId: d.id as Exclude<PlannerDestinationId, "airport"> })}
                             className={`rounded-lg border px-2 py-2 text-left transition ${
                               day.destinationId === d.id
-                                ? "border-[#12343b] bg-[#12343b] text-white"
+                                ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white"
                                 : "border-stone-200 bg-stone-50 text-stone-700 hover:border-stone-400"
                             }`}
                           >
@@ -1068,13 +1068,13 @@ export function JourneyPlanner({
                                 onClick={() => toggleActivity(day.id, act.id)}
                                 className={`flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
                                   selected
-                                    ? "border-[#12343b] bg-[#12343b]/5"
+                                    ? "border-[var(--portal-ink)] bg-[var(--portal-ink)]/5"
                                     : "border-stone-200 bg-white hover:border-stone-400"
                                 }`}
                               >
                                 <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] ${
                                   selected
-                                    ? "border-[#12343b] bg-[#12343b] text-white"
+                                    ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white"
                                     : "border-stone-300 bg-white"
                                 }`}>
                                   {selected && <Check className="h-3 w-3" />}
@@ -1117,7 +1117,7 @@ export function JourneyPlanner({
                                 onClick={() => updateDay(day.id, { hotelMode: "pick", hotelId: h.id })}
                                 className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${
                                   isSelected
-                                    ? "border-[#12343b] bg-[#12343b] text-white"
+                                    ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white"
                                     : "border-stone-200 bg-white text-stone-800 hover:border-stone-400"
                                 }`}
                               >
@@ -1141,7 +1141,7 @@ export function JourneyPlanner({
                             onClick={() => updateDay(day.id, { hotelMode: "own", hotelId: "" })}
                             className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${
                               day.hotelMode === "own"
-                                ? "border-[#12343b] bg-[#12343b] text-white"
+                                ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white"
                                 : "border-stone-200 bg-white text-stone-800 hover:border-stone-400"
                             }`}
                           >
@@ -1201,7 +1201,7 @@ export function JourneyPlanner({
                                 <button type="button" onClick={() => updateDay(day.id, { mealPlanId: "none" })}
                                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                                     day.mealPlanId === "none"
-                                      ? "border-[#12343b] bg-[#12343b] text-white"
+                                      ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white"
                                       : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
                                   }`}>
                                   No meals
@@ -1210,7 +1210,7 @@ export function JourneyPlanner({
                                   <button key={m.id} type="button" onClick={() => updateDay(day.id, { mealPlanId: m.id })}
                                     className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                                       day.mealPlanId === m.id
-                                        ? "border-[#12343b] bg-[#12343b] text-white"
+                                        ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white"
                                         : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
                                     }`}>
                                     {m.label}
@@ -1234,7 +1234,7 @@ export function JourneyPlanner({
                       value={day.notes}
                       onChange={(e) => updateDay(day.id, { notes: e.target.value })}
                       placeholder="Notes for this day (optional)"
-                      className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700 outline-none focus:border-[#12343b]"
+                      className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700 outline-none focus:border-[var(--portal-ink)]"
                     />
 
                     {/* Day actions */}
@@ -1256,10 +1256,10 @@ export function JourneyPlanner({
 
           {/* Departure marker */}
           {days.length > 0 && (
-            <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#12343b]/30 bg-[#12343b]/5 px-4 py-3">
-              <PlaneLanding className="h-4 w-4 text-[#12343b]" />
+            <div className="flex items-center gap-3 rounded-xl border border-dashed border-[var(--portal-ink)]/30 bg-[var(--portal-ink)]/5 px-4 py-3">
+              <PlaneLanding className="h-4 w-4 text-[var(--portal-ink)]" />
               <div>
-                <p className="text-sm font-semibold text-[#12343b]">Departure — Airport transfer</p>
+                <p className="text-sm font-semibold text-[var(--portal-ink)]">Departure — Airport transfer</p>
                 {travelDate && <p className="text-xs text-stone-500">{formatDate(travelDate, days.length + 1)}</p>}
               </div>
             </div>
@@ -1269,7 +1269,7 @@ export function JourneyPlanner({
           <button
             type="button"
             onClick={() => addDay()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#12343b]/30 py-4 text-sm font-semibold text-[#12343b] transition hover:border-[#12343b]/60 hover:bg-[#12343b]/5"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--portal-ink)]/30 py-4 text-sm font-semibold text-[var(--portal-ink)] transition hover:border-[var(--portal-ink)]/60 hover:bg-[var(--portal-ink)]/5"
           >
             <Plus className="h-4 w-4" />
             Add a day
@@ -1287,7 +1287,7 @@ export function JourneyPlanner({
                     key={d.id}
                     type="button"
                     onClick={() => addDay(d.id as Exclude<PlannerDestinationId, "airport">)}
-                    className="flex items-center gap-1.5 rounded-full border border-[#ddc8b0] bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:border-[#12343b]"
+                    className="flex items-center gap-1.5 rounded-full border border-[var(--portal-border)] bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:border-[var(--portal-ink)]"
                   >
                     {renderDestinationIcon(d.id, "h-3 w-3")}
                     {d.shortName}
@@ -1306,7 +1306,7 @@ export function JourneyPlanner({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 placeholder="Any special requests, preferences, or notes for your trip..."
-                className="w-full rounded-xl border border-[#ddc8b0] bg-[#fffaf4] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/10"
+                className="w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-paper)] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[var(--portal-ink)] focus:ring-2 focus:ring-[var(--portal-ink)]/10"
               />
             </div>
           )}
@@ -1314,7 +1314,7 @@ export function JourneyPlanner({
           {days.length > 0 && (
             <button type="button"
               onClick={() => { if (!days.some((d) => d.destinationId)) { setError("Pick a destination for at least one day."); return; } setError(""); setOpenSection(4); }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12343b] py-3 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31]">
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--portal-ink)] py-3 text-sm font-semibold text-[var(--portal-cream)] transition hover:bg-[var(--portal-ink-soft)]">
               Review &amp; confirm <ArrowRight className="h-4 w-4" />
             </button>
           )}
@@ -1372,15 +1372,15 @@ export function JourneyPlanner({
           {/* Day-by-day summary */}
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Itinerary</p>
-            <div className="rounded-xl border border-[#ead7be] bg-[#fffaf4] divide-y divide-[#ead7be]">
+            <div className="rounded-xl border border-[var(--portal-border-soft)] bg-[var(--portal-paper)] divide-y divide-[var(--portal-border-soft)]">
               <div className="flex items-center gap-3 px-4 py-2.5">
-                <PlaneLanding className="h-3.5 w-3.5 text-[#12343b]" />
+                <PlaneLanding className="h-3.5 w-3.5 text-[var(--portal-ink)]" />
                 <span className="text-xs font-medium text-stone-700">Arrive{travelDate ? ` · ${formatDate(travelDate, 0)}` : ""}</span>
               </div>
               {enrichedDays.map((day) => (
                 <div key={day.id} className="px-4 py-2.5">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold bg-[#12343b] text-[#f7ead7]">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold bg-[var(--portal-ink)] text-[var(--portal-cream)]">
                       {day.dayNumber}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -1388,7 +1388,7 @@ export function JourneyPlanner({
                         {day.destination?.name ?? "No destination"}
                       </span>
                       {day.isTransfer && day.leg && (
-                        <span className="ml-1.5 text-[10px] text-[#8c6a38]">
+                        <span className="ml-1.5 text-[10px] text-[var(--portal-eyebrow)]">
                           ({day.leg.driveHours.toFixed(1)}h drive)
                         </span>
                       )}
@@ -1416,14 +1416,14 @@ export function JourneyPlanner({
                 </div>
               ))}
               <div className="flex items-center gap-3 px-4 py-2.5">
-                <PlaneLanding className="h-3.5 w-3.5 text-[#12343b]" />
+                <PlaneLanding className="h-3.5 w-3.5 text-[var(--portal-ink)]" />
                 <span className="text-xs font-medium text-stone-700">Depart{travelDate ? ` · ${formatDate(travelDate, days.length + 1)}` : ""}</span>
               </div>
             </div>
           </div>
 
           {/* Price breakdown */}
-          <div className="rounded-xl border border-[#ead7be] bg-[#fffaf4] p-4">
+          <div className="rounded-xl border border-[var(--portal-border-soft)] bg-[var(--portal-paper)] p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Price estimate</p>
             <div className="mt-3 space-y-2">
               {pricing.lineItems.map((item) => (
@@ -1432,10 +1432,10 @@ export function JourneyPlanner({
                   <span className="font-medium text-stone-900">{currencyFormat(item.amount, pricing.currency)}</span>
                 </div>
               ))}
-              <div className="border-t border-[#ead7be] pt-2">
+              <div className="border-t border-[var(--portal-border-soft)] pt-2">
                 <div className="flex justify-between">
                   <span className="font-semibold text-stone-900">Total</span>
-                  <span className="text-lg font-bold text-[#12343b]">{currencyFormat(pricing.total, pricing.currency)}</span>
+                  <span className="text-lg font-bold text-[var(--portal-ink)]">{currencyFormat(pricing.total, pricing.currency)}</span>
                 </div>
               </div>
             </div>
@@ -1444,10 +1444,10 @@ export function JourneyPlanner({
           {/* Guests */}
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Guests ({pax})</p>
-            <div className="rounded-xl border border-[#ead7be] bg-[#fffaf4] divide-y divide-[#ead7be]">
+            <div className="rounded-xl border border-[var(--portal-border-soft)] bg-[var(--portal-paper)] divide-y divide-[var(--portal-border-soft)]">
               {guestNames.map((gn, idx) => (
                 <div key={idx} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold bg-[#12343b] text-[#f7ead7]">{idx + 1}</span>
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold bg-[var(--portal-ink)] text-[var(--portal-cream)]">{idx + 1}</span>
                   <span className="text-sm text-stone-900">{gn || <span className="text-stone-400 italic">{idx === 0 ? "Lead guest (not set)" : `Guest ${idx + 1}`}</span>}</span>
                 </div>
               ))}
@@ -1458,15 +1458,15 @@ export function JourneyPlanner({
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Contact details</p>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address *" required
-              className="w-full rounded-xl border border-[#ddc8b0] bg-[#fffaf4] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/10" />
+              className="w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-paper)] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[var(--portal-ink)] focus:ring-2 focus:ring-[var(--portal-ink)]/10" />
             <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone (optional)"
-              className="w-full rounded-xl border border-[#ddc8b0] bg-[#fffaf4] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/10" />
+              className="w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-paper)] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[var(--portal-ink)] focus:ring-2 focus:ring-[var(--portal-ink)]/10" />
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Special requests, arrival time, anything else..."
-              className="w-full rounded-xl border border-[#ddc8b0] bg-[#fffaf4] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[#12343b] focus:ring-2 focus:ring-[#12343b]/10" />
+              className="w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-paper)] px-4 py-3 text-sm text-stone-900 outline-none focus:border-[var(--portal-ink)] focus:ring-2 focus:ring-[var(--portal-ink)]/10" />
           </div>
 
           <button type="submit" disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12343b] py-4 text-base font-bold text-[#f7ead7] shadow-lg transition hover:bg-[#0f2b31] disabled:opacity-60">
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--portal-ink)] py-4 text-base font-bold text-[var(--portal-cream)] shadow-lg transition hover:bg-[var(--portal-ink-soft)] disabled:opacity-60">
             {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
             {submitting ? "Sending..." : "Confirm & send request"}
           </button>
@@ -1486,17 +1486,17 @@ export function JourneyPlanner({
             <p className="truncate text-xs text-stone-500">
               {days.length} day{days.length === 1 ? "" : "s"} · {uniqueDestinations.size} place{uniqueDestinations.size === 1 ? "" : "s"} · {pax} guest{pax === 1 ? "" : "s"}
             </p>
-            <p className="truncate text-base font-bold text-[#12343b] sm:text-lg">{currencyFormat(pricing.total, pricing.currency)}</p>
+            <p className="truncate text-base font-bold text-[var(--portal-ink)] sm:text-lg">{currencyFormat(pricing.total, pricing.currency)}</p>
           </div>
           {openSection !== 4 ? (
             <button type="button" onClick={() => setOpenSection(4)}
-              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[#12343b] px-5 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31]">
+              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[var(--portal-ink)] px-5 text-sm font-semibold text-[var(--portal-cream)] transition hover:bg-[var(--portal-ink-soft)]">
               Review
             </button>
           ) : (
             <button type="button" disabled={submitting}
               onClick={() => { const f = document.querySelector<HTMLFormElement>("form"); f?.requestSubmit(); }}
-              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[#12343b] px-5 text-sm font-semibold text-[#f7ead7] transition hover:bg-[#0f2b31] disabled:opacity-60">
+              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[var(--portal-ink)] px-5 text-sm font-semibold text-[var(--portal-cream)] transition hover:bg-[var(--portal-ink-soft)] disabled:opacity-60">
               {submitting ? "Sending..." : "Confirm"}
             </button>
           )}
