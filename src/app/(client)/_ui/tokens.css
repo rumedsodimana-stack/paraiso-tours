@@ -1,0 +1,67 @@
+/**
+ * Paraíso Tours — client portal design tokens.
+ *
+ * Single source of truth for the editorial palette, imported once
+ * from `(client)/layout.tsx`. Use these via Tailwind arbitrary values,
+ * e.g. `bg-[var(--portal-ink)] text-[var(--portal-cream)]`. For plain
+ * CSS, reference them directly with `var(--name)`.
+ *
+ * Adding a new colour here is a deliberate design decision — please
+ * don't inline fresh hex values in pages, the whole point of this
+ * file is to keep the portal's visual voice consistent.
+ */
+
+:root {
+  /* Brand surface palette --------------------------------------------- */
+  --portal-ink: #12343b;          /* deep teal — primary brand ink */
+  --portal-ink-dark: #0b2125;     /* darker ink for hero imagery backs */
+  --portal-ink-soft: #0f2b31;     /* hover states on primary button   */
+  --portal-cream: #f6efe4;        /* page paper background             */
+  --portal-paper: #fbf5ec;        /* card surface on cream             */
+  --portal-paper-strong: #f8f1e7; /* header/footer band                */
+  --portal-gold: #dcb87b;         /* eyebrow accent / decorative line  */
+  --portal-gold-deep: #b67833;    /* small icons on cream              */
+  --portal-sand: #dfd7c6;         /* quiet body type on dark          */
+  --portal-sand-warm: #e5dccd;    /* slightly warmer body on dark     */
+  --portal-highlight: #f2dfbf;    /* primary CTA (light on dark)      */
+  --portal-highlight-soft: #f7e8cf;
+  --portal-border: #d9c6ad;       /* default border on cream          */
+  --portal-border-soft: #dcc9b1;  /* softer border (header/footer)    */
+
+  /* Semantic text ----------------------------------------------------- */
+  --portal-text: #292524;         /* stone-800 — primary body type */
+  --portal-text-muted: #57534e;   /* stone-600                       */
+  --portal-text-quiet: #78716c;   /* stone-500                       */
+  --portal-eyebrow: #8c6a38;      /* eyebrow label colour            */
+
+  /* Elevation (editorial, never pillow-y) ----------------------------- */
+  --portal-shadow-sm: 0 8px 24px -18px rgba(43, 32, 15, 0.35);
+  --portal-shadow-md: 0 22px 50px -38px rgba(43, 32, 15, 0.5);
+  --portal-shadow-lg: 0 36px 80px -40px rgba(43, 32, 15, 0.55);
+  --portal-shadow-hero: 0 40px 90px -40px rgba(11, 33, 37, 0.65);
+
+  /* Radii -------------------------------------------------------------- */
+  --portal-radius-sm: 0.75rem;
+  --portal-radius-md: 1.25rem;
+  --portal-radius-lg: 1.75rem;
+  --portal-radius-xl: 2rem;
+
+  /* Motion ------------------------------------------------------------- */
+  --portal-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Portal-scoped display serif. Falls back to high-quality system
+ * serifs so no external font fetch is required. Opt in by applying
+ * `.portal-display` on any heading that should read editorial. */
+.portal-display {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino,
+    "Hoefler Text", Georgia, ui-serif, serif;
+  letter-spacing: -0.012em;
+}
+
+/* Keep page paper bg consistent in print. */
+@media print {
+  .portal-print-clean {
+    background: #ffffff !important;
+  }
+}
