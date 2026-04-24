@@ -22,6 +22,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
+import type { AgentNextAction } from "@/lib/agent-ooda";
 
 // In-memory no-op storage used during SSR or when localStorage is absent.
 const _agentMemoryBackstop: Record<string, string> = {};
@@ -52,6 +53,8 @@ export interface AgentMessage {
   /** For assistant role: the action proposal or clarification request. */
   proposalId?: string;
   clarificationId?: string;
+  /** Optional clickable next-action chips rendered under the bubble. */
+  nextActions?: AgentNextAction[];
   createdAt: number;
 }
 

@@ -48,15 +48,30 @@ export interface OrientSummary {
   entitiesInScope: Array<{ kind: string; id: string; label?: string }>;
 }
 
+/** Helpful next-step suggestions rendered as clickable chips under the
+ *  agent's reply. Each chip, when clicked, is sent back verbatim as the
+ *  admin's next message. Keep each label short (≤60 chars) and concrete —
+ *  "List overdue invoices", not "Would you like to see invoices?". */
+export interface AgentNextAction {
+  /** Short label shown on the chip. */
+  label: string;
+  /** The exact text to send when clicked. If omitted, `label` is sent. */
+  send?: string;
+}
+
 export type AgentDecision =
   | {
       kind: "answer";
       response: string;
+      nextActions?: AgentNextAction[];
     }
   | {
       kind: "clarify";
       question: string;
       reason: string;
+      /** Reserved — clarifications already carry suggestions via the
+       *  clarification object. Left here so the union is uniform. */
+      nextActions?: AgentNextAction[];
     }
   | {
       kind: "propose";
@@ -66,6 +81,7 @@ export type AgentDecision =
       input: unknown;
       confidence: number;
       entityRefs?: Array<{ kind: string; id: string; label?: string }>;
+      nextActions?: AgentNextAction[];
     };
 
 // ── Observe ──────────────────────────────────────────────────────────────
@@ -140,8 +156,32 @@ export function coerceDecision(raw: unknown): AgentDecision {
 
   const kind = String(raw.kind ?? "").trim();
 
+  // Shared coercion: pull up to 4 next-action chips, each ≤80 chars.
+  const coerceNextActions = (): AgentNextAction[] | undefined => {
+    const arr = raw.nextActions;
+    if (!Array.isArray(arr) || arr.length === 0) return undefined;
+    const out: AgentNextAction[] = [];
+    for (const item of arr.slice(0, 4)) {
+      if (typeof item === "string" && item.trim()) {
+        out.push({ label: item.trim().slice(0, 80) });
+      } else if (isRecord(item) && typeof item.label === "string" && item.label.trim()) {
+        out.push({
+          label: item.label.trim().slice(0, 80),
+          send: typeof item.send === "string" && item.send.trim()
+            ? item.send.trim()
+            : undefined,
+        });
+      }
+    }
+    return out.length > 0 ? out : undefined;
+  };
+
   if (kind === "answer" && typeof raw.response === "string") {
-    return { kind: "answer", response: raw.response };
+    return {
+      kind: "answer",
+      response: raw.response,
+      nextActions: coerceNextActions(),
+    };
   }
 
   if (kind === "clarify" && typeof raw.question === "string") {
@@ -149,6 +189,7 @@ export function coerceDecision(raw: unknown): AgentDecision {
       kind: "clarify",
       question: raw.question,
       reason: String(raw.reason ?? "Ambiguous request"),
+      nextActions: coerceNextActions(),
     };
   }
 
@@ -174,6 +215,7 @@ export function coerceDecision(raw: unknown): AgentDecision {
             label: r.label ? String(r.label) : undefined,
           })).filter((r) => r.kind && r.id)
         : undefined,
+      nextActions: coerceNextActions(),
     };
   }
 
@@ -223,8 +265,21 @@ export const OODA_SYSTEM_PROMPT = [
   '  "tool": "for propose only — exact tool name from the catalog",',
   '  "input": "for propose only — JSON payload matching the tool schema",',
   '  "confidence": 0.0..1.0,',
-  '  "entityRefs": [{"kind":"...","id":"...","label":"..."}]',
+  '  "entityRefs": [{"kind":"...","id":"...","label":"..."}],',
+  '  "nextActions": [{"label":"short chip text", "send":"optional full prompt"}, ...]',
   "}",
+  "",
+  "nextActions — REQUIRED on every answer and every propose:",
+  "  Emit 2–4 concrete next-step chips the admin can click to keep the",
+  "  workflow moving. Chips should be specific actions, not generic prompts.",
+  "  Good:  'List overdue invoices', 'Send reminder to Sarah K.',",
+  "         'Draft a 5-day Kandy + Ella itinerary for 4 pax'.",
+  "  Bad:   'Ask another question', 'Get help', 'Continue'.",
+  "  If the admin is mid-flow (package creation, booking, custom tour),",
+  "  chips should drive the NEXT step of that flow — never generic.",
+  "  Use `send` when the chip text differs from the prompt you want sent",
+  "  (e.g. label = 'Add Day 3: Ella', send = 'Add day 3 to the package",
+  "   with Ella as the destination and a train ride highlight').",
   "",
   "Rules:",
   "- When the admin asks for something the tool catalog can do, propose",
@@ -238,6 +293,44 @@ export const OODA_SYSTEM_PROMPT = [
   "  and propose that first, then follow up.",
   "- Set confidence honestly. Low confidence → prefer clarify.",
   "- Never claim an action has already happened — you only propose.",
+  "",
+  "ACT LIKE AN EXPERT TRAVEL-OPS OPERATOR, NOT A GENERIC CHATBOT:",
+  "- You have context on the full business (bookings, suppliers, pricing,",
+  "  margins, SLA, flow state). Use it. When you answer, cite concrete",
+  "  numbers and names from the live snapshot — never vague phrases like",
+  "  'there are several'. Say '3 bookings await review — Sarah, Miguel, Ayu'.",
+  "- Be proactive. If an admin says 'new booking from whale-watching pkg',",
+  "  don't just acknowledge — propose create_lead with sensible defaults,",
+  "  then chain send_itinerary_to_guest and create_invoice as next chips.",
+  "- Anticipate the next 1–2 moves and surface them in nextActions.",
+  "",
+  "FLOW-AWARE BEHAVIOR (package / booking / custom-tour):",
+  "- When the admin is creating or editing a tour package:",
+  "    * Always ask about: destination(s), duration, pax range, season,",
+  "      hotel tier (budget / boutique / luxury), meal plan (BB / HB / AI),",
+  "      inclusions, cancellation policy, and price per pax band.",
+  "    * Offer 2–3 concrete itinerary skeletons as nextActions, tuned to",
+  "      the destination (e.g. for 'Ella' — train ride + Nine Arch + Little",
+  "      Adam's Peak). Never return an empty itinerary.",
+  "    * If a detail is missing, clarify WITH SPECIFIC SUGGESTIONS, not",
+  "      open-ended questions. 'Hotel tier: boutique or luxury?' beats",
+  "      'What kind of hotel?'.",
+  "- When the admin is booking (or reviewing) a guest booking:",
+  "    * Validate: travel date in the future, pax ≥ 1, guest email valid,",
+  "      package exists, accommodation selected for every night, meal plan",
+  "      resolved from hotel where possible, transport covers full days.",
+  "    * Flag pricing anomalies vs the package base (>15% drift).",
+  "    * If anything is missing or risky, clarify with a specific fix as",
+  "      the top suggestion chip.",
+  "- When the admin is building a custom (non-package) journey:",
+  "    * Suggest destinations based on travel date, pax, pace (fast/moderate/",
+  "      slow), and any stated interests (wildlife, beach, culture, train).",
+  "    * Recommend hotels filtered by destination, meal plans from the",
+  "      hotel catalog first, activities scoped to the destination only.",
+  "    * Never recommend a hotel in the wrong destination.",
+  "",
+  "TONE: concise, specific, expert. No filler ('Great question!', 'Sure!',",
+  "'I'd be happy to…'). Start each answer with the answer, not a preamble.",
   "",
   "CRITICAL — data-availability honesty:",
   "NEVER say 'I cannot retrieve', 'not available', 'data only provides",

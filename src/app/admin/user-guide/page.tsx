@@ -67,10 +67,10 @@ export default async function UserGuidePage() {
             </ul>
           </div>
           <div>
-            <p className="font-semibold text-[#11272b]">✅ Approval queue (<Link href="/admin/hitl" className="underline decoration-dotted">/admin/hitl</Link>)</p>
+            <p className="font-semibold text-[#11272b]">✅ Approval queue (merged into <Link href="/admin/ai" className="underline decoration-dotted">/admin/ai</Link>)</p>
             <ul className="mt-1 space-y-1 pl-4 list-disc">
-              <li>Bookings awaiting approval listed with inline Approve / Reject</li>
-              <li>Recent AI proposals visible for oversight</li>
+              <li>Bookings awaiting approval sit alongside the agent chat with inline Approve / Reject</li>
+              <li>Recent AI interactions visible below for oversight</li>
               <li>Every action audit-logged</li>
             </ul>
           </div>
@@ -139,10 +139,9 @@ export default async function UserGuidePage() {
           <li><a href="#client-portal" className="text-[#12343b] hover:underline">2. Client Portal (Guest-facing)</a></li>
           <li><a href="#admin-portal" className="text-[#12343b] hover:underline">3. Admin Portal (Staff)</a></li>
           <li><Link href="/admin/ai" className="text-[#12343b] hover:underline">4. AI Workspace</Link></li>
-          <li><Link href="/admin/hitl" className="text-[#12343b] hover:underline">5. Approval queue (HITL)</Link></li>
-          <li><Link href="/admin/communications" className="text-[#12343b] hover:underline">6. Communications portal</Link></li>
-          <li><Link href="/admin/reports" className="text-[#12343b] hover:underline">7. Reports (CSV exports)</Link></li>
-          <li><Link href="/admin/insights" className="text-[#12343b] hover:underline">8. Insights (trends + anomalies)</Link></li>
+          <li><Link href="/admin/communications" className="text-[#12343b] hover:underline">5. Communications portal</Link></li>
+          <li><Link href="/admin/reports" className="text-[#12343b] hover:underline">6. Reports (CSV exports)</Link></li>
+          <li><Link href="/admin/insights" className="text-[#12343b] hover:underline">7. Insights (trends + anomalies)</Link></li>
           <li><a href="#key-concepts" className="text-[#12343b] hover:underline">9. Key Concepts</a></li>
           <li><a href="#auth-password" className="text-[#12343b] hover:underline">10. Login & Password</a></li>
           <li><a href="#ai-setup" className="text-[#12343b] hover:underline">11. AI Setup</a></li>

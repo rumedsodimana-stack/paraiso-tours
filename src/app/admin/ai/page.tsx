@@ -3,6 +3,7 @@ import { Bot, CheckCircle2, Clock, Database, Mail, MessageCircle, Sparkles, XCir
 import { getAiRuntimeStatus } from "@/lib/ai";
 import { getAiInteractions, getAiKnowledgeDocuments } from "@/lib/db";
 import { AgentSurface } from "./AgentSurface";
+import { ApprovalQueuePanel } from "./ApprovalQueuePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -113,6 +114,9 @@ export default async function AdminAiPage() {
 
       {/* Agent chat — the main surface */}
       <AgentSurface />
+
+      {/* Pending approvals — bookings + agent edits awaiting sign-off */}
+      <ApprovalQueuePanel />
 
       {/* Diagnostics panel — connectors + recent interactions + knowledge */}
       <section className="paraiso-card rounded-2xl p-5">

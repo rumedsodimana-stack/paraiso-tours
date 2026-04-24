@@ -15,7 +15,9 @@ import {
   selectPendingClarification,
   selectPendingProposals,
   type AgentProposal,
+  type AgentMessage,
 } from "@/stores/ai-agent.store";
+import type { AgentNextAction } from "@/lib/agent-ooda";
 import { useAdminWorkspace } from "@/stores/admin-workspace.store";
 import { AgentClarification } from "@/components/agent/AgentClarification";
 import { AgentProposals } from "@/components/agent/AgentProposals";
@@ -91,8 +93,8 @@ export function AgentSurface() {
     })),
   });
 
-  const send = () => {
-    const text = input.trim();
+  const sendText = (raw: string) => {
+    const text = raw.trim();
     if (!text) return;
     setInput("");
     addMessage({ role: "user", content: text });
@@ -124,7 +126,11 @@ export function AgentSurface() {
         const decision = result.decision;
 
         if (decision.kind === "answer") {
-          addMessage({ role: "assistant", content: decision.response });
+          addMessage({
+            role: "assistant",
+            content: decision.response,
+            nextActions: decision.nextActions,
+          });
           rememberWorking({
             kind: "fact",
             text: `Told admin: ${decision.response.slice(0, 160)}`,
@@ -140,6 +146,7 @@ export function AgentSurface() {
             role: "assistant",
             content: result.clarification.question,
             clarificationId: cr.id,
+            nextActions: decision.nextActions,
           });
         } else if (decision.kind === "propose") {
           const proposal = addProposal({
@@ -161,6 +168,7 @@ export function AgentSurface() {
               role: "assistant",
               content: `**${decision.title}** is an edit/delete — approve it below to run.`,
               proposalId: proposal.id,
+              nextActions: decision.nextActions,
             });
           } else {
             // Read/create/send — auto-execute inline
@@ -178,6 +186,13 @@ export function AgentSurface() {
         setPhase("idle");
       }
     });
+  };
+
+  const send = () => sendText(input);
+
+  const handleChipClick = (chip: AgentNextAction) => {
+    if (busy) return;
+    sendText(chip.send ?? chip.label);
   };
 
   const markProposalExecuted = useAgent((s) => s.markProposalExecuted);
@@ -230,7 +245,11 @@ export function AgentSurface() {
         });
         if (follow.ok && follow.decision) {
           if (follow.decision.kind === "answer") {
-            addMessage({ role: "assistant", content: follow.decision.response });
+            addMessage({
+              role: "assistant",
+              content: follow.decision.response,
+              nextActions: follow.decision.nextActions,
+            });
           } else if (follow.decision.kind === "propose") {
             const next = addProposal({
               title: follow.decision.title,
@@ -245,6 +264,7 @@ export function AgentSurface() {
                 role: "assistant",
                 content: `Next: **${follow.decision.title}** (edit/delete) — approve below.`,
                 proposalId: next.id,
+                nextActions: follow.decision.nextActions,
               });
             } else {
               // Chain auto-execute
@@ -261,6 +281,7 @@ export function AgentSurface() {
               role: "assistant",
               content: follow.clarification.question,
               clarificationId: cr.id,
+              nextActions: follow.decision.nextActions,
             });
           }
         }
@@ -323,7 +344,14 @@ export function AgentSurface() {
               </p>
             </div>
           ) : (
-            messages.map((m) => <MessageBubble key={m.id} message={m} />)
+            messages.map((m) => (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                onChip={handleChipClick}
+                disabled={busy}
+              />
+            ))
           )}
 
           {pendingClarification && (
@@ -485,16 +513,21 @@ function OodaPhasePill({ phase }: { phase: string }) {
 
 function MessageBubble({
   message,
+  onChip,
+  disabled,
 }: {
-  message: {
-    role: string;
-    content: string;
-    proposalId?: string;
-  };
+  message: AgentMessage;
+  onChip: (chip: AgentNextAction) => void;
+  disabled: boolean;
 }) {
   const isUser = message.role === "user";
+  const chips = !isUser && message.nextActions ? message.nextActions : [];
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div
+      className={`flex flex-col gap-1.5 ${
+        isUser ? "items-end" : "items-start"
+      }`}
+    >
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-6 ${
           isUser
@@ -504,6 +537,22 @@ function MessageBubble({
       >
         {message.content}
       </div>
+      {chips.length > 0 && (
+        <div className="flex max-w-[80%] flex-wrap gap-1.5">
+          {chips.map((chip, i) => (
+            <button
+              key={`${message.id}-chip-${i}`}
+              type="button"
+              onClick={() => onChip(chip)}
+              disabled={disabled}
+              title={chip.send ?? chip.label}
+              className="rounded-full border border-[#c9922f]/40 bg-[#f4ecdd] px-3 py-1 text-xs font-medium text-[#7a5a17] transition hover:border-[#c9922f] hover:bg-[#f3e8ce] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
