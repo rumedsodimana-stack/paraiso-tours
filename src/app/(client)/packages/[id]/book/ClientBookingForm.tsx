@@ -879,25 +879,34 @@ export function ClientBookingForm({
                       </span>
                     </label>
                   ))}
+                  {/* "Book my own" sits as a peer tile to the hotel options so
+                      guests see it as another choice, not a secondary toggle. */}
+                  <label
+                    className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] border p-4 transition ${
+                      accommodationId === BOOK_MY_OWN
+                        ? "border-[var(--portal-gold-deep)] bg-[var(--portal-highlight-soft)]"
+                        : "border-dashed border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold-deep)]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      checked={accommodationId === BOOK_MY_OWN}
+                      onChange={() => setAccommodationId(BOOK_MY_OWN)}
+                      className="sr-only"
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-medium text-[var(--portal-ink)]">
+                        Book my own
+                      </span>
+                      <span className="text-xs text-[var(--portal-eyebrow)]">
+                        I&apos;ll arrange the stay
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-[var(--portal-gold-deep)]">
+                      Not included
+                    </span>
+                  </label>
                 </div>
-                <label
-                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] border p-4 transition ${
-                    accommodationId === BOOK_MY_OWN
-                      ? "border-[var(--portal-gold-deep)] bg-[var(--portal-highlight-soft)]"
-                      : "border-dashed border-[var(--portal-border)] bg-white hover:border-[var(--portal-gold-deep)]"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    checked={accommodationId === BOOK_MY_OWN}
-                    onChange={() => setAccommodationId(BOOK_MY_OWN)}
-                    className="sr-only"
-                  />
-                  <span className="font-medium text-[var(--portal-ink)]">
-                    Book my own accommodation
-                  </span>
-                  <span className="text-xs text-[var(--portal-eyebrow)]">Subtracted from total</span>
-                </label>
 
                 {/* Hotel-attached meal plans for the picked room. We reuse
                     the night-0 key so one picker drives the whole stay. */}
@@ -968,62 +977,89 @@ export function ClientBookingForm({
                       key={nightIndex}
                       className="rounded-[1.35rem] border border-[var(--portal-border)] bg-white p-4"
                     >
-                      <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="mb-3">
                         <p className="text-sm font-medium uppercase tracking-[0.14em] text-[var(--portal-eyebrow)]">
                           Night {nightIndex + 1}
                         </p>
-                        <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-[var(--portal-text-muted)]">
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {options.map((opt) => (
+                          <label
+                            key={opt.id}
+                            className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.15rem] border p-3 transition ${
+                              !nightBookOwn && accommodationByNight[nightIndex] === opt.id
+                                ? "border-[var(--portal-ink)] bg-[var(--portal-highlight)]"
+                                : "border-[var(--portal-border)] hover:border-[var(--portal-gold)]"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`accommodation_night_${nightIndex}`}
+                              value={opt.id}
+                              checked={!nightBookOwn && accommodationByNight[nightIndex] === opt.id}
+                              onChange={() => {
+                                // Selecting a hotel clears any prior
+                                // "book my own" choice for this night.
+                                setAccommodationByNight((prev) => ({
+                                  ...prev,
+                                  [nightIndex]: opt.id,
+                                }));
+                                setBookMyOwnNights((prev) => ({
+                                  ...prev,
+                                  [nightIndex]: false,
+                                }));
+                              }}
+                              className="sr-only"
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-medium text-[var(--portal-ink)]">{opt.label}</span>
+                              {getStarRating(opt.supplierId) != null && (
+                                <StarRating stars={getStarRating(opt.supplierId)!} />
+                              )}
+                            </div>
+                            <span className="text-sm font-medium text-[var(--portal-ink)]">
+                              +{calcOptionPrice(opt, pax, 1).toLocaleString()} {pkg.currency}
+                            </span>
+                          </label>
+                        ))}
+                        {/* "Book my own" peer tile — styled to match the hotel
+                            options with a dashed border so it reads as an
+                            alternative choice, not a secondary opt-out. */}
+                        <label
+                          className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.15rem] border p-3 transition ${
+                            nightBookOwn
+                              ? "border-[var(--portal-gold-deep)] bg-[var(--portal-highlight-soft)]"
+                              : "border-dashed border-[var(--portal-border)] hover:border-[var(--portal-gold-deep)]"
+                          }`}
+                        >
                           <input
-                            type="checkbox"
+                            type="radio"
+                            name={`accommodation_night_${nightIndex}`}
+                            value={BOOK_MY_OWN}
                             checked={nightBookOwn}
-                            onChange={(e) =>
+                            onChange={() =>
                               setBookMyOwnNights((prev) => ({
                                 ...prev,
-                                [nightIndex]: e.target.checked,
+                                [nightIndex]: true,
                               }))
                             }
-                            className="h-3.5 w-3.5 rounded border-[var(--portal-border)] text-[var(--portal-ink)] focus:ring-[var(--portal-gold-deep)]"
+                            className="sr-only"
                           />
-                          I&apos;ll book my own
+                          <div className="flex flex-col">
+                            <span className="font-medium text-[var(--portal-ink)]">
+                              Book my own
+                            </span>
+                            <span className="text-xs text-[var(--portal-eyebrow)]">
+                              I&apos;ll arrange this night
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium text-[var(--portal-gold-deep)]">
+                            Not included
+                          </span>
                         </label>
                       </div>
                       {!nightBookOwn ? (
                         <>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {options.map((opt) => (
-                              <label
-                                key={opt.id}
-                                className={`flex cursor-pointer items-center justify-between gap-3 rounded-[1.15rem] border p-3 transition ${
-                                  accommodationByNight[nightIndex] === opt.id
-                                    ? "border-[var(--portal-ink)] bg-[var(--portal-highlight)]"
-                                    : "border-[var(--portal-border)] hover:border-[var(--portal-gold)]"
-                                }`}
-                              >
-                                <input
-                                  type="radio"
-                                  name={`accommodation_night_${nightIndex}`}
-                                  value={opt.id}
-                                  checked={accommodationByNight[nightIndex] === opt.id}
-                                  onChange={() =>
-                                    setAccommodationByNight((prev) => ({
-                                      ...prev,
-                                      [nightIndex]: opt.id,
-                                    }))
-                                  }
-                                  className="sr-only"
-                                />
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-[var(--portal-ink)]">{opt.label}</span>
-                                  {getStarRating(opt.supplierId) != null && (
-                                    <StarRating stars={getStarRating(opt.supplierId)!} />
-                                  )}
-                                </div>
-                                <span className="text-sm font-medium text-[var(--portal-ink)]">
-                                  +{calcOptionPrice(opt, pax, 1).toLocaleString()} {pkg.currency}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
                           {/* Hotel-attached meal plans for the picked room —
                               same page, charged together with the stay. */}
                           {(() => {

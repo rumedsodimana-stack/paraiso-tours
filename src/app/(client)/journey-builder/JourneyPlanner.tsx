@@ -1135,22 +1135,29 @@ export function JourneyPlanner({
                               </button>
                             );
                           })}
-                          {/* I'll book my own */}
+                          {/* "Book my own" peer tile — uses the same button
+                              shape as the hotel options so it reads as an
+                              alternative choice, with a dashed border when
+                              unselected to visually mark it as "no hotel
+                              included" rather than a priced option. */}
                           <button
                             type="button"
                             onClick={() => updateDay(day.id, { hotelMode: "own", hotelId: "" })}
                             className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${
                               day.hotelMode === "own"
-                                ? "border-[var(--portal-ink)] bg-[var(--portal-ink)] text-white"
-                                : "border-stone-200 bg-white text-stone-800 hover:border-stone-400"
+                                ? "border-[var(--portal-gold-deep)] bg-[var(--portal-highlight-soft)] text-[var(--portal-ink)]"
+                                : "border-dashed border-[var(--portal-border)] bg-white text-stone-800 hover:border-[var(--portal-gold-deep)]"
                             }`}
                           >
                             <div>
                               <p className="text-sm font-semibold">I&apos;ll book my own</p>
-                              <p className={`text-xs ${day.hotelMode === "own" ? "text-stone-300" : "text-stone-500"}`}>
+                              <p className={`text-xs ${day.hotelMode === "own" ? "text-[var(--portal-eyebrow)]" : "text-stone-500"}`}>
                                 No hotel included for this night
                               </p>
                             </div>
+                            <span className="text-xs font-medium text-[var(--portal-gold-deep)]">
+                              Not included
+                            </span>
                           </button>
                         </div>
 
