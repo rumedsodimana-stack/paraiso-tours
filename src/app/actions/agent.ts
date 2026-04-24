@@ -163,9 +163,11 @@ export async function decideAgentAction(
         `Request: ${request.slice(0, 120)}${request.length > 120 ? "…" : ""}`,
         decision.kind === "propose"
           ? `Tool: ${decision.tool} (confidence ${Math.round(decision.confidence * 100)}%)`
-          : decision.kind === "clarify"
-            ? `Question: ${decision.question}`
-            : `Response length: ${decision.response.length}`,
+          : decision.kind === "propose_multi"
+            ? `Chain: ${decision.steps.length} steps — ${decision.steps.map((s) => s.tool).join(" → ")}`
+            : decision.kind === "clarify"
+              ? `Question: ${decision.question}`
+              : `Response length: ${decision.response.length}`,
       ],
       metadata: {
         channel: "agent_ui",

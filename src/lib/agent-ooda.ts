@@ -59,6 +59,17 @@ export interface AgentNextAction {
   send?: string;
 }
 
+/** A single tool step inside a propose_multi chain. Same shape as a
+ *  standalone propose but without its own confidence/entityRefs — those
+ *  live on the parent chain. */
+export interface AgentChainStep {
+  tool: string;
+  input: unknown;
+  title: string;
+  summary?: string;
+  entityRefs?: Array<{ kind: string; id: string; label?: string }>;
+}
+
 export type AgentDecision =
   | {
       kind: "answer";
@@ -81,6 +92,20 @@ export type AgentDecision =
       input: unknown;
       confidence: number;
       entityRefs?: Array<{ kind: string; id: string; label?: string }>;
+      nextActions?: AgentNextAction[];
+    }
+  | {
+      kind: "propose_multi";
+      /** Chain-level title, e.g. "Onboard new guest". */
+      title: string;
+      /** Chain-level summary — what the whole chain accomplishes. */
+      summary: string;
+      /** 2–6 ordered tool steps. Executed sequentially; the dispatcher
+       *  auto-runs read/create/send steps inline. The first step that
+       *  requires approval (update/delete) suspends the chain and queues
+       *  only that step for HITL review. */
+      steps: AgentChainStep[];
+      confidence: number;
       nextActions?: AgentNextAction[];
     };
 
@@ -193,6 +218,43 @@ export function coerceDecision(raw: unknown): AgentDecision {
     };
   }
 
+  if (kind === "propose_multi" && Array.isArray(raw.steps)) {
+    const steps: AgentChainStep[] = [];
+    for (const item of raw.steps.slice(0, 6)) {
+      if (!isRecord(item)) continue;
+      if (typeof item.tool !== "string" || !item.tool.trim()) continue;
+      if (item.input === undefined) continue;
+      steps.push({
+        tool: item.tool.trim(),
+        input: item.input,
+        title: typeof item.title === "string" && item.title.trim()
+          ? item.title.trim()
+          : `Run ${item.tool}`,
+        summary: typeof item.summary === "string" ? item.summary : undefined,
+        entityRefs: Array.isArray(item.entityRefs)
+          ? item.entityRefs.filter(isRecord).map((r) => ({
+              kind: String(r.kind ?? ""),
+              id: String(r.id ?? ""),
+              label: r.label ? String(r.label) : undefined,
+            })).filter((r) => r.kind && r.id)
+          : undefined,
+      });
+    }
+    if (steps.length >= 1) {
+      const confidence = typeof raw.confidence === "number"
+        ? Math.max(0, Math.min(1, raw.confidence))
+        : 0.6;
+      return {
+        kind: "propose_multi",
+        title: String(raw.title ?? "Multi-step action"),
+        summary: String(raw.summary ?? ""),
+        steps,
+        confidence,
+        nextActions: coerceNextActions(),
+      };
+    }
+  }
+
   if (
     kind === "propose" &&
     typeof raw.tool === "string" &&
@@ -246,28 +308,45 @@ export const OODA_SYSTEM_PROMPT = [
   "  - update tools → REQUIRE admin approval (a confirmation card appears)",
   "  - delete tools → REQUIRE admin approval (a confirmation card appears)",
   "",
-  "Emit one of three decisions:",
-  "  1. answer   — informational response only, no tool call.",
-  "  2. clarify  — you need info to proceed; the system will render your",
-  "                question with 4 best-fit suggestions + a free-text input.",
-  "  3. propose  — pick a tool and provide input. The dispatcher will",
-  "                auto-run read/create/send tools; for update/delete the",
-  "                admin gets an Approve/Reject card.",
+  "Emit one of four decisions:",
+  "  1. answer        — informational response only, no tool call.",
+  "  2. clarify       — you need info to proceed; the system will render your",
+  "                     question with 4 best-fit suggestions + a free-text input.",
+  "  3. propose       — pick ONE tool and provide input.",
+  "  4. propose_multi — chain 2–6 ordered tool steps when the admin's intent",
+  "                     clearly implies multiple tool calls (e.g. 'onboard",
+  "                     this guest' = create_lead + send_itinerary +",
+  "                     create_invoice). The dispatcher auto-runs",
+  "                     read/create/send steps sequentially. If any step",
+  "                     requires approval (update/delete), the chain pauses",
+  "                     at that step and the admin approves just that one.",
   "",
   "Return valid JSON only, matching this schema:",
   "{",
-  '  "kind": "answer" | "clarify" | "propose",',
+  '  "kind": "answer" | "clarify" | "propose" | "propose_multi",',
   '  "response": "for answer only",',
   '  "question": "for clarify only",',
   '  "reason": "for clarify only",',
-  '  "title": "for propose only — human-friendly action title",',
-  '  "summary": "for propose only — one-line what-and-why",',
+  '  "title": "for propose / propose_multi — human-friendly action title",',
+  '  "summary": "for propose / propose_multi — one-line what-and-why",',
   '  "tool": "for propose only — exact tool name from the catalog",',
   '  "input": "for propose only — JSON payload matching the tool schema",',
+  '  "steps": [                 // for propose_multi only',
+  '    {"tool":"...", "input":{...}, "title":"short step title"}, ...',
+  '  ],',
   '  "confidence": 0.0..1.0,',
   '  "entityRefs": [{"kind":"...","id":"...","label":"..."}],',
   '  "nextActions": [{"label":"short chip text", "send":"optional full prompt"}, ...]',
   "}",
+  "",
+  "propose_multi rules:",
+  "- Use it whenever the admin's request is a multi-step workflow with an",
+  "  obvious sequence. Do NOT use it to guess speculative next steps.",
+  "- Each step's input must be fully specified. If a later step depends on",
+  "  the output of an earlier step (e.g. the lead ID from create_lead), DO",
+  "  NOT chain — use a single propose and let the system feed the result",
+  "  back for the next decision.",
+  "- Chains stop at the first failure; the admin sees what succeeded.",
   "",
   "nextActions — REQUIRED on every answer and every propose:",
   "  Emit 2–4 concrete next-step chips the admin can click to keep the",

@@ -148,6 +148,38 @@ export function AgentSurface() {
             clarificationId: cr.id,
             nextActions: decision.nextActions,
           });
+        } else if (decision.kind === "propose_multi") {
+          addMessage({
+            role: "assistant",
+            content: `**${decision.title}** — running ${decision.steps.length} steps.`,
+            nextActions: decision.nextActions,
+          });
+          rememberWorking({
+            kind: "fact",
+            text: `Chain: ${decision.title} (${decision.steps.length} steps)`,
+          });
+          for (const step of decision.steps) {
+            const stepProposal = addProposal({
+              title: step.title,
+              summary: step.summary ?? "",
+              tool: step.tool,
+              input: step.input,
+              entityRefs: step.entityRefs,
+              confidence: decision.confidence,
+            });
+            if (toolRequiresApproval(step.tool)) {
+              // Chain pauses here — admin must approve this step before
+              // the rest of the chain resumes (resumption happens naturally
+              // via the post-approval runProposal follow-up).
+              addMessage({
+                role: "assistant",
+                content: `Step paused: **${step.title}** (edit/delete) — approve below to continue the chain.`,
+                proposalId: stepProposal.id,
+              });
+              break;
+            }
+            await autoExecute(stepProposal.id, step.title);
+          }
         } else if (decision.kind === "propose") {
           const proposal = addProposal({
             title: decision.title,
@@ -269,6 +301,31 @@ export function AgentSurface() {
             } else {
               // Chain auto-execute
               await runProposal(next.id, { humanApproved: false });
+            }
+          } else if (follow.decision.kind === "propose_multi") {
+            addMessage({
+              role: "assistant",
+              content: `**${follow.decision.title}** — running ${follow.decision.steps.length} steps.`,
+              nextActions: follow.decision.nextActions,
+            });
+            for (const step of follow.decision.steps) {
+              const stepProposal = addProposal({
+                title: step.title,
+                summary: step.summary ?? "",
+                tool: step.tool,
+                input: step.input,
+                entityRefs: step.entityRefs,
+                confidence: follow.decision.confidence,
+              });
+              if (toolRequiresApproval(step.tool)) {
+                addMessage({
+                  role: "assistant",
+                  content: `Step paused: **${step.title}** (edit/delete) — approve below to continue the chain.`,
+                  proposalId: stepProposal.id,
+                });
+                break;
+              }
+              await runProposal(stepProposal.id, { humanApproved: false });
             }
           } else if (follow.decision.kind === "clarify" && follow.clarification) {
             const cr = addClarification({
