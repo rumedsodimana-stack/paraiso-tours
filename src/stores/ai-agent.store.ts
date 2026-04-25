@@ -141,6 +141,11 @@ interface AgentState {
   setBusy: (busy: boolean) => void;
 
   addMessage: (msg: Omit<AgentMessage, "id" | "createdAt">) => AgentMessage;
+  /** Append text to an existing message's `content`. Used by the
+   *  streaming runtime to grow an assistant bubble character-by-
+   *  character as text deltas arrive over SSE. No-op if the message
+   *  doesn't exist (the bubble was reset between deltas). */
+  appendToMessage: (id: string, text: string) => void;
   clearMessages: () => void;
 
   addClarification: (
@@ -227,6 +232,15 @@ export const useAgent = create<AgentState>()(
         }));
         return full;
       },
+      appendToMessage: (id, text) =>
+        set((s) => {
+          if (!text) return s;
+          const idx = s.messages.findIndex((m) => m.id === id);
+          if (idx < 0) return s;
+          const next = s.messages.slice();
+          next[idx] = { ...next[idx], content: next[idx].content + text };
+          return { messages: next };
+        }),
       clearMessages: () => set({ messages: [] }),
 
       addClarification: (req) => {

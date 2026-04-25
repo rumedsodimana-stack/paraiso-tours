@@ -414,8 +414,12 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
     return { proposalIdForApproval: pendingProposalId };
   };
 
-  /** Run a fresh user turn through the native-tool-calling runtime. */
-  const sendTextNative = async (text: string, observation: AgentObservation) => {
+  /** Run a fresh user turn through the native-tool-calling runtime
+   *  (BATCH path — used as a fallback when SSE streaming fails). */
+  const sendTextNativeBatch = async (
+    text: string,
+    observation: AgentObservation
+  ) => {
     setPhase("decide");
     const response = await runAgentTurnAction({ request: text, observation });
     if (!response.ok) {
@@ -428,6 +432,213 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
     setPhase("act");
     applyNativeEvents(response);
   };
+
+  /** Run a fresh user turn through the SSE streaming endpoint.
+   *
+   *  This is the Cowork-grade path: tokens appear in the bubble
+   *  character-by-character, tool calls flip to "running" the moment
+   *  they begin, and the next iteration's text starts streaming the
+   *  instant tool results return.
+   *
+   *  Falls back to the batch path if the streaming endpoint errors out
+   *  (network drop, non-200 status, malformed SSE). The fallback
+   *  preserves the message the user already typed and lets them see a
+   *  result instead of an aborted bubble. */
+  const sendTextNativeStream = async (
+    text: string,
+    observation: AgentObservation
+  ): Promise<void> => {
+    setPhase("decide");
+
+    let response: Response;
+    try {
+      response = await fetch("/api/agent/turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request: text, observation }),
+      });
+    } catch (err) {
+      // Network-level failure — fall back to batch.
+      console.warn(
+        "[agent] streaming fetch failed, falling back to batch:",
+        err
+      );
+      await sendTextNativeBatch(text, observation);
+      return;
+    }
+
+    if (!response.ok || !response.body) {
+      const fallbackMsg = await response.text().catch(() => "");
+      console.warn(
+        `[agent] streaming endpoint returned ${response.status}, falling back to batch. Body: ${fallbackMsg.slice(0, 200)}`
+      );
+      await sendTextNativeBatch(text, observation);
+      return;
+    }
+
+    setPhase("act");
+
+    // Per-stream state mirroring `applyNativeEvents`. We can't reuse
+    // the batch helper because deltas update an existing bubble in place
+    // rather than appending whole messages.
+    const toolUseToProposal = new Map<string, string>();
+    const textBubbleByIndex = new Map<number, string>(); // contentBlockIndex → assistant message id
+
+    const handleEvent = (
+      ev: import("@/lib/agent-runtime").StreamEvent
+    ): void => {
+      switch (ev.kind) {
+        case "iteration_start": {
+          // Each iteration starts a fresh assistant turn. Reset the
+          // text-bubble tracker so a new message bubble is created the
+          // first time text arrives this iteration.
+          textBubbleByIndex.clear();
+          return;
+        }
+        case "assistant_text_delta": {
+          const existing = textBubbleByIndex.get(ev.index);
+          if (existing) {
+            // Append to the existing bubble — UI re-renders with the
+            // longer content.
+            useAgent.getState().appendToMessage(existing, ev.text);
+          } else {
+            // First delta for this content block: create the bubble.
+            const msg = addMessage({ role: "assistant", content: ev.text });
+            textBubbleByIndex.set(ev.index, msg.id);
+          }
+          return;
+        }
+        case "tool_use_start": {
+          // Surface the tool call as a pending proposal card. Input
+          // is empty at this point — the input_complete event below
+          // will fill it in as the model finishes deciding the args.
+          const proposal = addProposal({
+            title: ev.toolName,
+            summary: `Calling ${ev.toolName}…`,
+            tool: ev.toolName,
+            input: {},
+            confidence: 1,
+          });
+          toolUseToProposal.set(ev.toolUseId, proposal.id);
+          return;
+        }
+        case "tool_use_input_complete": {
+          // Model finished deciding tool args. Update the proposal's
+          // input so the UI can render the full call signature.
+          // (Currently the store doesn't expose an "update proposal
+          // input" mutator — the existing input shows on the card via
+          // the initial empty object. We could add one if the UX shows
+          // a need for it. For now this event is a no-op on the UI but
+          // keeps the wire format symmetric with the runtime.)
+          return;
+        }
+        case "tool_executing": {
+          // No-op for now — the proposal card already reads as
+          // "calling X". A spinner here would be a nice touch.
+          return;
+        }
+        case "tool_result": {
+          const proposalId = toolUseToProposal.get(ev.toolUseId);
+          if (proposalId) {
+            if (ev.ok) markProposalExecuted(proposalId, ev.data);
+            else markProposalFailed(proposalId, ev.summary);
+          }
+          addMessage({
+            role: "tool",
+            content: ev.summary,
+            toolName: ev.toolName,
+          });
+          rememberWorkingAndAnnounce(
+            {
+              kind: ev.ok ? "learning" : "fact",
+              text: ev.ok
+                ? `${ev.toolName} succeeded: ${ev.summary}`
+                : `${ev.toolName} failed: ${ev.summary}`,
+            },
+            ev.ok ? `✓ Ran ${ev.toolName}` : `⚠️ ${ev.toolName} failed`
+          );
+          return;
+        }
+        case "pending_approval": {
+          const proposal = addProposal({
+            title: ev.toolName,
+            summary: `Pending admin approval: ${ev.toolName}`,
+            tool: ev.toolName,
+            input: ev.input,
+            confidence: 1,
+          });
+          pendingTurnStates.current.set(proposal.id, ev.state);
+          addMessage({
+            role: "assistant",
+            content: `**${ev.toolName}** is a delete — approve below to run.`,
+            proposalId: proposal.id,
+          });
+          return;
+        }
+        case "complete": {
+          // Final text was already streamed via deltas. Nothing extra
+          // to render.
+          return;
+        }
+        case "error": {
+          addMessage({
+            role: "assistant",
+            content: `⚠️ ${ev.error}`,
+          });
+          return;
+        }
+      }
+    };
+
+    // SSE reader — split incoming bytes on `\n\n` and decode each
+    // `data: ...` payload as a StreamEvent. Terminator is `data: [DONE]`.
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let sep: number;
+        while ((sep = buffer.indexOf("\n\n")) !== -1) {
+          const block = buffer.slice(0, sep);
+          buffer = buffer.slice(sep + 2);
+          if (!block.trim()) continue;
+          const dataLine = block
+            .split("\n")
+            .find((l) => l.startsWith("data: "));
+          if (!dataLine) continue;
+          const payload = dataLine.slice(6);
+          if (payload === "[DONE]") return;
+          try {
+            const ev = JSON.parse(payload) as import(
+              "@/lib/agent-runtime"
+            ).StreamEvent;
+            handleEvent(ev);
+          } catch {
+            // Skip malformed frames silently.
+          }
+        }
+      }
+    } catch (err) {
+      addMessage({
+        role: "assistant",
+        content: `⚠️ Stream interrupted: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    } finally {
+      try {
+        reader.releaseLock();
+      } catch {
+        // already released
+      }
+    }
+  };
+
+  /** Public entry: prefer streaming; fall back to batch on failure. */
+  const sendTextNative = sendTextNativeStream;
 
   /** Resume a paused native turn after admin approves/rejects. */
   const resumeNative = async (

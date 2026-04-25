@@ -58,6 +58,59 @@ export type AgentEvent =
       data?: unknown;
     };
 
+/**
+ * Streaming event types — emitted progressively from `streamAgentTurn`
+ * over SSE. The client renders each one as it arrives:
+ *   - `assistant_text_delta` accumulates into a live-typing message bubble
+ *   - `tool_use_start` shows a "calling X" placeholder card
+ *   - `tool_use_input_complete` finalizes the input on the placeholder
+ *   - `tool_executing` flips the card to a spinner
+ *   - `tool_result` flips it to executed (success or failure)
+ *   - `pending_approval` ends the stream and surfaces the HITL gate
+ *   - `complete` ends the stream cleanly
+ *   - `error` ends the stream with a failure
+ *
+ * Transport: each event is JSON-encoded and emitted as one SSE
+ * `data: {...}\n\n` chunk by the API route — see /api/agent/turn.
+ */
+export type StreamEvent =
+  | { kind: "iteration_start"; iter: number }
+  | { kind: "assistant_text_delta"; index: number; text: string }
+  | {
+      kind: "tool_use_start";
+      toolUseId: string;
+      toolName: string;
+      index: number;
+    }
+  | {
+      kind: "tool_use_input_complete";
+      toolUseId: string;
+      input: Record<string, unknown>;
+    }
+  | { kind: "tool_executing"; toolUseId: string; toolName: string }
+  | {
+      kind: "tool_result";
+      toolUseId: string;
+      toolName: string;
+      ok: boolean;
+      summary: string;
+      data?: unknown;
+    }
+  | {
+      kind: "pending_approval";
+      toolName: string;
+      toolUseId: string;
+      input: unknown;
+      state: AgentTurnState;
+    }
+  | {
+      kind: "complete";
+      finalText: string;
+      iterations: number;
+      stopReason?: string;
+    }
+  | { kind: "error"; error: string };
+
 /** Anthropic content-block shape (we don't depend on the SDK). */
 type TextBlock = { type: "text"; text: string };
 type ToolUseBlock = {
@@ -783,4 +836,405 @@ function stringifyToolResultForModel(exec: {
     null,
     2
   );
+}
+
+// ── Streaming runtime ───────────────────────────────────────────────────
+//
+// Cowork-style live streaming: the model's text appears character-by-
+// character in the client UI, tool calls show "calling X" the moment
+// they begin (before their input is even fully decided), and the loop
+// continues across multiple iterations all within one persistent SSE
+// connection from the client.
+//
+// We use Anthropic's `stream: true` SSE protocol to receive the model's
+// content blocks as deltas, accumulate them server-side (text + tool
+// inputs both arrive incrementally), and forward higher-level events to
+// the client over our own SSE.
+
+/** Raw envelope from the Anthropic streaming SSE stream. */
+interface AnthropicStreamEvent {
+  event: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any;
+}
+
+/**
+ * Parse Anthropic's streaming SSE response. Yields each `event:` /
+ * `data:` pair as it arrives. Exits when the upstream stream closes.
+ *
+ * SSE framing: events are terminated by a blank line (`\n\n`), each
+ * line is `key: value`. We accumulate bytes into a buffer and split on
+ * the blank-line marker so partial chunks are handled correctly.
+ */
+async function* parseAnthropicSse(
+  response: Response
+): AsyncGenerator<AnthropicStreamEvent> {
+  if (!response.body) return;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let sep: number;
+      while ((sep = buffer.indexOf("\n\n")) !== -1) {
+        const block = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        if (!block.trim()) continue;
+
+        let eventName = "";
+        const dataLines: string[] = [];
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event: ")) eventName = line.slice(7).trim();
+          else if (line.startsWith("data: ")) dataLines.push(line.slice(6));
+        }
+        if (dataLines.length === 0) continue;
+
+        try {
+          const data = JSON.parse(dataLines.join("\n"));
+          yield { event: eventName, data };
+        } catch {
+          // skip malformed event silently — Anthropic occasionally sends
+          // non-JSON keepalive frames
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * One streaming Anthropic call. Yields raw deltas for the caller to
+ * accumulate into content blocks.
+ */
+async function* callAnthropicStreaming(
+  input: AnthropicCallInput
+): AsyncGenerator<AnthropicStreamEvent> {
+  const response = await fetch(normalizeMessagesUrl(input.baseUrl), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": input.apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: input.model,
+      max_tokens: input.maxTokens,
+      temperature: input.temperature,
+      system: input.systemPrompt,
+      tools: input.tools,
+      messages: input.messages,
+      stream: true,
+    }),
+    signal: AbortSignal.timeout(ITERATION_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Anthropic streaming call failed (${response.status}): ${body.slice(0, 400)}`
+    );
+  }
+
+  yield* parseAnthropicSse(response);
+}
+
+/** Per-content-block accumulator while parsing the SSE deltas. */
+type BlockAcc =
+  | { kind: "text"; text: string }
+  | { kind: "tool_use"; id: string; name: string; partialJson: string };
+
+/**
+ * Run one streaming iteration: send the current `messages` to Anthropic
+ * with stream=true, forward deltas as `StreamEvent`s, and return the
+ * fully-reconstructed content blocks + stop reason once the stream ends.
+ */
+async function* streamOneIteration(
+  creds: Awaited<ReturnType<typeof resolveAnthropicCredentials>>,
+  tools: AnthropicToolSpec[],
+  messages: Message[],
+  model: string,
+  systemPrompt: string
+): AsyncGenerator<
+  StreamEvent,
+  { content: ContentBlock[]; stopReason: string }
+> {
+  const blocks = new Map<number, BlockAcc>();
+  let stopReason = "end_turn";
+
+  for await (const ev of callAnthropicStreaming({
+    apiKey: creds.apiKey,
+    baseUrl: creds.baseUrl,
+    model,
+    systemPrompt,
+    messages,
+    tools,
+    maxTokens: creds.settings.ai.maxTokens,
+    temperature: creds.settings.ai.temperature,
+  })) {
+    switch (ev.event) {
+      case "content_block_start": {
+        const idx = ev.data?.index as number;
+        const cb = ev.data?.content_block;
+        if (!cb) break;
+        if (cb.type === "text") {
+          blocks.set(idx, { kind: "text", text: "" });
+        } else if (cb.type === "tool_use") {
+          blocks.set(idx, {
+            kind: "tool_use",
+            id: cb.id,
+            name: cb.name,
+            partialJson: "",
+          });
+          yield {
+            kind: "tool_use_start",
+            toolUseId: cb.id,
+            toolName: cb.name,
+            index: idx,
+          };
+        }
+        break;
+      }
+      case "content_block_delta": {
+        const idx = ev.data?.index as number;
+        const delta = ev.data?.delta;
+        const acc = blocks.get(idx);
+        if (!acc || !delta) break;
+        if (delta.type === "text_delta" && acc.kind === "text") {
+          acc.text += delta.text ?? "";
+          yield {
+            kind: "assistant_text_delta",
+            index: idx,
+            text: delta.text ?? "",
+          };
+        } else if (
+          delta.type === "input_json_delta" &&
+          acc.kind === "tool_use"
+        ) {
+          acc.partialJson += delta.partial_json ?? "";
+        }
+        break;
+      }
+      case "content_block_stop": {
+        const idx = ev.data?.index as number;
+        const acc = blocks.get(idx);
+        if (acc?.kind === "tool_use") {
+          let parsedInput: Record<string, unknown> = {};
+          try {
+            parsedInput = acc.partialJson ? JSON.parse(acc.partialJson) : {};
+          } catch {
+            parsedInput = {
+              _parse_error: true,
+              _raw_json: acc.partialJson.slice(0, 500),
+            };
+          }
+          yield {
+            kind: "tool_use_input_complete",
+            toolUseId: acc.id,
+            input: parsedInput,
+          };
+        }
+        break;
+      }
+      case "message_delta": {
+        if (ev.data?.delta?.stop_reason) {
+          stopReason = ev.data.delta.stop_reason;
+        }
+        break;
+      }
+      // message_start, message_stop, ping, error events — ignored
+      default:
+        break;
+    }
+  }
+
+  // Reconstruct content blocks in their original index order.
+  const content: ContentBlock[] = [];
+  const indices = [...blocks.keys()].sort((a, b) => a - b);
+  for (const idx of indices) {
+    const acc = blocks.get(idx);
+    if (!acc) continue;
+    if (acc.kind === "text") {
+      content.push({ type: "text", text: acc.text });
+    } else {
+      let parsedInput: Record<string, unknown> = {};
+      try {
+        parsedInput = acc.partialJson ? JSON.parse(acc.partialJson) : {};
+      } catch {
+        parsedInput = {};
+      }
+      content.push({
+        type: "tool_use",
+        id: acc.id,
+        name: acc.name,
+        input: parsedInput,
+      });
+    }
+  }
+
+  return { content, stopReason };
+}
+
+/**
+ * Stream a fresh user turn end-to-end: model token stream → server-side
+ * tool execution (parallel for safe tools) → next model stream → ... →
+ * complete or pending_approval. Each event is yielded immediately so
+ * the client renders progressively.
+ *
+ * The HITL gate is identical to the batch path's `runLoop`: deletes
+ * suspend the iteration with `partialToolResults` + `queuedDeletes` so
+ * the client's resume call can reconstruct a complete tool_result
+ * message. Resume itself stays on the batch path
+ * (`resumeAgentTurnAction`) — admin approvals are short and rare, no
+ * streaming win there.
+ */
+export async function* streamAgentTurn(
+  input: RunAgentTurnInput
+): AsyncGenerator<StreamEvent, void, unknown> {
+  let creds: Awaited<ReturnType<typeof resolveAnthropicCredentials>>;
+  try {
+    creds = await resolveAnthropicCredentials();
+  } catch (err) {
+    yield {
+      kind: "error",
+      error: err instanceof Error ? err.message : String(err),
+    };
+    return;
+  }
+
+  const tools = buildToolSpecs();
+  const systemPrompt = buildSystemPrompt(input.observation);
+  const messages: Message[] = [
+    ...(input.priorMessages ?? []),
+    { role: "user", content: input.userMessage },
+  ];
+
+  const startedAt = Date.now();
+
+  for (let iter = 0; iter < MAX_ITERATIONS; iter += 1) {
+    if (Date.now() - startedAt > TOTAL_TURN_TIMEOUT_MS) {
+      yield {
+        kind: "error",
+        error: `Agent turn exceeded ${TOTAL_TURN_TIMEOUT_MS / 1000}s ceiling.`,
+      };
+      return;
+    }
+
+    yield { kind: "iteration_start", iter };
+
+    let iterationResult: { content: ContentBlock[]; stopReason: string };
+    try {
+      iterationResult = yield* streamOneIteration(
+        creds,
+        tools,
+        messages,
+        creds.model,
+        systemPrompt
+      );
+    } catch (err) {
+      yield {
+        kind: "error",
+        error: err instanceof Error ? err.message : String(err),
+      };
+      return;
+    }
+
+    const { content, stopReason } = iterationResult;
+    messages.push({ role: "assistant", content });
+
+    const toolUses = content.filter(
+      (b): b is ToolUseBlock => b.type === "tool_use"
+    );
+    if (toolUses.length === 0) {
+      const finalText = content
+        .filter((b): b is TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
+        .trim();
+      yield {
+        kind: "complete",
+        finalText,
+        iterations: iter + 1,
+        stopReason,
+      };
+      return;
+    }
+
+    // Partition + parallel execute — same logic as runLoop.
+    const safeBlocks: ToolUseBlock[] = [];
+    const deleteBlocks: ToolUseBlock[] = [];
+    for (const b of toolUses) {
+      const tool = getTool(b.name);
+      if (tool && tool.category === "delete") deleteBlocks.push(b);
+      else safeBlocks.push(b);
+    }
+
+    const toolResults: ToolResultBlock[] = [];
+    if (safeBlocks.length > 0) {
+      // Surface "executing" placeholders for every safe tool the moment
+      // we kick them off — UI flips proposal cards from "ready" to
+      // "running" while the parallel awaits work in the background.
+      for (const b of safeBlocks) {
+        yield { kind: "tool_executing", toolUseId: b.id, toolName: b.name };
+      }
+      const execs = await Promise.all(
+        safeBlocks.map((b) => executeToolUse(b, false))
+      );
+      for (let i = 0; i < safeBlocks.length; i += 1) {
+        const b = safeBlocks[i];
+        const exec = execs[i];
+        yield {
+          kind: "tool_result",
+          toolUseId: b.id,
+          toolName: exec.toolName,
+          ok: exec.ok,
+          summary: exec.summary,
+          data: exec.data,
+        };
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: b.id,
+          content: stringifyToolResultForModel(exec),
+          ...(exec.ok ? {} : { is_error: true }),
+        });
+      }
+    }
+
+    if (deleteBlocks.length > 0) {
+      const [first, ...rest] = deleteBlocks;
+      yield {
+        kind: "pending_approval",
+        toolName: first.name,
+        toolUseId: first.id,
+        input: first.input,
+        state: {
+          messages,
+          model: creds.model,
+          systemPrompt,
+          pendingToolUseId: first.id,
+          pendingToolName: first.name,
+          pendingToolInput: first.input,
+          partialToolResults: toolResults,
+          queuedDeletes: rest.map((b) => ({
+            id: b.id,
+            name: b.name,
+            input: b.input,
+          })),
+        },
+      };
+      return;
+    }
+
+    messages.push({ role: "user", content: toolResults });
+  }
+
+  yield {
+    kind: "error",
+    error: `Agent did not finish within ${MAX_ITERATIONS} tool iterations.`,
+  };
 }
