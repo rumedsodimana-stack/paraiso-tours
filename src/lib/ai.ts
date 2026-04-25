@@ -863,6 +863,12 @@ function extractJsonBlock(text: string) {
   if (fenced?.[1]) {
     return fenced[1].trim();
   }
+  // Also accept generic ``` fences that contain JSON-looking content.
+  const generic = text.match(/```\s*([\s\S]*?)```/);
+  if (generic?.[1]) {
+    const inner = generic[1].trim();
+    if (inner.startsWith("{") && inner.endsWith("}")) return inner;
+  }
 
   const firstBrace = text.indexOf("{");
   const lastBrace = text.lastIndexOf("}");
@@ -873,24 +879,53 @@ function extractJsonBlock(text: string) {
   return text.trim();
 }
 
+/** True if a string is probably JSON (starts with { or [). */
+function looksLikeJson(s: string): boolean {
+  const t = s.trim();
+  return t.startsWith("{") || t.startsWith("[");
+}
+
 export async function generateAiJsonResult<T>(
   request: AiTextRequest
 ): Promise<{ data: T; response: AiTextResponse }> {
   const response = await generateAiText(request);
   const jsonText = extractJsonBlock(response.text);
 
-  try {
-    return {
-      data: JSON.parse(jsonText) as T,
-      response,
-    };
-  } catch (error) {
-    throw new Error(
-      `AI returned invalid JSON. ${
-        error instanceof Error ? error.message : "Unknown parse failure."
-      }`
-    );
+  // Fast path — the model returned clean JSON.
+  if (looksLikeJson(jsonText)) {
+    try {
+      return { data: JSON.parse(jsonText) as T, response };
+    } catch {
+      /* fall through to repair attempts */
+    }
   }
+
+  // Repair attempt 1: balance trailing braces (truncation case).
+  if (looksLikeJson(jsonText)) {
+    const opens = (jsonText.match(/\{/g) ?? []).length;
+    const closes = (jsonText.match(/\}/g) ?? []).length;
+    if (opens > closes) {
+      const repaired = jsonText + "}".repeat(opens - closes);
+      try {
+        return { data: JSON.parse(repaired) as T, response };
+      } catch {
+        /* keep falling through */
+      }
+    }
+  }
+
+  // Repair attempt 2: wrap raw prose as a default `answer` decision so the
+  // OODA loop never crashes on a model that ignored the JSON contract.
+  // The downstream `coerceDecision` accepts this shape verbatim.
+  return {
+    data: {
+      kind: "answer",
+      response: response.text.trim(),
+      nextActions: [],
+      __coerced_from_prose: true,
+    } as unknown as T,
+    response,
+  };
 }
 
 export async function generateAiJson<T>(request: AiTextRequest): Promise<T> {

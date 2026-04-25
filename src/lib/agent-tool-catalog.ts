@@ -138,6 +138,10 @@ export const TOOL_CATEGORY: Record<string, ToolCategory> = {
   // a specific tool for. Read-only; draft_message only returns text.
   inspect_any: "read",
   draft_message: "read",
+
+  // Self-extension: agent records new procedures + context.
+  register_procedure: "create",
+  remember_context: "create",
 };
 
 export function getToolCategory(name: string): ToolCategory | null {

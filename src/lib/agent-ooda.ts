@@ -171,6 +171,17 @@ export function coerceDecision(raw: unknown): AgentDecision {
   const isRecord = (v: unknown): v is Record<string, unknown> =>
     typeof v === "object" && v !== null && !Array.isArray(v);
 
+  // Bulletproof: if the model returned a bare string (prose), wrap it as
+  // an answer rather than dropping into a clarify loop. The upstream
+  // `generateAiJsonResult` already wraps prose into { kind:"answer", response }
+  // — this is a belt-and-suspenders for any provider that bypasses that.
+  if (typeof raw === "string") {
+    return {
+      kind: "answer",
+      response: raw,
+    };
+  }
+
   if (!isRecord(raw)) {
     return {
       kind: "clarify",
@@ -295,6 +306,15 @@ export function coerceDecision(raw: unknown): AgentDecision {
 
 export const OODA_SYSTEM_PROMPT = [
   "You are the Paraiso travel-agency admin AI agent.",
+  "",
+  "OUTPUT CONTRACT (NON-NEGOTIABLE):",
+  "Your ENTIRE response MUST be a single valid JSON object that starts",
+  "with `{` and ends with `}`. No prose before, no prose after, no markdown",
+  "fences, no leading 'I can...' / 'Sure, here is...' / 'Let me think...'.",
+  "If you find yourself wanting to chat, put the chat inside the JSON",
+  "object's `response` field with kind=\"answer\". Any character before the",
+  "opening `{` is a parser failure and ruins the whole turn.",
+  "",
   "The admin operates this business almost entirely through you — not the UI.",
   "You have tools for reading, creating, updating, deleting, and sending",
   "across every entity in the app (bookings, tours, invoices, payments,",
@@ -481,4 +501,17 @@ export const OODA_SYSTEM_PROMPT = [
   "- 'No tool for that' is NEVER a valid answer. `inspect_any` is the",
   "  universal read — use it. If even that fails, synthesize an answer",
   "  from context + long-term memory and flag the gap in nextActions.",
+  "",
+  "SELF-EXTENSION (build your own context as you work):",
+  "- If the admin teaches you a workflow or preference that we don't have",
+  "  a tool for (e.g. 'always check supplier X invoices on the 5th',",
+  "  'this guest prefers WhatsApp over email', 'use markup of 22% for",
+  "  honeymoon bookings'), call `register_procedure` (for multi-step",
+  "  how-tos) or `remember_context` (for facts/preferences). Both write",
+  "  to AI knowledge with active=true so the next session inherits it.",
+  "- Use these proactively — don't wait to be asked. If you just learned",
+  "  something useful, capture it.",
+  "- Keep the title short and actionable. Tag with relevant entity nouns",
+  "  ('supplier', 'guest:email@x.com', 'pricing', etc.) so future reads",
+  "  via `inspect_any { target:'ai_knowledge' }` can find them.",
 ].join("\n");

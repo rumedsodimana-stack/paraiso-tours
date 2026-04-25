@@ -1867,6 +1867,70 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
     },
   },
 
+  // ── SELF-EXTENSION (meta-capability) ─────────────────────────────────
+  // The agent can capture new procedures and context mid-conversation so
+  // the next session inherits what we learned. This is how it "creates
+  // tools and context" without code changes — it writes durable knowledge
+  // documents that surface in the system prompt's live-data block.
+  {
+    name: "register_procedure",
+    category: "create",
+    summary:
+      "Capture a new how-to or playbook the agent can follow next time. Use when the admin teaches you a workflow we don't have a tool for. The procedure is saved to AI knowledge (active) and reappears in future contexts.",
+    inputSchema: z.object({
+      title: z.string().min(3).max(200),
+      content: z.string().min(10).max(8000),
+      tags: z.array(z.string().max(60)).max(8).optional(),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          title: z.string().min(3).max(200),
+          content: z.string().min(10).max(8000),
+          tags: z.array(z.string().max(60)).max(8).optional(),
+        })
+        .parse(raw);
+      return safe("register_procedure", async () => {
+        const { createAiKnowledgeDocument } = await import("./db");
+        return await createAiKnowledgeDocument({
+          title: input.title,
+          content: input.content,
+          sourceType: "learned",
+          tags: input.tags ?? ["procedure"],
+          active: true,
+        } as unknown as Parameters<typeof createAiKnowledgeDocument>[0]);
+      });
+    },
+  },
+  {
+    name: "remember_context",
+    category: "create",
+    summary:
+      "Pin an important fact, preference, or mid-conversation observation so it persists for future sessions (saved as an AI knowledge note tagged 'context'). Use for things like 'admin prefers USD over EUR', 'guest X always books two rooms', 'supplier Y invoices in arrears'.",
+    inputSchema: z.object({
+      fact: z.string().min(5).max(2000),
+      tags: z.array(z.string().max(60)).max(8).optional(),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          fact: z.string().min(5).max(2000),
+          tags: z.array(z.string().max(60)).max(8).optional(),
+        })
+        .parse(raw);
+      return safe("remember_context", async () => {
+        const { createAiKnowledgeDocument } = await import("./db");
+        return await createAiKnowledgeDocument({
+          title: input.fact.slice(0, 80),
+          content: input.fact,
+          sourceType: "learned",
+          tags: input.tags ?? ["context"],
+          active: true,
+        } as unknown as Parameters<typeof createAiKnowledgeDocument>[0]);
+      });
+    },
+  },
+
   // ── UNIVERSAL FALLBACK ──────────────────────────────────────────────
   // When no specific tool fits, this dispatcher fuzzy-matches a free-form
   // target string ("last payment", "tours this week", "employee salaries")
