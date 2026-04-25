@@ -78,6 +78,18 @@ type Message = { role: "user" | "assistant"; content: ContentBlock[] | string };
 /**
  * Conversation state for HITL resume. The client receives this verbatim
  * when a delete is pending and posts it back on approve/reject.
+ *
+ * Anthropic requires that EVERY tool_use block in a prior assistant
+ * message has a matching tool_result block in the next user message.
+ * When the model emits multiple tool_use blocks in one turn (parallel
+ * tool calling) and one of them is a delete that needs HITL approval,
+ * we must remember the safe tools we already executed (`partialToolResults`)
+ * so the next user-message contains a full set of results — including
+ * for the safe tools we ran while the admin was deciding.
+ *
+ * If the same turn has multiple delete tools, we suspend on each one
+ * sequentially: the first goes into `pending*`, the rest go into
+ * `queuedDeletes` and are processed on each resume in order.
  */
 export interface AgentTurnState {
   /** Full Anthropic messages array (user + assistant turns + tool_results). */
@@ -89,6 +101,18 @@ export interface AgentTurnState {
   pendingToolUseId: string;
   pendingToolName: string;
   pendingToolInput: unknown;
+  /** Tool_result blocks for safe tools that already ran in this iteration.
+   *  Combined with the pending tool's result on resume to form the next
+   *  user-message content. */
+  partialToolResults?: ToolResultBlock[];
+  /** Other delete tools from the same iteration, queued behind the
+   *  current `pending*`. Each is surfaced for HITL approval on resume,
+   *  in order, before the loop continues. */
+  queuedDeletes?: Array<{
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+  }>;
 }
 
 export type AgentTurnOutcome =
@@ -373,6 +397,181 @@ function buildSystemPrompt(observation: AgentObservation): string {
 }
 
 /**
+ * Iteration loop body — shared between fresh turns and resumes. Runs
+ * model → tool execution → loop, with parallel tool execution within
+ * each iteration. Returns when the model finishes (no more tool_use),
+ * a delete shows up that needs HITL approval, or the iteration cap hits.
+ *
+ * Inputs are the live conversation `messages` (mutated as the loop
+ * progresses) plus the `events` array (also mutated, surfaced to the
+ * client). This is intentional — the caller pre-seeds both with
+ * whatever the current request needs (a fresh user message, a resumed
+ * tool_result, etc.).
+ */
+async function runLoop(
+  creds: Awaited<ReturnType<typeof resolveAnthropicCredentials>>,
+  tools: AnthropicToolSpec[],
+  messages: Message[],
+  model: string,
+  systemPrompt: string,
+  startedAt: number,
+  events: AgentEvent[]
+): Promise<AgentTurnOutcome> {
+  for (let iter = 0; iter < MAX_ITERATIONS; iter += 1) {
+    if (Date.now() - startedAt > TOTAL_TURN_TIMEOUT_MS) {
+      return {
+        kind: "error",
+        events,
+        error: `Agent turn exceeded ${TOTAL_TURN_TIMEOUT_MS / 1000}s ceiling. Try a more focused request.`,
+      };
+    }
+
+    let response: AnthropicCallOutput;
+    try {
+      response = await callAnthropicWithTools({
+        apiKey: creds.apiKey,
+        baseUrl: creds.baseUrl,
+        model,
+        systemPrompt,
+        messages,
+        tools,
+        maxTokens: creds.settings.ai.maxTokens,
+        temperature: creds.settings.ai.temperature,
+      });
+    } catch (err) {
+      return {
+        kind: "error",
+        events,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+
+    // Persist the assistant turn so the next iteration sees its own
+    // tool_use blocks (Anthropic requires every tool_use have a matching
+    // tool_result in the next user message for correlation).
+    messages.push({ role: "assistant", content: response.content });
+
+    // Surface text deltas as events.
+    for (const block of response.content) {
+      if (block.type === "text" && block.text) {
+        events.push({ kind: "assistant_text", content: block.text });
+      }
+    }
+
+    // Find tool_use blocks. If none, the model is done.
+    const toolUses = response.content.filter(
+      (b): b is ToolUseBlock => b.type === "tool_use"
+    );
+    if (toolUses.length === 0) {
+      const finalText = response.content
+        .filter((b): b is TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
+        .trim();
+      return {
+        kind: "complete",
+        events,
+        finalText,
+        iterations: iter + 1,
+        stopReason: response.stopReason,
+      };
+    }
+
+    // Surface every tool_use as a UI event upfront — the client renders
+    // proposal cards for the whole batch immediately, then transitions
+    // each one to "executed" as its tool_result event arrives.
+    for (const b of toolUses) {
+      events.push({
+        kind: "tool_use",
+        toolName: b.name,
+        input: b.input,
+        toolUseId: b.id,
+      });
+    }
+
+    // Partition: deletes need HITL approval, everything else can run.
+    const safeBlocks: ToolUseBlock[] = [];
+    const deleteBlocks: ToolUseBlock[] = [];
+    for (const b of toolUses) {
+      const tool = getTool(b.name);
+      if (tool && tool.category === "delete") deleteBlocks.push(b);
+      else safeBlocks.push(b);
+    }
+
+    // Run all safe tools in parallel — if the model emits 5 reads in
+    // one turn, that's 5 concurrent executions instead of 5 sequential.
+    // Each tool's audit-log write happens inside `executeToolUse`, so
+    // the audit trail stays correct even with parallelism.
+    const toolResults: ToolResultBlock[] = [];
+    if (safeBlocks.length > 0) {
+      const execs = await Promise.all(
+        safeBlocks.map((b) => executeToolUse(b, false))
+      );
+      for (let i = 0; i < safeBlocks.length; i += 1) {
+        const b = safeBlocks[i];
+        const exec = execs[i];
+        events.push({
+          kind: "tool_result",
+          toolUseId: b.id,
+          toolName: exec.toolName,
+          ok: exec.ok,
+          summary: exec.summary,
+          data: exec.data,
+        });
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: b.id,
+          content: stringifyToolResultForModel(exec),
+          ...(exec.ok ? {} : { is_error: true }),
+        });
+      }
+    }
+
+    // Any deletes? Suspend on the first; queue the rest. The safe tools
+    // we already ran are saved as `partialToolResults` so the resume
+    // can reconstruct a complete tool_result message — Anthropic
+    // requires matching tool_results for every tool_use in the prior
+    // assistant message, or it'll reject the next call.
+    if (deleteBlocks.length > 0) {
+      const [first, ...rest] = deleteBlocks;
+      return {
+        kind: "pending_approval",
+        events,
+        pending: {
+          toolName: first.name,
+          toolUseId: first.id,
+          input: first.input,
+        },
+        state: {
+          messages,
+          model,
+          systemPrompt,
+          pendingToolUseId: first.id,
+          pendingToolName: first.name,
+          pendingToolInput: first.input,
+          partialToolResults: toolResults,
+          queuedDeletes: rest.map((b) => ({
+            id: b.id,
+            name: b.name,
+            input: b.input,
+          })),
+        },
+      };
+    }
+
+    // All safe — feed tool_results back as one user message and continue.
+    messages.push({ role: "user", content: toolResults });
+  }
+
+  // Iteration cap hit — bail out.
+  return {
+    kind: "error",
+    events,
+    error: `Agent did not finish within ${MAX_ITERATIONS} tool iterations. The conversation has been preserved; rephrase or narrow the request.`,
+  };
+}
+
+/**
  * Run the full server-side agent loop: tool-call → execute → loop, until
  * the model is done (no more tool_use) or hits a delete that needs admin
  * approval.
@@ -403,133 +602,15 @@ export async function runAgentTurn(
     { role: "user", content: input.userMessage },
   ];
 
-  for (let iter = 0; iter < MAX_ITERATIONS; iter += 1) {
-    if (Date.now() - startedAt > TOTAL_TURN_TIMEOUT_MS) {
-      return {
-        kind: "error",
-        events,
-        error: `Agent turn exceeded ${TOTAL_TURN_TIMEOUT_MS / 1000}s ceiling. Try a more focused request.`,
-      };
-    }
-
-    let response: AnthropicCallOutput;
-    try {
-      response = await callAnthropicWithTools({
-        apiKey: creds.apiKey,
-        baseUrl: creds.baseUrl,
-        model: creds.model,
-        systemPrompt,
-        messages,
-        tools,
-        maxTokens: creds.settings.ai.maxTokens,
-        temperature: creds.settings.ai.temperature,
-      });
-    } catch (err) {
-      return {
-        kind: "error",
-        events,
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
-
-    // Persist the assistant turn so the next iteration sees its own
-    // tool_use blocks (Anthropic requires this for tool_result correlation).
-    messages.push({ role: "assistant", content: response.content });
-
-    // Surface text deltas as events.
-    for (const block of response.content) {
-      if (block.type === "text" && block.text) {
-        events.push({ kind: "assistant_text", content: block.text });
-      }
-    }
-
-    // Find tool_use blocks. If none, the model is done.
-    const toolUses = response.content.filter(
-      (b): b is ToolUseBlock => b.type === "tool_use"
-    );
-    if (toolUses.length === 0) {
-      const finalText = response.content
-        .filter((b): b is TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
-      return {
-        kind: "complete",
-        events,
-        finalText,
-        iterations: iter + 1,
-        stopReason: response.stopReason,
-      };
-    }
-
-    // Execute each tool_use sequentially. Delete tools suspend the loop
-    // for HITL approval — we return the partial events + state so the
-    // client can render and the admin can approve.
-    const toolResults: ToolResultBlock[] = [];
-    for (const block of toolUses) {
-      const tool = getTool(block.name);
-      if (tool && tool.category === "delete") {
-        // Suspend — don't execute, return state for the client.
-        events.push({
-          kind: "tool_use",
-          toolName: block.name,
-          input: block.input,
-          toolUseId: block.id,
-        });
-        return {
-          kind: "pending_approval",
-          events,
-          pending: {
-            toolName: block.name,
-            toolUseId: block.id,
-            input: block.input,
-          },
-          state: {
-            messages,
-            model: creds.model,
-            systemPrompt,
-            pendingToolUseId: block.id,
-            pendingToolName: block.name,
-            pendingToolInput: block.input,
-          },
-        };
-      }
-
-      events.push({
-        kind: "tool_use",
-        toolName: block.name,
-        input: block.input,
-        toolUseId: block.id,
-      });
-
-      const exec = await executeToolUse(block, false);
-      events.push({
-        kind: "tool_result",
-        toolUseId: block.id,
-        toolName: exec.toolName,
-        ok: exec.ok,
-        summary: exec.summary,
-        data: exec.data,
-      });
-
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: block.id,
-        content: stringifyToolResultForModel(exec),
-        ...(exec.ok ? {} : { is_error: true }),
-      });
-    }
-
-    // Feed tool results back into the conversation as the next user turn.
-    messages.push({ role: "user", content: toolResults });
-  }
-
-  // Iteration cap hit — bail out.
-  return {
-    kind: "error",
-    events,
-    error: `Agent did not finish within ${MAX_ITERATIONS} tool iterations. The conversation has been preserved; rephrase or narrow the request.`,
-  };
+  return runLoop(
+    creds,
+    tools,
+    messages,
+    creds.model,
+    systemPrompt,
+    startedAt,
+    events
+  );
 }
 
 /**
@@ -568,7 +649,7 @@ export async function resumeAgentTurn(
   const tools = buildToolSpecs();
   const messages: Message[] = [...input.state.messages];
 
-  // Build the tool_result for the pending tool_use.
+  // Build the tool_result for the pending tool_use (approved or rejected).
   const pendingToolUseBlock: ToolUseBlock = {
     type: "tool_use",
     id: input.state.pendingToolUseId,
@@ -576,7 +657,7 @@ export async function resumeAgentTurn(
     input: input.state.pendingToolInput as Record<string, unknown>,
   };
 
-  let resultBlock: ToolResultBlock;
+  let pendingResultBlock: ToolResultBlock;
   if (input.approved) {
     const exec = await executeToolUse(pendingToolUseBlock, true);
     events.push({
@@ -587,7 +668,7 @@ export async function resumeAgentTurn(
       summary: exec.summary,
       data: exec.data,
     });
-    resultBlock = {
+    pendingResultBlock = {
       type: "tool_result",
       tool_use_id: input.state.pendingToolUseId,
       content: stringifyToolResultForModel(exec),
@@ -602,7 +683,7 @@ export async function resumeAgentTurn(
       ok: false,
       summary: `Rejected by admin: ${reason}`,
     });
-    resultBlock = {
+    pendingResultBlock = {
       type: "tool_result",
       tool_use_id: input.state.pendingToolUseId,
       content: `Action rejected by admin. Reason: ${reason}. Do NOT retry the same delete; pivot or explain.`,
@@ -610,126 +691,61 @@ export async function resumeAgentTurn(
     };
   }
 
-  messages.push({ role: "user", content: [resultBlock] });
+  // Cumulative tool_results for THIS iteration: any safe tools that ran
+  // before the suspension + the result we just computed for the pending
+  // delete. Anthropic requires a result for every tool_use in the prior
+  // assistant message, so we reassemble the full set here.
+  const cumulativeResults: ToolResultBlock[] = [
+    ...(input.state.partialToolResults ?? []),
+    pendingResultBlock,
+  ];
 
-  // Continue the loop with the same system prompt + tool catalog.
-  for (let iter = 0; iter < MAX_ITERATIONS; iter += 1) {
-    if (Date.now() - startedAt > TOTAL_TURN_TIMEOUT_MS) {
-      return {
-        kind: "error",
-        events,
-        error: `Resume exceeded ${TOTAL_TURN_TIMEOUT_MS / 1000}s ceiling.`,
-      };
-    }
-
-    let response: AnthropicCallOutput;
-    try {
-      response = await callAnthropicWithTools({
-        apiKey: creds.apiKey,
-        baseUrl: creds.baseUrl,
+  // Multiple deletes in the same iteration? Suspend on the next one,
+  // carrying the cumulative results forward.
+  const queuedDeletes = input.state.queuedDeletes ?? [];
+  if (queuedDeletes.length > 0) {
+    const [next, ...remaining] = queuedDeletes;
+    events.push({
+      kind: "tool_use",
+      toolName: next.name,
+      input: next.input,
+      toolUseId: next.id,
+    });
+    return {
+      kind: "pending_approval",
+      events,
+      pending: {
+        toolName: next.name,
+        toolUseId: next.id,
+        input: next.input,
+      },
+      state: {
+        messages,
         model: input.state.model,
         systemPrompt: input.state.systemPrompt,
-        messages,
-        tools,
-        maxTokens: creds.settings.ai.maxTokens,
-        temperature: creds.settings.ai.temperature,
-      });
-    } catch (err) {
-      return {
-        kind: "error",
-        events,
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
-
-    messages.push({ role: "assistant", content: response.content });
-
-    for (const block of response.content) {
-      if (block.type === "text" && block.text) {
-        events.push({ kind: "assistant_text", content: block.text });
-      }
-    }
-
-    const toolUses = response.content.filter(
-      (b): b is ToolUseBlock => b.type === "tool_use"
-    );
-    if (toolUses.length === 0) {
-      const finalText = response.content
-        .filter((b): b is TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
-      return {
-        kind: "complete",
-        events,
-        finalText,
-        iterations: iter + 1,
-        stopReason: response.stopReason,
-      };
-    }
-
-    const toolResults: ToolResultBlock[] = [];
-    for (const block of toolUses) {
-      const tool = getTool(block.name);
-      if (tool && tool.category === "delete") {
-        events.push({
-          kind: "tool_use",
-          toolName: block.name,
-          input: block.input,
-          toolUseId: block.id,
-        });
-        return {
-          kind: "pending_approval",
-          events,
-          pending: {
-            toolName: block.name,
-            toolUseId: block.id,
-            input: block.input,
-          },
-          state: {
-            messages,
-            model: input.state.model,
-            systemPrompt: input.state.systemPrompt,
-            pendingToolUseId: block.id,
-            pendingToolName: block.name,
-            pendingToolInput: block.input,
-          },
-        };
-      }
-
-      events.push({
-        kind: "tool_use",
-        toolName: block.name,
-        input: block.input,
-        toolUseId: block.id,
-      });
-
-      const exec = await executeToolUse(block, false);
-      events.push({
-        kind: "tool_result",
-        toolUseId: block.id,
-        toolName: exec.toolName,
-        ok: exec.ok,
-        summary: exec.summary,
-        data: exec.data,
-      });
-
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: block.id,
-        content: stringifyToolResultForModel(exec),
-        ...(exec.ok ? {} : { is_error: true }),
-      });
-    }
-
-    messages.push({ role: "user", content: toolResults });
+        pendingToolUseId: next.id,
+        pendingToolName: next.name,
+        pendingToolInput: next.input,
+        partialToolResults: cumulativeResults,
+        queuedDeletes: remaining,
+      },
+    };
   }
 
-  return {
-    kind: "error",
-    events,
-    error: `Agent did not finish within ${MAX_ITERATIONS} iterations after resume.`,
-  };
+  // All deletes in this iteration resolved — push the complete tool_result
+  // user message and let the loop continue with the same model + system
+  // prompt the suspended turn was using.
+  messages.push({ role: "user", content: cumulativeResults });
+
+  return runLoop(
+    creds,
+    tools,
+    messages,
+    input.state.model,
+    input.state.systemPrompt,
+    startedAt,
+    events
+  );
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
