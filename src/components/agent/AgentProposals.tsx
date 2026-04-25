@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, X, Zap } from "lucide-react";
-import { useAgent, selectPendingProposals } from "@/stores/ai-agent.store";
+import { useAgent, type AgentProposal } from "@/stores/ai-agent.store";
 
 interface Props {
   /** Called when the admin approves — host is responsible for actually
@@ -17,7 +17,18 @@ interface Props {
  * HITL gate the spec asks for.
  */
 export function AgentProposals({ onApprove, onReject }: Props) {
-  const pending = useAgent(selectPendingProposals);
+  // ⚠️  Zustand v5 + React 19: subscribe to the raw map and derive the
+  // sorted/filtered list inside `useMemo`. A selector that returns a fresh
+  // `Object.values(...).filter(...).sort(...)` array breaks the
+  // useSyncExternalStore snapshot caching → infinite re-render.
+  const proposalsMap = useAgent((s) => s.proposals);
+  const pending = useMemo<AgentProposal[]>(
+    () =>
+      Object.values(proposalsMap)
+        .filter((p) => p.status === "pending")
+        .sort((a, b) => b.createdAt - a.createdAt),
+    [proposalsMap]
+  );
   const approveProposal = useAgent((s) => s.approveProposal);
   const rejectProposal = useAgent((s) => s.rejectProposal);
   const [busy, setBusy] = useState<string | null>(null);

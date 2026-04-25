@@ -13,12 +13,12 @@
 
 "use client";
 
-import { useTransition } from "react";
+import { useMemo, useTransition } from "react";
 import {
   useAgent,
-  selectPendingClarification,
-  selectPendingProposals,
   type AgentMessage,
+  type AgentProposal,
+  type ClarificationRequest,
 } from "@/stores/ai-agent.store";
 import { useAdminWorkspace } from "@/stores/admin-workspace.store";
 import type { AgentNextAction } from "@/lib/agent-ooda";
@@ -39,8 +39,8 @@ export interface AgentLoopApi {
   phase: ReturnType<typeof useAgent.getState>["phase"];
   busy: boolean;
   messages: AgentMessage[];
-  pendingClarification: ReturnType<typeof selectPendingClarification>;
-  pendingProposals: ReturnType<typeof selectPendingProposals>;
+  pendingClarification: ClarificationRequest | null;
+  pendingProposals: AgentProposal[];
   workingMemory: ReturnType<typeof useAgent.getState>["workingMemory"];
   longTermMemory: ReturnType<typeof useAgent.getState>["longTermMemory"];
 
@@ -61,10 +61,26 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
   const phase = useAgent((s) => s.phase);
   const busy = useAgent((s) => s.busy);
   const messages = useAgent((s) => s.messages);
-  const pendingClarification = useAgent(selectPendingClarification);
-  const pendingProposals = useAgent(selectPendingProposals);
+  // ⚠️  Zustand v5 + React 19: subscribe to the raw maps (stable references
+  // when nothing changed) and derive filtered/sorted lists in `useMemo`.
+  // Returning a fresh `Object.values(...).filter(...).sort(...)` from a
+  // selector causes "getSnapshot should be cached" → infinite re-render.
+  const clarificationsMap = useAgent((s) => s.clarifications);
+  const proposalsMap = useAgent((s) => s.proposals);
   const workingMemory = useAgent((s) => s.workingMemory);
   const longTermMemory = useAgent((s) => s.longTermMemory);
+
+  const pendingClarification = useMemo<ClarificationRequest | null>(
+    () => Object.values(clarificationsMap).find((c) => !c.resolvedAt) ?? null,
+    [clarificationsMap]
+  );
+  const pendingProposals = useMemo<AgentProposal[]>(
+    () =>
+      Object.values(proposalsMap)
+        .filter((p) => p.status === "pending")
+        .sort((a, b) => b.createdAt - a.createdAt),
+    [proposalsMap]
+  );
 
   const addMessage = useAgent((s) => s.addMessage);
   const addClarification = useAgent((s) => s.addClarification);
