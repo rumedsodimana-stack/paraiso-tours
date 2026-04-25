@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useMemo, useRef, useTransition } from "react";
 import {
   useAgent,
   type AgentMessage,
@@ -22,8 +22,15 @@ import {
   type MemoryEntry,
 } from "@/stores/ai-agent.store";
 import { useAdminWorkspace } from "@/stores/admin-workspace.store";
-import type { AgentNextAction } from "@/lib/agent-ooda";
+import type { AgentNextAction, AgentObservation } from "@/lib/agent-ooda";
 import { decideAgentAction, executeProposalAction } from "@/app/actions/agent";
+import {
+  runAgentTurnAction,
+  resumeAgentTurnAction,
+  isNativeAgentRuntimeAvailableAction,
+  type AgentTurnActionResponse,
+} from "@/app/actions/agent-turn";
+import type { AgentTurnState } from "@/lib/agent-runtime";
 import { toolRequiresApproval } from "@/lib/agent-tool-catalog";
 
 export interface PageContext {
@@ -113,6 +120,19 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
   const recent = useAdminWorkspace((s) => s.recent);
 
   const [, startTransition] = useTransition();
+
+  // ── Native-runtime cache ─────────────────────────────────────────
+  // First sendText probes whether the configured provider is Anthropic
+  // (and AI is enabled+configured). Result is cached for the rest of the
+  // session — we don't expect the provider to flip mid-conversation.
+  // null = unknown / not yet probed; true = use native path; false = use
+  // legacy JSON-mode path.
+  const nativeRuntimeAvailable = useRef<boolean | null>(null);
+
+  // Map from proposalId → saved AgentTurnState. Lets a delete approval's
+  // resume call back into the runtime with the conversation it was paused
+  // on. Hook-local; lost on hard reload (which is fine — admin can re-issue).
+  const pendingTurnStates = useRef<Map<string, AgentTurnState>>(new Map());
 
   // ── Observation builder ────────────────────────────────────────────
   // Same shape used everywhere: dialogue tail + entity focus + memory.
@@ -306,6 +326,145 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
     }
   };
 
+  // ── Native-runtime path (Anthropic tool-calling) ───────────────────
+  // Renders the server-side event stream into the same UI primitives the
+  // legacy path uses: tool_use → proposal card transitioning straight to
+  // executed; tool_result → tool bubble + system pill; assistant_text →
+  // assistant bubble; pendingApproval → pending proposal card with the
+  // saved AgentTurnState stashed for resume.
+  const applyNativeEvents = (
+    response: AgentTurnActionResponse
+  ): { proposalIdForApproval?: string } => {
+    const events = response.events ?? [];
+    let pendingProposalId: string | undefined;
+
+    // Map tool_use_id → proposalId so the matching tool_result can flip
+    // the proposal from pending → executed without a second store search.
+    const toolUseToProposal = new Map<string, string>();
+
+    for (const ev of events) {
+      if (ev.kind === "assistant_text") {
+        if (ev.content.trim()) {
+          addMessage({ role: "assistant", content: ev.content });
+        }
+        continue;
+      }
+      if (ev.kind === "tool_use") {
+        // Show the tool call as a proposal so the existing UI surface
+        // (proposal card with pending → executed transition) renders it
+        // consistently with the legacy path.
+        const proposal = addProposal({
+          title: ev.toolName,
+          summary: `Calling ${ev.toolName}`,
+          tool: ev.toolName,
+          input: ev.input,
+          confidence: 1,
+        });
+        toolUseToProposal.set(ev.toolUseId, proposal.id);
+        continue;
+      }
+      if (ev.kind === "tool_result") {
+        const proposalId = toolUseToProposal.get(ev.toolUseId);
+        if (proposalId) {
+          if (ev.ok) markProposalExecuted(proposalId, ev.data);
+          else markProposalFailed(proposalId, ev.summary);
+        }
+        addMessage({
+          role: "tool",
+          content: ev.summary,
+          toolName: ev.toolName,
+        });
+        rememberWorkingAndAnnounce(
+          {
+            kind: ev.ok ? "learning" : "fact",
+            text: ev.ok
+              ? `${ev.toolName} succeeded: ${ev.summary}`
+              : `${ev.toolName} failed: ${ev.summary}`,
+          },
+          ev.ok ? `✓ Ran ${ev.toolName}` : `⚠️ ${ev.toolName} failed`
+        );
+        continue;
+      }
+    }
+
+    if (response.pendingApproval) {
+      // The model stopped on a delete tool_use. Surface it as a pending
+      // proposal so the existing approval-card UI gates it.
+      const pending = response.pendingApproval;
+      const proposal = addProposal({
+        title: pending.toolName,
+        summary: `Pending admin approval: ${pending.toolName}`,
+        tool: pending.toolName,
+        input: pending.input,
+        confidence: 1,
+      });
+      pendingTurnStates.current.set(proposal.id, pending.state);
+      pendingProposalId = proposal.id;
+      addMessage({
+        role: "assistant",
+        content: `**${pending.toolName}** is a delete — approve below to run.`,
+        proposalId: proposal.id,
+      });
+    } else if (response.finalText && response.finalText.trim()) {
+      // The final assistant text was already rendered as `assistant_text`
+      // events while the loop produced them. No-op here unless we want
+      // to surface a summary distinct from streamed text — defer for now.
+    }
+
+    return { proposalIdForApproval: pendingProposalId };
+  };
+
+  /** Run a fresh user turn through the native-tool-calling runtime. */
+  const sendTextNative = async (text: string, observation: AgentObservation) => {
+    setPhase("decide");
+    const response = await runAgentTurnAction({ request: text, observation });
+    if (!response.ok) {
+      addMessage({
+        role: "assistant",
+        content: response.error ?? "Native agent runtime returned no result.",
+      });
+      return;
+    }
+    setPhase("act");
+    applyNativeEvents(response);
+  };
+
+  /** Resume a paused native turn after admin approves/rejects. */
+  const resumeNative = async (
+    state: AgentTurnState,
+    approved: boolean,
+    rejectionReason?: string
+  ) => {
+    setBusy(true);
+    setPhase("act");
+    try {
+      const response = await resumeAgentTurnAction({
+        state,
+        approved,
+        rejectionReason,
+      });
+      if (!response.ok) {
+        addMessage({
+          role: "assistant",
+          content: response.error ?? "Native agent resume returned no result.",
+        });
+        return;
+      }
+      applyNativeEvents(response);
+    } catch (err) {
+      addMessage({
+        role: "assistant",
+        content:
+          err instanceof Error
+            ? `Resume failed: ${err.message}`
+            : "Resume failed.",
+      });
+    } finally {
+      setBusy(false);
+      setPhase("idle");
+    }
+  };
+
   // ── Send a user turn ───────────────────────────────────────────────
   const sendText = (raw: string) => {
     const text = raw.trim();
@@ -321,6 +480,22 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           useAgent.getState().messages,
           text
         );
+
+        // First send of the session probes runtime availability. Cached
+        // for the rest of the session.
+        if (nativeRuntimeAvailable.current === null) {
+          try {
+            const probe = await isNativeAgentRuntimeAvailableAction();
+            nativeRuntimeAvailable.current = probe.ok && probe.available;
+          } catch {
+            nativeRuntimeAvailable.current = false;
+          }
+        }
+
+        if (nativeRuntimeAvailable.current === true) {
+          await sendTextNative(text, observation);
+          return;
+        }
 
         setPhase("decide");
         const result = await decideAgentAction({
@@ -445,8 +620,19 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
     sendText(chip.send ?? chip.label);
   };
 
-  const handleProposalApprove = (proposalId: string) =>
-    runProposal(proposalId, { humanApproved: true });
+  const handleProposalApprove = async (proposalId: string) => {
+    // Native-runtime proposals carry a saved AgentTurnState in the
+    // `pendingTurnStates` map — approving them resumes the in-flight
+    // model conversation instead of running the legacy `executeProposal`
+    // path. Fall through to `runProposal` for legacy JSON-mode proposals.
+    const nativeState = pendingTurnStates.current.get(proposalId);
+    if (nativeState) {
+      pendingTurnStates.current.delete(proposalId);
+      await resumeNative(nativeState, true);
+      return;
+    }
+    await runProposal(proposalId, { humanApproved: true });
+  };
 
   const handleProposalReject = async (proposalId: string, reason?: string) => {
     rememberWorkingAndAnnounce(
@@ -458,6 +644,22 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
         ? `Rejected — ${reason}`
         : "Rejected proposal — will avoid similar"
     );
+
+    // Same dispatch logic as approve — native-runtime proposals need to
+    // resume the model conversation with `approved: false` so the LLM
+    // receives the rejection as a tool_result and can react (apologize,
+    // pick a different tool, ask the admin what to do).
+    const nativeState = pendingTurnStates.current.get(proposalId);
+    if (nativeState) {
+      pendingTurnStates.current.delete(proposalId);
+      markProposalFailed(proposalId, reason ?? "Rejected by admin");
+      await resumeNative(nativeState, false, reason);
+      return;
+    }
+    // Legacy JSON-mode path: just mark the proposal as rejected. There's
+    // no in-flight conversation to resume — the OODA loop will pick up
+    // again on the admin's next message.
+    markProposalFailed(proposalId, reason ?? "Rejected by admin");
   };
 
   return {
