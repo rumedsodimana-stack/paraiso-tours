@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import {
   Activity,
   Brain,
@@ -12,9 +12,6 @@ import {
   Target,
 } from "lucide-react";
 import {
-  useAgent,
-  selectPendingClarification,
-  selectPendingProposals,
   type AgentProposal,
   type AgentMessage,
 } from "@/stores/ai-agent.store";
@@ -22,365 +19,43 @@ import type { AgentNextAction } from "@/lib/agent-ooda";
 import { useAdminWorkspace } from "@/stores/admin-workspace.store";
 import { AgentClarification } from "@/components/agent/AgentClarification";
 import { AgentProposals } from "@/components/agent/AgentProposals";
-import { decideAgentAction, executeProposalAction } from "@/app/actions/agent";
-import { toolRequiresApproval } from "@/lib/agent-tool-catalog";
+import { useAgentLoop } from "@/hooks/useAgentLoop";
 
 /**
  * Client surface for the OODA agent loop. Pulls observation from Zustand
  * stores, sends request to the server action, and routes the decision to
  * the appropriate UI: Answer → message bubble. Clarify → clarification
  * panel. Propose → pending-proposal card in the HITL queue.
+ *
+ * All OODA logic lives in `useAgentLoop`. This surface is just chrome.
+ * The floating `<GlobalAdminAiChat />` widget uses the same hook so the
+ * conversation, working memory, and pending proposals stay in sync.
  */
 export function AgentSurface() {
-  const phase = useAgent((s) => s.phase);
-  const busy = useAgent((s) => s.busy);
-  const messages = useAgent((s) => s.messages);
-  const pendingClarification = useAgent(selectPendingClarification);
-  const pendingProposalsCount = useAgent(
-    (s) => selectPendingProposals(s).length
-  );
-  const workingMemory = useAgent((s) => s.workingMemory);
-  const longTermMemory = useAgent((s) => s.longTermMemory);
-  const addMessage = useAgent((s) => s.addMessage);
-  const addClarification = useAgent((s) => s.addClarification);
-  const addProposal = useAgent((s) => s.addProposal);
-  const setPhase = useAgent((s) => s.setPhase);
-  const setBusy = useAgent((s) => s.setBusy);
-  const rememberWorking = useAgent((s) => s.rememberWorking);
-  const resetConversation = useAgent((s) => s.resetConversation);
+  const {
+    phase,
+    busy,
+    messages,
+    pendingClarification,
+    pendingProposals,
+    workingMemory,
+    longTermMemory,
+    sendText,
+    handleChipClick,
+    handleProposalApprove,
+    handleProposalReject,
+    resetConversation,
+  } = useAgentLoop();
 
   const currentView = useAdminWorkspace((s) => s.currentView);
   const currentEntity = useAdminWorkspace((s) => s.currentEntity);
   const recent = useAdminWorkspace((s) => s.recent);
 
   const [input, setInput] = useState("");
-  const [, startTransition] = useTransition();
-
-  // Build an OODA observation from the current store state, appending the
-  // next user utterance. Shared between the initial send and the
-  // continue-after-execute loop so both see the same snapshot shape.
-  const buildObservation = (
-    priorMessages: typeof messages,
-    nextUserText: string
-  ) => ({
-    recentDialogue: priorMessages
-      .slice(-10)
-      .map((m) => ({
-        role: m.role === "tool" ? ("tool" as const) : m.role,
-        content: m.content,
-        toolName: m.toolName,
-      }))
-      .concat([
-        { role: "user" as const, content: nextUserText, toolName: undefined },
-      ]),
-    currentEntity: currentEntity
-      ? {
-          kind: currentEntity.kind,
-          id: currentEntity.id,
-          label: currentEntity.label,
-        }
-      : undefined,
-    recent: recent.map((r) => ({
-      kind: r.kind,
-      id: r.id,
-      label: r.label,
-    })),
-    workingMemory: workingMemory.map((e) => ({
-      kind: e.kind,
-      text: e.text,
-    })),
-    longTermMemory: longTermMemory.map((e) => ({
-      kind: e.kind,
-      text: e.text,
-    })),
-  });
-
-  const sendText = (raw: string) => {
-    const text = raw.trim();
-    if (!text) return;
+  const pendingProposalsCount = pendingProposals.length;
+  const send = () => {
+    sendText(input);
     setInput("");
-    addMessage({ role: "user", content: text });
-    setBusy(true);
-    setPhase("observe");
-
-    startTransition(async () => {
-      try {
-        setPhase("orient");
-        const observation = buildObservation(messages, text);
-
-        setPhase("decide");
-        const result = await decideAgentAction({
-          request: text,
-          observation,
-        });
-
-        setPhase("act");
-        if (!result.ok || !result.decision) {
-          addMessage({
-            role: "assistant",
-            content:
-              result.error ??
-              "The agent couldn't reach a decision. Try rephrasing.",
-          });
-          return;
-        }
-
-        const decision = result.decision;
-
-        if (decision.kind === "answer") {
-          addMessage({
-            role: "assistant",
-            content: decision.response,
-            nextActions: decision.nextActions,
-          });
-          rememberWorking({
-            kind: "fact",
-            text: `Told admin: ${decision.response.slice(0, 160)}`,
-          });
-        } else if (decision.kind === "clarify" && result.clarification) {
-          const cr = addClarification({
-            question: result.clarification.question,
-            suggestions: result.clarification.suggestions,
-            allowCustomText: true,
-            customPlaceholder: result.clarification.customPlaceholder,
-          });
-          addMessage({
-            role: "assistant",
-            content: result.clarification.question,
-            clarificationId: cr.id,
-            nextActions: decision.nextActions,
-          });
-        } else if (decision.kind === "propose_multi") {
-          addMessage({
-            role: "assistant",
-            content: `**${decision.title}** — running ${decision.steps.length} steps.`,
-            nextActions: decision.nextActions,
-          });
-          rememberWorking({
-            kind: "fact",
-            text: `Chain: ${decision.title} (${decision.steps.length} steps)`,
-          });
-          for (const step of decision.steps) {
-            const stepProposal = addProposal({
-              title: step.title,
-              summary: step.summary ?? "",
-              tool: step.tool,
-              input: step.input,
-              entityRefs: step.entityRefs,
-              confidence: decision.confidence,
-            });
-            if (toolRequiresApproval(step.tool)) {
-              // Chain pauses here — admin must approve this step before
-              // the rest of the chain resumes (resumption happens naturally
-              // via the post-approval runProposal follow-up).
-              addMessage({
-                role: "assistant",
-                content: `Step paused: **${step.title}** (edit/delete) — approve below to continue the chain.`,
-                proposalId: stepProposal.id,
-              });
-              break;
-            }
-            await autoExecute(stepProposal.id, step.title);
-          }
-        } else if (decision.kind === "propose") {
-          const proposal = addProposal({
-            title: decision.title,
-            summary: decision.summary,
-            tool: decision.tool,
-            input: decision.input,
-            entityRefs: decision.entityRefs,
-            confidence: decision.confidence,
-          });
-          rememberWorking({
-            kind: "fact",
-            text: `Proposed: ${decision.title} (tool=${decision.tool}, conf=${decision.confidence.toFixed(2)})`,
-          });
-
-          if (toolRequiresApproval(decision.tool)) {
-            // Update/delete — needs HITL approval card
-            addMessage({
-              role: "assistant",
-              content: `**${decision.title}** is an edit/delete — approve it below to run.`,
-              proposalId: proposal.id,
-              nextActions: decision.nextActions,
-            });
-          } else {
-            // Read/create/send — auto-execute inline
-            await autoExecute(proposal.id, decision.title);
-          }
-        }
-      } catch (err) {
-        addMessage({
-          role: "assistant",
-          content:
-            err instanceof Error ? `Error: ${err.message}` : "Unknown error.",
-        });
-      } finally {
-        setBusy(false);
-        setPhase("idle");
-      }
-    });
-  };
-
-  const send = () => sendText(input);
-
-  const handleChipClick = (chip: AgentNextAction) => {
-    if (busy) return;
-    sendText(chip.send ?? chip.label);
-  };
-
-  const markProposalExecuted = useAgent((s) => s.markProposalExecuted);
-  const markProposalFailed = useAgent((s) => s.markProposalFailed);
-  const allProposals = useAgent((s) => s.proposals);
-
-  // Shared helper used by both the auto-exec path (read/create/send) and
-  // the Approve button (update/delete). Human-approved runs pass
-  // approved:true so the server dispatcher allows update/delete.
-  const runProposal = async (
-    proposalId: string,
-    opts: { humanApproved: boolean }
-  ) => {
-    const proposal = allProposals[proposalId];
-    if (!proposal) return;
-
-    setBusy(true);
-    setPhase("act");
-    try {
-      const result = await executeProposalAction({
-        tool: proposal.tool,
-        input: proposal.input,
-        proposalId,
-        approved: opts.humanApproved,
-      });
-
-      if (result.ok) {
-        markProposalExecuted(proposalId, result.data);
-        addMessage({
-          role: "tool",
-          content: result.summary,
-          toolName: proposal.tool,
-        });
-        rememberWorking({
-          kind: "learning",
-          text: `${proposal.tool} succeeded: ${result.summary}`,
-        });
-
-        // Continue the loop — feed the outcome back so the agent either
-        // wraps up with an answer or proposes the next step.
-        setPhase("observe");
-        const observation = buildObservation(
-          messages,
-          `Tool ${proposal.tool} executed successfully. Summary: ${result.summary}`
-        );
-        setPhase("decide");
-        const follow = await decideAgentAction({
-          request: `I just ran ${proposal.tool}. Result: ${result.summary}. What's the next step, if any?`,
-          observation,
-        });
-        if (follow.ok && follow.decision) {
-          if (follow.decision.kind === "answer") {
-            addMessage({
-              role: "assistant",
-              content: follow.decision.response,
-              nextActions: follow.decision.nextActions,
-            });
-          } else if (follow.decision.kind === "propose") {
-            const next = addProposal({
-              title: follow.decision.title,
-              summary: follow.decision.summary,
-              tool: follow.decision.tool,
-              input: follow.decision.input,
-              entityRefs: follow.decision.entityRefs,
-              confidence: follow.decision.confidence,
-            });
-            if (toolRequiresApproval(follow.decision.tool)) {
-              addMessage({
-                role: "assistant",
-                content: `Next: **${follow.decision.title}** (edit/delete) — approve below.`,
-                proposalId: next.id,
-                nextActions: follow.decision.nextActions,
-              });
-            } else {
-              // Chain auto-execute
-              await runProposal(next.id, { humanApproved: false });
-            }
-          } else if (follow.decision.kind === "propose_multi") {
-            addMessage({
-              role: "assistant",
-              content: `**${follow.decision.title}** — running ${follow.decision.steps.length} steps.`,
-              nextActions: follow.decision.nextActions,
-            });
-            for (const step of follow.decision.steps) {
-              const stepProposal = addProposal({
-                title: step.title,
-                summary: step.summary ?? "",
-                tool: step.tool,
-                input: step.input,
-                entityRefs: step.entityRefs,
-                confidence: follow.decision.confidence,
-              });
-              if (toolRequiresApproval(step.tool)) {
-                addMessage({
-                  role: "assistant",
-                  content: `Step paused: **${step.title}** (edit/delete) — approve below to continue the chain.`,
-                  proposalId: stepProposal.id,
-                });
-                break;
-              }
-              await runProposal(stepProposal.id, { humanApproved: false });
-            }
-          } else if (follow.decision.kind === "clarify" && follow.clarification) {
-            const cr = addClarification({
-              question: follow.clarification.question,
-              suggestions: follow.clarification.suggestions,
-              allowCustomText: true,
-              customPlaceholder: follow.clarification.customPlaceholder,
-            });
-            addMessage({
-              role: "assistant",
-              content: follow.clarification.question,
-              clarificationId: cr.id,
-              nextActions: follow.decision.nextActions,
-            });
-          }
-        }
-      } else {
-        markProposalFailed(proposalId, result.error ?? result.summary);
-        addMessage({
-          role: "assistant",
-          content: `⚠️ ${proposal.tool} failed: ${result.error ?? result.summary}`,
-        });
-        rememberWorking({
-          kind: "learning",
-          text: `${proposal.tool} failed: ${result.error ?? result.summary}`,
-        });
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      markProposalFailed(proposalId, msg);
-      addMessage({
-        role: "assistant",
-        content: `⚠️ Unexpected execution error: ${msg}`,
-      });
-    } finally {
-      setBusy(false);
-      setPhase("idle");
-    }
-  };
-
-  // Alias used inside the initial send() flow for read/create/send proposals.
-  const autoExecute = (proposalId: string, _title: string) =>
-    runProposal(proposalId, { humanApproved: false });
-
-  // The Approve button in AgentProposals — always a human approval.
-  const handleProposalApprove = (proposalId: string) =>
-    runProposal(proposalId, { humanApproved: true });
-
-  const handleProposalReject = async (proposalId: string, reason?: string) => {
-    rememberWorking({
-      kind: "learning",
-      text: `Admin rejected proposal ${proposalId}${reason ? `: ${reason}` : ""}. Avoid similar.`,
-    });
   };
 
   return (
@@ -436,7 +111,10 @@ export function AgentSurface() {
           )}
 
           {pendingClarification && (
-            <AgentClarification clarification={pendingClarification} />
+            <AgentClarification
+              clarification={pendingClarification}
+              onResolve={(value) => sendText(value)}
+            />
           )}
 
           {pendingProposalsCount > 0 && (

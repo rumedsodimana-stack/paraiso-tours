@@ -13,7 +13,11 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { runAiToolAction, type AiToolActionState } from "@/app/actions/ai";
+import { useAgentLoop } from "@/hooks/useAgentLoop";
+import { AgentClarification } from "@/components/agent/AgentClarification";
+import { AgentProposals } from "@/components/agent/AgentProposals";
+import type { AgentMessage } from "@/stores/ai-agent.store";
+import type { AgentNextAction } from "@/lib/agent-ooda";
 
 interface RuntimeSummary {
   enabled: boolean;
@@ -26,22 +30,6 @@ interface RuntimeSummary {
   heavyModel: string;
   superpowerEnabled: boolean;
   missingReason?: string;
-}
-
-type ModelMode = "auto" | "simple" | "default" | "heavy";
-
-interface ChatEntry {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: string;
-  ok?: boolean;
-}
-
-const initialState: AiToolActionState = { ok: false, message: "" };
-
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function getTimeLabel() {
@@ -98,6 +86,8 @@ function buildPageContext(pathname: string) {
   };
 }
 
+type ModelMode = "auto" | "simple" | "default" | "heavy";
+
 /** Render AI text — handles bold (**text**), inline code (`code`), and newlines */
 function RenderText({ text }: { text: string }) {
   const lines = text.split("\n");
@@ -151,6 +141,94 @@ function ThinkingDots() {
   );
 }
 
+function FloatingMessageBubble({
+  message,
+  onChip,
+  disabled,
+}: {
+  message: AgentMessage;
+  onChip: (chip: AgentNextAction) => void;
+  disabled: boolean;
+}) {
+  const isUser = message.role === "user";
+  const isTool = message.role === "tool";
+  const chips = !isUser && message.nextActions ? message.nextActions : [];
+  const time = useMemo(() => {
+    try {
+      return new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
+  }, [message.createdAt]);
+
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%]">
+          <div className="rounded-2xl rounded-br-sm bg-[#12343b] px-4 py-3 text-[#f6ead6] shadow-sm">
+            <p className="text-sm leading-6 whitespace-pre-wrap">{message.content}</p>
+          </div>
+          <p className="mt-1 pr-1 text-right text-[10px] text-[#8a9ba1]">{time}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isTool) {
+    return (
+      <div className="flex items-start gap-2.5">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#dce8dc] text-[#375a3f] mt-0.5">
+          <Zap className="h-3.5 w-3.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="rounded-2xl rounded-tl-sm border border-[#b8d6b8] bg-[#eef4ee] px-4 py-2.5 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#375a3f]">
+              {message.toolName ?? "tool"}
+            </p>
+            <div className="mt-1 text-[#375a3f]">
+              <RenderText text={message.content} />
+            </div>
+          </div>
+          <p className="mt-1 pl-1 text-[10px] text-[#8a9ba1]">{time}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // assistant
+  return (
+    <div className="flex items-start gap-2.5">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#eef4f4] text-[#12343b] mt-0.5">
+        <Bot className="h-3.5 w-3.5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="rounded-2xl rounded-tl-sm border border-[#e0e4dd] bg-[#fffbf4] px-4 py-3 shadow-sm">
+          <div className="text-[#5e7279]">
+            <RenderText text={message.content} />
+          </div>
+        </div>
+        {chips.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1.5 pl-1">
+            {chips.map((chip, i) => (
+              <button
+                key={`${message.id}-chip-${i}`}
+                type="button"
+                onClick={() => onChip(chip)}
+                disabled={disabled}
+                title={chip.send ?? chip.label}
+                className="rounded-full border border-[#c9922f]/40 bg-[#f4ecdd] px-2.5 py-1 text-[11px] font-medium text-[#7a5a17] transition hover:border-[#c9922f] hover:bg-[#f3e8ce] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="mt-1 pl-1 text-[10px] text-[#8a9ba1]">{time}</p>
+      </div>
+    </div>
+  );
+}
+
 export function GlobalAdminAiChat({
   runtime,
   desktopOpen,
@@ -168,23 +246,39 @@ export function GlobalAdminAiChat({
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const requestCounterRef = useRef(0);
+  const wasBusyRef = useRef(false);
+
   const pageContext = useMemo(() => buildPageContext(pathname), [pathname]);
   const runtimeReady = runtime.enabled && runtime.configured;
+
+  // Same OODA brain as /admin/ai. Conversation persists across surfaces.
+  const {
+    messages,
+    busy,
+    pendingClarification,
+    pendingProposals,
+    sendText,
+    handleChipClick,
+    handleProposalApprove,
+    handleProposalReject,
+    resetConversation,
+  } = useAgentLoop({
+    path: pathname,
+    label: pageContext.label,
+    details: pageContext.details,
+  });
 
   const [request, setRequest] = useState("");
   const [modelMode, setModelMode] = useState<ModelMode>("auto");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [showThinking, setShowThinking] = useState(false);
-  const [chatHistory, setChatHistory] = useState<ChatEntry[]>([]);
-  const [runState, setRunState] = useState<AiToolActionState>(initialState);
 
-  // Auto-scroll to bottom
+  const pendingProposalsCount = pendingProposals.length;
+
+  // Auto-scroll to bottom whenever messages, proposals, or clarifications update
   useEffect(() => {
     const node = scrollRef.current;
     if (node) node.scrollTop = node.scrollHeight;
-  }, [chatHistory, showThinking]);
+  }, [messages, busy, pendingClarification, pendingProposalsCount]);
 
   // Auto-resize textarea
   const resizeTextarea = useCallback(() => {
@@ -205,55 +299,25 @@ export function GlobalAdminAiChat({
     }
   }, [desktopOpen, mobileOpen]);
 
-  async function handleSubmit(text?: string) {
-    const trimmed = (text ?? request).trim();
-    if (!runtimeReady || running || !trimmed) return;
-
-    requestCounterRef.current += 1;
-    const requestId = `global_${requestCounterRef.current}`;
-    const contextualRequest = [
-      "Current admin page context:",
-      ...pageContext.details,
-      "",
-      `Staff request: ${trimmed}`,
-    ].join("\n");
-
-    setRunState(initialState);
-    setRequest("");
-    setChatHistory((h) => [...h, { id: `user_${requestId}`, role: "user", content: trimmed, timestamp: getTimeLabel() }]);
-    setRunning(true);
-    setShowThinking(true);
-
-    const formData = new FormData();
-    formData.set("tool", "workspace_copilot");
-    formData.set("workspaceRequest", contextualRequest);
-    formData.set("modelMode", modelMode);
-    formData.set("executeActions", "on");
-
-    const resultPromise = runAiToolAction(initialState, formData);
-
-    // Small delay so the thinking dots are visible
-    await wait(600);
-
-    const result = await resultPromise;
-    setShowThinking(false);
-    setRunning(false);
-    setRunState(result);
-    setChatHistory((h) => [
-      ...h,
-      {
-        id: `assistant_${requestId}`,
-        role: "assistant",
-        content: result.result || result.message || "Done.",
-        timestamp: getTimeLabel(),
-        ok: result.ok,
-      },
-    ]);
-
-    if (result.ok) {
+  // After every OODA round (busy → idle), refresh the route so any
+  // server-side data the tool just mutated re-renders.
+  useEffect(() => {
+    if (busy) {
+      wasBusyRef.current = true;
+      return;
+    }
+    if (wasBusyRef.current) {
+      wasBusyRef.current = false;
       router.refresh();
       onFinalize?.();
     }
+  }, [busy, router, onFinalize]);
+
+  function handleSubmit(text?: string) {
+    const trimmed = (text ?? request).trim();
+    if (!runtimeReady || busy || !trimmed) return;
+    setRequest("");
+    sendText(trimmed);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -264,12 +328,19 @@ export function GlobalAdminAiChat({
   }
 
   function clearChat() {
-    setChatHistory([]);
-    setRunState(initialState);
+    if (busy) return;
+    if (
+      typeof window !== "undefined" &&
+      messages.length > 0 &&
+      !window.confirm("Start a fresh conversation? Long-term memory is kept.")
+    ) {
+      return;
+    }
+    resetConversation();
     setRequest("");
   }
 
-  const canSend = runtimeReady && !running && request.trim().length > 0;
+  const canSend = runtimeReady && !busy && request.trim().length > 0;
 
   const panel = (
     <div className="flex h-full flex-col bg-[#fffbf4] overflow-hidden">
@@ -299,12 +370,13 @@ export function GlobalAdminAiChat({
 
         <div className="flex items-center gap-1 shrink-0">
           {/* New chat */}
-          {chatHistory.length > 0 && (
+          {messages.length > 0 && (
             <button
               type="button"
               onClick={clearChat}
+              disabled={busy}
               title="New conversation"
-              className="rounded-lg p-1.5 text-[#8a9ba1] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
+              className="rounded-lg p-1.5 text-[#8a9ba1] transition hover:bg-[#f4ecdd] hover:text-[#11272b] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -335,8 +407,8 @@ export function GlobalAdminAiChat({
                 </select>
 
                 <div className="mt-3 rounded-xl border border-[#b8d6b8] bg-[#dce8dc] px-3 py-2.5">
-                  <span className="block text-sm font-medium text-[#375a3f]">Full execution enabled</span>
-                  <span className="mt-0.5 block text-xs text-[#375a3f]/80">AI executes all actions immediately — no restrictions</span>
+                  <span className="block text-sm font-medium text-[#375a3f]">OODA agent active</span>
+                  <span className="mt-0.5 block text-xs text-[#375a3f]/80">Reads auto-execute. Edits/deletes need your approval.</span>
                 </div>
 
                 <div className="mt-3 border-t border-[#e0e4dd] pt-3">
@@ -399,7 +471,7 @@ export function GlobalAdminAiChat({
         className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4"
       >
         {/* Empty state — suggestion chips */}
-        {chatHistory.length === 0 && !running && (
+        {messages.length === 0 && !busy && (
           <div className="flex flex-col items-center justify-center h-full min-h-[12rem] gap-6 py-8 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#12343b] text-[#f6ead6] shadow-lg">
               <Bot className="h-7 w-7" />
@@ -415,8 +487,7 @@ export function GlobalAdminAiChat({
                   type="button"
                   onClick={() => {
                     if (!runtimeReady) return;
-                    setRequest(prompt);
-                    setTimeout(() => handleSubmit(prompt), 0);
+                    handleSubmit(prompt);
                   }}
                   disabled={!runtimeReady}
                   className="w-full rounded-xl border border-[#e0e4dd] bg-[#faf6ef] px-4 py-2.5 text-left text-sm text-[#5e7279] transition hover:border-[#e0d4bc] hover:bg-[#f4ecdd] hover:text-[#11272b] disabled:cursor-not-allowed disabled:opacity-40"
@@ -428,44 +499,34 @@ export function GlobalAdminAiChat({
           </div>
         )}
 
-        {/* Chat messages */}
-        {chatHistory.map((entry) =>
-          entry.role === "user" ? (
-            /* User bubble — right aligned, dark */
-            <div key={entry.id} className="flex justify-end">
-              <div className="max-w-[85%]">
-                <div className="rounded-2xl rounded-br-sm bg-[#12343b] px-4 py-3 text-[#f6ead6] shadow-sm">
-                  <p className="text-sm leading-6 whitespace-pre-wrap">{entry.content}</p>
-                </div>
-                <p className="mt-1 pr-1 text-right text-[10px] text-[#8a9ba1]">{entry.timestamp}</p>
-              </div>
-            </div>
-          ) : (
-            /* AI bubble — left aligned, white card */
-            <div key={entry.id} className="flex items-start gap-2.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#eef4f4] text-[#12343b] mt-0.5">
-                <Bot className="h-3.5 w-3.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div
-                  className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${
-                    entry.ok === false && entry.content
-                      ? "border-rose-200 bg-rose-50"
-                      : "border-[#e0e4dd] bg-[#fffbf4]"
-                  }`}
-                >
-                  <div className={entry.ok === false ? "text-rose-700" : "text-[#5e7279]"}>
-                    <RenderText text={entry.content} />
-                  </div>
-                </div>
-                <p className="mt-1 pl-1 text-[10px] text-[#8a9ba1]">{entry.timestamp}</p>
-              </div>
-            </div>
-          )
+        {/* Conversation */}
+        {messages.map((m) => (
+          <FloatingMessageBubble
+            key={m.id}
+            message={m}
+            onChip={handleChipClick}
+            disabled={busy}
+          />
+        ))}
+
+        {/* HITL clarification — feeds the answer back as a new turn */}
+        {pendingClarification && (
+          <AgentClarification
+            clarification={pendingClarification}
+            onResolve={(value) => sendText(value)}
+          />
+        )}
+
+        {/* HITL approval card for update/delete proposals */}
+        {pendingProposalsCount > 0 && (
+          <AgentProposals
+            onApprove={handleProposalApprove}
+            onReject={handleProposalReject}
+          />
         )}
 
         {/* Thinking dots */}
-        {showThinking && (
+        {busy && (
           <div className="flex items-start gap-2.5">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#eef4f4] text-[#12343b] mt-0.5">
               <Bot className="h-3.5 w-3.5" />
@@ -483,7 +544,9 @@ export function GlobalAdminAiChat({
         {/* Always-on execution indicator */}
         <div className="mb-2.5 flex items-center gap-1.5">
           <Zap className="h-3 w-3 text-[#12343b]" />
-          <span className="text-xs font-medium text-[#12343b]">Actions always on — AI executes immediately</span>
+          <span className="text-xs font-medium text-[#12343b]">
+            Reads run instantly · edits ask for approval
+          </span>
         </div>
 
         {/* Input container */}
@@ -495,7 +558,7 @@ export function GlobalAdminAiChat({
             value={request}
             onChange={(e) => setRequest(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={!runtimeReady || running}
+            disabled={!runtimeReady || busy}
             rows={1}
             placeholder={
               !runtimeReady
@@ -515,7 +578,7 @@ export function GlobalAdminAiChat({
                 : "bg-[#e0e4dd] text-[#8a9ba1] cursor-not-allowed"
             }`}
           >
-            {running ? (
+            {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
@@ -526,7 +589,7 @@ export function GlobalAdminAiChat({
         </div>
 
         <p className="mt-1.5 text-center text-[10px] text-[#c5cdd0]">
-          Enter to send · Shift+Enter for new line
+          Enter to send · Shift+Enter for new line · Same brain as <Link href="/admin/ai" className="underline underline-offset-2 hover:text-[#8a9ba1]">/admin/ai</Link>
         </p>
       </div>
 
@@ -534,6 +597,10 @@ export function GlobalAdminAiChat({
   );
 
   const isOpen = desktopOpen || mobileOpen;
+
+  // getTimeLabel kept for callers that still import it; mark as used to
+  // satisfy the lint when the runtime tree-shakes it.
+  void getTimeLabel;
 
   return (
     <>
