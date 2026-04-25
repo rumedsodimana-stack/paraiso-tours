@@ -498,12 +498,6 @@ export function AiSettingsSection({
               description="Draft route ideas and travel guidance from a guest brief."
             />
             <ToggleField
-              label="AI coworker"
-              name="aiWorkspaceCopilotEnabled"
-              defaultChecked={settings.ai.workspaceCopilotEnabled}
-              description="Answer questions about the app and execute supported admin operations from natural-language requests."
-            />
-            <ToggleField
               label="Client concierge"
               name="aiClientConciergeEnabled"
               defaultChecked={settings.ai.clientConciergeEnabled}

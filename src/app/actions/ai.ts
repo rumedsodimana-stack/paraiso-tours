@@ -1,36 +1,17 @@
 "use server";
 
 import { recordAuditEvent } from "@/lib/audit";
-import {
-  generateAiJsonResult,
-  generateAiText,
-  maybeRaiseAiBudgetAlert,
-} from "@/lib/ai";
-import {
-  buildAppArchitectureKnowledgeContext,
-  buildAppUsageKnowledgeContext,
-  buildWorkspaceCopilotCapabilitiesContext,
-} from "@/lib/ai-app-knowledge";
-import { buildAppDataContext } from "@/lib/ai-data-context";
+import { generateAiText, maybeRaiseAiBudgetAlert } from "@/lib/ai";
 import { buildFocusTerms, buildSriLankaKnowledgeContext } from "@/lib/ai-knowledge";
 import { buildRagContext } from "@/lib/ai-rag";
-import {
-  coerceWorkspaceCopilotPlan,
-  executeWorkspaceCopilotAction,
-  type WorkspaceCopilotPlan,
-} from "@/lib/ai-copilot";
 import {
   buildBookingBriefPrompts,
   buildJourneyAssistantPrompts,
   buildPackageWriterPrompts,
-  buildWorkspaceCopilotPrompts,
 } from "@/lib/ai-prompts";
 import { getAppSettings } from "@/lib/app-config";
 import {
   createAiInteraction,
-  updateAiInteraction,
-  getAiInteractions,
-  createAiKnowledgeDocument,
   getInvoiceByLeadId,
   getLead,
   getHotels,
@@ -94,92 +75,6 @@ async function persistInteraction(input: {
   });
   await maybeRaiseAiBudgetAlert();
   return interaction;
-}
-
-/** Auto-learn: mark interaction helpful and optionally promote to knowledge base */
-async function autoLearnFromExecution(interactionId: string, action: WorkspaceCopilotPlan["action"], executionOk: boolean) {
-  if (!executionOk || action.type === "answer_only") return;
-
-  // Auto-mark successful executions as helpful
-  await updateAiInteraction(interactionId, { helpful: true });
-
-  // Auto-promote: check if this action pattern has succeeded 3+ times
-  try {
-    const recent = await getAiInteractions(100);
-    const sameTypeSuccesses = recent.filter(
-      (i) => i.executedOk && i.helpful && i.plannedAction && (i.plannedAction as Record<string, unknown>).type === action.type,
-    );
-
-    // If 3+ successes of this type and none promoted yet, auto-promote a summary
-    if (sameTypeSuccesses.length >= 3) {
-      const alreadyPromoted = sameTypeSuccesses.some((i) => i.promotedToKnowledge);
-      if (!alreadyPromoted) {
-        const examples = sameTypeSuccesses.slice(0, 3).map((i) => `- ${i.requestText}`).join("\n");
-        await createAiKnowledgeDocument({
-          title: `Learned pattern: ${action.type}`,
-          content: [
-            `The AI copilot has successfully executed "${action.type}" multiple times.`,
-            `Example requests:`,
-            examples,
-            `This action pattern is well-understood and should be executed confidently.`,
-          ].join("\n"),
-          sourceType: "learned",
-          sourceRef: interactionId,
-          tags: [action.type, "auto-promoted", "learned"],
-          active: true,
-        });
-        // Mark the latest as promoted
-        await updateAiInteraction(interactionId, { promotedToKnowledge: true });
-      }
-    }
-  } catch {
-    // Non-critical — don't break the response if auto-learn fails
-  }
-}
-
-/** Build recent interaction memory for copilot context */
-async function buildRecentMemory(): Promise<string> {
-  try {
-    const recent = await getAiInteractions(20);
-    const relevant = recent
-      .filter((i) => i.tool === "workspace_copilot" && (i.helpful || i.executedOk))
-      .slice(0, 8);
-
-    if (relevant.length === 0) return "";
-
-    const lines = relevant.map((i) => {
-      const action = i.plannedAction as Record<string, unknown> | undefined;
-      const actionType = action?.type ?? "answer_only";
-      const status = i.executedOk ? "done" : "answered";
-      return `- [${status}] ${i.requestText.slice(0, 120)} → ${actionType}`;
-    });
-
-    return [
-      "Recent AI memory (what you did recently — use this to maintain continuity):",
-      ...lines,
-    ].join("\n");
-  } catch {
-    return "";
-  }
-}
-
-function describePlannedAction(plan: WorkspaceCopilotPlan["action"]) {
-  switch (plan.type) {
-    case "create_todo":
-      return `Create todo: ${plan.title || "missing title"}`;
-    case "update_booking_status":
-      return `Update booking "${plan.bookingQuery || "missing booking"}" to ${plan.status || "missing status"}`;
-    case "create_invoice_from_booking":
-      return `Create invoice from booking "${plan.bookingQuery || "missing booking"}"`;
-    case "schedule_tour_from_booking":
-      return `Schedule tour from booking "${plan.bookingQuery || "missing booking"}"${plan.startDate ? ` on ${plan.startDate}` : ""}`;
-    case "mark_invoice_paid":
-      return `Mark invoice "${plan.invoiceQuery || "missing invoice"}" paid`;
-    case "mark_payment_received":
-      return `Mark payment "${plan.paymentQuery || "missing payment"}" received`;
-    default:
-      return "Answer only";
-  }
 }
 
 export async function runAiToolAction(
@@ -453,140 +348,6 @@ export async function runAiToolAction(
         message: "AI journey guidance ready.",
         result: response.text,
         title: "Journey Assistant",
-        tool,
-        interactionId: interaction.id,
-      };
-    }
-
-    if (tool === "workspace_copilot") {
-      const modelMode = getModelMode(formData);
-      const request = String(formData.get("workspaceRequest") ?? "").trim();
-      const executeRequested = formData.get("executeActions") === "on";
-
-      if (!request) {
-        return { ok: false, message: "Enter the copilot request first." };
-      }
-
-      const [settings, hotels, packages, recentMemory] = await Promise.all([
-        getAppSettings(),
-        getHotels(),
-        getPackages(),
-        buildRecentMemory(),
-      ]);
-      const domainKnowledge = buildSriLankaKnowledgeContext({
-        query: request,
-        focusTerms: buildFocusTerms({ query: request }),
-        packages,
-        hotels,
-        customNotes: settings.ai.knowledgeNotes,
-      });
-      const ragContext = await buildRagContext({
-        query: request,
-        tagHints: ["workspace", "copilot", "app usage", "operations"],
-      });
-      const dataKnowledge = await buildAppDataContext({
-        query: request,
-      });
-
-      const prompts = buildWorkspaceCopilotPrompts({
-        request,
-        executeRequested,
-        architectureKnowledge: buildAppArchitectureKnowledgeContext(),
-        usageKnowledge: buildAppUsageKnowledgeContext(),
-        capabilitiesKnowledge: buildWorkspaceCopilotCapabilitiesContext(),
-        dataKnowledge: [dataKnowledge, ragContext, recentMemory].filter(Boolean).join("\n\n"),
-        domainKnowledge,
-      });
-      const { data: rawPlan, response } =
-        await generateAiJsonResult<WorkspaceCopilotPlan>({
-        feature: "workspace_copilot",
-        title: prompts.title,
-        systemPrompt: prompts.systemPrompt,
-        userPrompt: prompts.userPrompt,
-        modelMode,
-        usePromptCache: true,
-      });
-      const plan = coerceWorkspaceCopilotPlan(rawPlan);
-
-      await recordAuditEvent({
-        entityType: "system",
-        entityId: "ai_workspace_copilot",
-        action: "ai_workspace_copilot_used",
-        summary: "AI workspace copilot request processed",
-        actor: "Admin AI Studio",
-        details: [
-          `Planned action: ${describePlannedAction(plan.action)}`,
-          `Execution requested: ${executeRequested ? "Yes" : "No"}`,
-        ],
-      });
-
-      let executionDetails = "";
-      if (!executeRequested || plan.action.type === "answer_only") {
-        const interaction = await persistInteraction({
-          tool,
-          requestText: request,
-          responseText: plan.response,
-          plannedAction: plan.action,
-          executedOk: false,
-          promotedToKnowledge: false,
-          providerLabel: response.providerLabel,
-          model: response.model,
-          modelMode: response.modelMode,
-          superpowerUsed: false,
-          inputTokens: response.usage?.inputTokens,
-          outputTokens: response.usage?.outputTokens,
-          cacheCreationInputTokens: response.usage?.cacheCreationInputTokens,
-          cacheReadInputTokens: response.usage?.cacheReadInputTokens,
-          estimatedCostUsd: response.estimatedCostUsd,
-        });
-        return {
-          ok: true,
-          message:
-            plan.action.type === "answer_only"
-              ? "Copilot response ready."
-              : "Copilot plan ready. No action executed.",
-          result: [
-            plan.response,
-            plan.action.type !== "answer_only"
-              ? `Planned action: ${describePlannedAction(plan.action)}`
-              : "",
-          ]
-            .filter(Boolean)
-            .join("\n\n"),
-          title: "AI Coworker",
-          tool,
-          interactionId: interaction.id,
-        };
-      }
-
-      const execution = await executeWorkspaceCopilotAction(plan.action);
-      executionDetails = execution.details ?? "";
-      const interaction = await persistInteraction({
-        tool,
-        requestText: request,
-        responseText: [plan.response, execution.details].filter(Boolean).join("\n\n"),
-        plannedAction: plan.action,
-        executedOk: execution.ok,
-        promotedToKnowledge: false,
-        providerLabel: response.providerLabel,
-        model: response.model,
-        modelMode: response.modelMode,
-        superpowerUsed: false,
-        inputTokens: response.usage?.inputTokens,
-        outputTokens: response.usage?.outputTokens,
-        cacheCreationInputTokens: response.usage?.cacheCreationInputTokens,
-        cacheReadInputTokens: response.usage?.cacheReadInputTokens,
-        estimatedCostUsd: response.estimatedCostUsd,
-      });
-
-      // Self-learning: auto-mark helpful + auto-promote patterns
-      await autoLearnFromExecution(interaction.id, plan.action, execution.ok);
-
-      return {
-        ok: execution.ok,
-        message: execution.message,
-        result: [plan.response, executionDetails].filter(Boolean).join("\n\n"),
-        title: "AI Coworker",
         tool,
         interactionId: interaction.id,
       };

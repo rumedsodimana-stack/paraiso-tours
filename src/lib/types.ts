@@ -407,7 +407,6 @@ export interface AiSettings {
   bookingBriefEnabled: boolean;
   packageWriterEnabled: boolean;
   journeyAssistantEnabled: boolean;
-  workspaceCopilotEnabled: boolean;
   clientConciergeEnabled: boolean;
   ragEnabled: boolean;
   ragMaxChunks: number;

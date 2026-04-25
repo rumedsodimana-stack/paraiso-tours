@@ -59,7 +59,6 @@ export type AiFeature =
   | "booking_brief"
   | "package_writer"
   | "journey_assistant"
-  | "workspace_copilot"
   | "client_concierge"
   | "booking_processor"
   | "admin_assistant"
@@ -123,8 +122,6 @@ function isFeatureEnabled(
       return settings.ai.packageWriterEnabled;
     case "journey_assistant":
       return settings.ai.journeyAssistantEnabled;
-    case "workspace_copilot":
-      return settings.ai.workspaceCopilotEnabled;
     case "client_concierge":
       return settings.ai.clientConciergeEnabled;
     case "booking_processor":
@@ -133,15 +130,12 @@ function isFeatureEnabled(
       return settings.ai.bookingBriefEnabled;
     case "agent_decide":
     case "agent_clarifier":
-      // The OODA agent surfaces (full /admin/ai page + the floating
-      // widget) cover everything workspace_copilot used to cover plus
-      // booking_brief / admin_assistant flows. Treat it as enabled if
-      // ANY of those upstream flags is on, so the agent works
-      // automatically for tenants whose settings predate these cases
-      // (otherwise the missing case falls through to `false` and the
-      // chat surface throws "AI tool disabled in settings").
+      // The OODA agent (full /admin/ai page + the floating drawer) is
+      // the single AI surface for the admin. Treat it as enabled if AI
+      // is globally on (runtime.enabled is checked upstream) and ANY
+      // of the per-feature toggles is on, so disabling one tool doesn't
+      // silently kill the agent.
       return (
-        settings.ai.workspaceCopilotEnabled ||
         settings.ai.bookingBriefEnabled ||
         settings.ai.journeyAssistantEnabled ||
         settings.ai.packageWriterEnabled ||

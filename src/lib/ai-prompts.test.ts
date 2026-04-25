@@ -5,7 +5,6 @@ import {
   buildClientConciergePrompts,
   buildJourneyAssistantPrompts,
   buildPackageWriterPrompts,
-  buildWorkspaceCopilotPrompts,
 } from "./ai-prompts";
 import type { Invoice, Lead, TourPackage } from "./types";
 
@@ -113,25 +112,6 @@ test("journey assistant prompts include route constraints and guest brief", () =
   assert.match(prompts.userPrompt, /Family trip with wildlife and beach time/);
   assert.match(prompts.userPrompt, /Allowed destination set:/);
   assert.match(prompts.userPrompt, /Transfer cautions/);
-});
-
-test("workspace copilot prompts require JSON and action limits", () => {
-  const prompts = buildWorkspaceCopilotPrompts({
-    request: "Mark invoice INV-0042 as paid",
-    executeRequested: true,
-    architectureKnowledge: "Architecture: admin and client portals.",
-    usageKnowledge: "Usage: bookings lead to tours and invoices.",
-    capabilitiesKnowledge:
-      "Capabilities: mark_invoice_paid is supported. Unsupported actions must use answer_only.",
-    dataKnowledge: "Live data: invoice INV-0042 is pending_payment for 480 USD.",
-    domainKnowledge: "Sri Lanka knowledge: keep advice operationally realistic.",
-  });
-
-  assert.match(prompts.systemPrompt, /Return valid JSON only/);
-  assert.match(prompts.systemPrompt, /mark_invoice_paid/);
-  assert.match(prompts.userPrompt, /Execution requested: yes/);
-  assert.match(prompts.userPrompt, /Mark invoice INV-0042 as paid/);
-  assert.match(prompts.userPrompt, /Live data: invoice INV-0042 is pending_payment/);
 });
 
 test("client concierge prompts require structured public travel JSON", () => {

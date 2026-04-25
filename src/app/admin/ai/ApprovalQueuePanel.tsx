@@ -28,10 +28,13 @@ function timeAgo(iso: string): string {
 }
 
 /**
- * Bookings-awaiting-approval panel — merged into the AI workspace so the
- * approval queue sits alongside the agent chat (one page for everything
- * HITL). Includes both agent-originated edits and guest-originated portal
- * bookings that still need admin sign-off.
+ * Bookings-awaiting-approval panel.
+ *
+ * Lives below the chat on /admin/ai so the admin can clear the queue
+ * without leaving the AI surface. Agent-originated action proposals do
+ * NOT show up here — those render inline in the chat itself, gated by
+ * `<AgentProposals />`. This panel is strictly for client-portal /
+ * inbound bookings (status="new") that need a human sign-off.
  */
 export async function ApprovalQueuePanel() {
   const [leads, tours] = await Promise.all([getLeads(), getTours()]);
@@ -59,8 +62,7 @@ export async function ApprovalQueuePanel() {
         </span>
       </div>
       <p className="-mt-2 mb-4 text-xs text-[#8a9ba1]">
-        Agent edits and client-portal bookings both queue here until you
-        approve or reject them.
+        Inbound bookings waiting for you to confirm or reject.
       </p>
 
       {awaitingApproval.length === 0 ? (

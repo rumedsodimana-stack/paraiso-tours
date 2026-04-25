@@ -245,8 +245,6 @@ export async function updateAiSettingsAction(
         packageWriterEnabled: formData.get("aiPackageWriterEnabled") === "on",
         journeyAssistantEnabled:
           formData.get("aiJourneyAssistantEnabled") === "on",
-        workspaceCopilotEnabled:
-          formData.get("aiWorkspaceCopilotEnabled") === "on",
         clientConciergeEnabled:
           formData.get("aiClientConciergeEnabled") === "on",
         ragEnabled: formData.get("aiRagEnabled") === "on",
@@ -306,7 +304,6 @@ export async function updateAiSettingsAction(
         bookingBriefEnabled: next.ai.bookingBriefEnabled,
         packageWriterEnabled: next.ai.packageWriterEnabled,
         journeyAssistantEnabled: next.ai.journeyAssistantEnabled,
-        workspaceCopilotEnabled: next.ai.workspaceCopilotEnabled,
         clientConciergeEnabled: next.ai.clientConciergeEnabled,
         ragEnabled: next.ai.ragEnabled,
         ragMaxChunks: next.ai.ragMaxChunks,

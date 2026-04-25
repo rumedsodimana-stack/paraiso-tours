@@ -68,7 +68,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     bookingBriefEnabled: true,
     packageWriterEnabled: true,
     journeyAssistantEnabled: true,
-    workspaceCopilotEnabled: true,
     clientConciergeEnabled: true,
     ragEnabled: true,
     ragMaxChunks: 6,
@@ -353,7 +352,6 @@ function normalizeAi(ai?: Partial<AiSettings>): Partial<AiSettings> {
     bookingBriefEnabled: sanitizeBoolean(ai.bookingBriefEnabled),
     packageWriterEnabled: sanitizeBoolean(ai.packageWriterEnabled),
     journeyAssistantEnabled: sanitizeBoolean(ai.journeyAssistantEnabled),
-    workspaceCopilotEnabled: sanitizeBoolean(ai.workspaceCopilotEnabled),
     clientConciergeEnabled: sanitizeBoolean(ai.clientConciergeEnabled),
     ragEnabled: sanitizeBoolean(ai.ragEnabled),
     ragMaxChunks: sanitizeInteger(

@@ -2,7 +2,6 @@ import { getAppSettings } from "./app-config";
 import {
   buildAppArchitectureKnowledgeContext,
   buildAppUsageKnowledgeContext,
-  buildWorkspaceCopilotCapabilitiesContext,
 } from "./ai-app-knowledge";
 import { getAiInteractions, getAiKnowledgeDocuments } from "./db";
 
@@ -84,13 +83,6 @@ async function getBuiltInRagDocuments(): Promise<RagDocument[]> {
       content: buildAppUsageKnowledgeContext(),
       sourceType: "system",
       tags: ["usage", "user guide", "workflow"],
-    },
-    {
-      id: "builtin_workspace_capabilities",
-      title: "Workspace Copilot Capabilities",
-      content: buildWorkspaceCopilotCapabilitiesContext(),
-      sourceType: "system",
-      tags: ["copilot", "actions", "operations"],
     },
     {
       id: "builtin_email_playbook",
