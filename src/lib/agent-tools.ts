@@ -2157,6 +2157,109 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
       return ok(result.summary, result.data);
     },
   },
+
+  // ── Plan mode (Cowork Phase C.2) ─────────────────────────────────────
+  //
+  // Plan tools are conversational state, not data mutations. They emit
+  // structured events the client renders as a plan card in the
+  // conversation. Category `read` means no HITL gate fires and no DB
+  // row is touched — the audit trail still records the executions for
+  // visibility.
+  //
+  // Tool shape: set_plan publishes the full plan; update_plan_step
+  // mutates one step. The client (useAgentLoop) intercepts these tool
+  // results, updates the Zustand store's `currentPlan`, and skips the
+  // default tool-bubble + memory-pill rendering — the plan card BECOMES
+  // the visualization.
+  {
+    name: "set_plan",
+    category: "read",
+    summary:
+      "Publish a multi-step plan visible to the admin. Use BEFORE executing a long workflow (≥3 steps) so the admin sees the trajectory upfront. Replaces any previous plan in this conversation. Each step gets a status pill that updates via update_plan_step as you work through it.",
+    inputSchema: z.object({
+      title: z
+        .string()
+        .min(1)
+        .max(200)
+        .describe(
+          "Short plan title shown as the card header. Example: 'Onboard new Bali tour'."
+        ),
+      steps: z
+        .array(
+          z.object({
+            id: z
+              .string()
+              .min(1)
+              .max(60)
+              .describe(
+                "Stable identifier you'll pass to update_plan_step. Use kebab-case slugs like 'fetch-pricing'."
+              ),
+            title: z
+              .string()
+              .min(1)
+              .max(200)
+              .describe("One-line step description."),
+            status: z
+              .enum(["pending", "in_progress", "done", "skipped"])
+              .default("pending"),
+          })
+        )
+        .min(2)
+        .max(12)
+        .describe("2-12 ordered steps. Default status is 'pending'."),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          title: z.string().min(1).max(200),
+          steps: z
+            .array(
+              z.object({
+                id: z.string().min(1).max(60),
+                title: z.string().min(1).max(200),
+                status: z
+                  .enum(["pending", "in_progress", "done", "skipped"])
+                  .default("pending"),
+              })
+            )
+            .min(2)
+            .max(12),
+        })
+        .parse(raw);
+      return ok(
+        `Plan published: ${input.title} (${input.steps.length} steps)`,
+        input
+      );
+    },
+  },
+
+  {
+    name: "update_plan_step",
+    category: "read",
+    summary:
+      "Update one step in the active plan as you work through it. Set status='in_progress' before starting a step's tools, status='done' when finished, status='skipped' if no longer needed. Use the step id you passed to set_plan.",
+    inputSchema: z.object({
+      id: z.string().min(1).max(60),
+      status: z.enum(["pending", "in_progress", "done", "skipped"]),
+      note: z
+        .string()
+        .max(400)
+        .optional()
+        .describe(
+          "Optional 1-line rationale or result detail shown under the step."
+        ),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          id: z.string().min(1).max(60),
+          status: z.enum(["pending", "in_progress", "done", "skipped"]),
+          note: z.string().max(400).optional(),
+        })
+        .parse(raw);
+      return ok(`Step ${input.id} → ${input.status}`, input);
+    },
+  },
 ];
 
 // ── Lookup helpers ──────────────────────────────────────────────────────

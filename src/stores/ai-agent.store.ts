@@ -106,6 +106,34 @@ export interface AgentProposal {
   rejectionReason?: string;
 }
 
+// ── Plan (multi-step trajectory shown to the admin) ──────────────────────
+
+/**
+ * A plan published by the agent via the `set_plan` tool. Used for
+ * complex workflows (≥3 steps) where the admin should see the full
+ * trajectory upfront. Steps update independently via `update_plan_step`.
+ *
+ * Lifecycle: `set_plan` replaces the current plan. `update_plan_step`
+ * mutates one step's status. `clearPlan` / `resetConversation` clears
+ * it. We do NOT persist plans across reloads — like system pills, a
+ * plan describes the agent's live trajectory, which a reload would
+ * desync from.
+ */
+export type PlanStepStatus = "pending" | "in_progress" | "done" | "skipped";
+
+export interface PlanStep {
+  id: string;
+  title: string;
+  status: PlanStepStatus;
+  note?: string;
+}
+
+export interface Plan {
+  title: string;
+  steps: PlanStep[];
+  createdAt: number;
+}
+
 // ── Memory ───────────────────────────────────────────────────────────────
 
 export interface MemoryEntry {
@@ -135,6 +163,10 @@ interface AgentState {
   // Memory
   workingMemory: MemoryEntry[];
   longTermMemory: MemoryEntry[];
+
+  // Plan (Cowork Phase C.2) — agent-published trajectory for multi-step
+  // workflows. One active plan at a time; set_plan replaces it.
+  currentPlan?: Plan;
 
   // ── mutators ──────────────────────────────────────────────────────────
   setPhase: (phase: OodaPhase) => void;
@@ -168,6 +200,21 @@ interface AgentState {
   rememberLongTerm: (entry: Omit<MemoryEntry, "id" | "at">) => void;
   clearWorking: () => void;
   forget: (id: string) => void;
+
+  /** Publish a new plan, replacing any previous one. Called when the
+   *  agent emits a successful `set_plan` tool result. */
+  setPlan: (plan: { title: string; steps: PlanStep[] }) => void;
+  /** Mutate one step's status (and optional note) by id. No-op if the
+   *  step id isn't in the active plan. Called when the agent emits a
+   *  successful `update_plan_step` tool result. */
+  updatePlanStep: (
+    id: string,
+    status: PlanStepStatus,
+    note?: string
+  ) => void;
+  /** Drop the active plan. Called by `resetConversation` or manually
+   *  when the workflow is finished. */
+  clearPlan: () => void;
 
   /** Start a fresh chat: clears messages, clarifications, proposals,
    *  and working memory. Long-term memory is preserved so the agent
@@ -374,6 +421,38 @@ export const useAgent = create<AgentState>()(
           longTermMemory: s.longTermMemory.filter((e) => e.id !== id),
         })),
 
+      setPlan: (plan) =>
+        set({
+          currentPlan: {
+            title: plan.title,
+            steps: plan.steps.map((s) => ({
+              id: s.id,
+              title: s.title,
+              status: s.status ?? "pending",
+              ...(s.note !== undefined ? { note: s.note } : {}),
+            })),
+            createdAt: Date.now(),
+          },
+        }),
+      updatePlanStep: (id, status, note) =>
+        set((s) => {
+          if (!s.currentPlan) return s;
+          const idx = s.currentPlan.steps.findIndex(
+            (step) => step.id === id
+          );
+          if (idx < 0) return s;
+          const nextSteps = s.currentPlan.steps.slice();
+          nextSteps[idx] = {
+            ...nextSteps[idx],
+            status,
+            ...(note !== undefined ? { note } : {}),
+          };
+          return {
+            currentPlan: { ...s.currentPlan, steps: nextSteps },
+          };
+        }),
+      clearPlan: () => set({ currentPlan: undefined }),
+
       resetConversation: () =>
         set({
           phase: "idle",
@@ -382,6 +461,7 @@ export const useAgent = create<AgentState>()(
           clarifications: {},
           proposals: {},
           workingMemory: [],
+          currentPlan: undefined,
           // Long-term memory preserved intentionally.
         }),
       resetAll: () =>
@@ -392,6 +472,7 @@ export const useAgent = create<AgentState>()(
           clarifications: {},
           proposals: {},
           workingMemory: [],
+          currentPlan: undefined,
           // NOTE: long-term memory is NOT cleared by resetAll — that's the
           // point. Conversations end, but the agent remembers across them.
         }),

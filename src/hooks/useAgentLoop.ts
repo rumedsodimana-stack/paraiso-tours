@@ -20,6 +20,8 @@ import {
   type AgentProposal,
   type ClarificationRequest,
   type MemoryEntry,
+  type PlanStep,
+  type PlanStepStatus,
 } from "@/stores/ai-agent.store";
 import { useAdminWorkspace } from "@/stores/admin-workspace.store";
 import type { AgentNextAction, AgentObservation } from "@/lib/agent-ooda";
@@ -32,6 +34,60 @@ import {
 } from "@/app/actions/agent-turn";
 import type { AgentTurnState } from "@/lib/agent-runtime";
 import { toolRequiresApproval } from "@/lib/agent-tool-catalog";
+
+// ── Plan-tool routing (Cowork Phase C.2) ─────────────────────────────────
+//
+// `set_plan` and `update_plan_step` are conversational state, not data
+// mutations. They auto-execute (category=read) but the client intercepts
+// their results so:
+//   - Batch and streaming paths skip the default "tool_use → proposal card"
+//     and "tool_result → tool bubble + memory pill" rendering.
+//   - The runtime payload (validated server-side) is forwarded to the
+//     Zustand plan store, which the `<AgentPlanCard />` subscribes to.
+//
+// Net effect: the admin sees the plan as one persistent card that updates
+// in place, without the noisy per-step proposal/tool bubbles that would
+// otherwise spam the conversation surface.
+const PLAN_TOOL_NAMES = new Set(["set_plan", "update_plan_step"]);
+
+function isPlanTool(name: string): boolean {
+  return PLAN_TOOL_NAMES.has(name);
+}
+
+/**
+ * Route a successful plan tool's payload into the Zustand plan store.
+ * Returns true when the result was consumed (caller should skip default
+ * rendering); false when the payload was malformed or the tool failed,
+ * in which case caller should fall back to the normal tool-bubble path
+ * so the admin at least sees something went wrong.
+ */
+function applyPlanToolResult(
+  toolName: string,
+  ok: boolean,
+  data: unknown
+): boolean {
+  if (!ok) return false;
+  if (toolName === "set_plan") {
+    const plan = data as
+      | { title?: string; steps?: PlanStep[] }
+      | null
+      | undefined;
+    if (!plan?.title || !Array.isArray(plan.steps) || plan.steps.length === 0)
+      return false;
+    useAgent.getState().setPlan({ title: plan.title, steps: plan.steps });
+    return true;
+  }
+  if (toolName === "update_plan_step") {
+    const upd = data as
+      | { id?: string; status?: PlanStepStatus; note?: string }
+      | null
+      | undefined;
+    if (!upd?.id || !upd?.status) return false;
+    useAgent.getState().updatePlanStep(upd.id, upd.status, upd.note);
+    return true;
+  }
+  return false;
+}
 
 export interface PageContext {
   /** Current admin path, e.g. /admin/bookings/lead_X. */
@@ -350,6 +406,9 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
         continue;
       }
       if (ev.kind === "tool_use") {
+        // Plan tools are conversational state — the plan card renders the
+        // outcome on tool_result. Skip the proposal-card noise here.
+        if (isPlanTool(ev.toolName)) continue;
         // Show the tool call as a proposal so the existing UI surface
         // (proposal card with pending → executed transition) renders it
         // consistently with the legacy path.
@@ -364,6 +423,13 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
         continue;
       }
       if (ev.kind === "tool_result") {
+        // Plan tools: forward to the plan store and skip the default
+        // tool-bubble + memory-pill rendering (the plan card IS the
+        // visualization). On payload-shape failure fall through so the
+        // admin still sees the error in the conversation.
+        if (isPlanTool(ev.toolName) && applyPlanToolResult(ev.toolName, ev.ok, ev.data)) {
+          continue;
+        }
         const proposalId = toolUseToProposal.get(ev.toolUseId);
         if (proposalId) {
           if (ev.ok) markProposalExecuted(proposalId, ev.data);
@@ -509,6 +575,10 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           return;
         }
         case "tool_use_start": {
+          // Plan tools (set_plan / update_plan_step): the plan card
+          // renders the outcome on tool_result. Skip the proposal-card
+          // noise here so the conversation surface stays clean.
+          if (isPlanTool(ev.toolName)) return;
           // Surface the tool call as a pending proposal card. Input
           // is empty at this point — the input_complete event below
           // will fill it in as the model finishes deciding the args.
@@ -538,6 +608,13 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           return;
         }
         case "tool_result": {
+          // Plan tools: forward payload to the plan store and skip the
+          // default tool-bubble + memory-pill rendering. On malformed
+          // payload or tool-failure, fall through so the admin still
+          // sees the failure in the conversation.
+          if (isPlanTool(ev.toolName) && applyPlanToolResult(ev.toolName, ev.ok, ev.data)) {
+            return;
+          }
           const proposalId = toolUseToProposal.get(ev.toolUseId);
           if (proposalId) {
             if (ev.ok) markProposalExecuted(proposalId, ev.data);

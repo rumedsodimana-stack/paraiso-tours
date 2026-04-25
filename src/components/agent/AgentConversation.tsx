@@ -54,6 +54,7 @@ import {
 import type { AgentNextAction } from "@/lib/agent-ooda";
 import { useAgentLoop, type PageContext } from "@/hooks/useAgentLoop";
 import { AgentClarification } from "./AgentClarification";
+import { AgentPlanCard } from "./AgentPlanCard";
 import { AgentProposals } from "./AgentProposals";
 
 interface RuntimeInfo {
@@ -272,6 +273,10 @@ export function AgentConversation({
                 />
               )
             )}
+            {/* Plan card — visible whenever the agent has published a
+             *  multi-step plan via `set_plan`. Renders below the latest
+             *  message so step transitions stay close to the live work. */}
+            <AgentPlanCard />
             {pendingClarification && (
               <AgentClarification
                 clarification={pendingClarification}

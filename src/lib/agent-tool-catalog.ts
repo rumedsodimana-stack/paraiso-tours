@@ -147,6 +147,12 @@ export const TOOL_CATEGORY: Record<string, ToolCategory> = {
   // parent's perspective; the sub-agent's own tool catalog (filtered
   // server-side) governs what it can do internally.
   dispatch_subagent: "read",
+
+  // Plan mode (Cowork Phase C.2) — conversational state, no DB writes.
+  // The client intercepts these tool results and updates the plan card
+  // in the conversation surface.
+  set_plan: "read",
+  update_plan_step: "read",
 };
 
 export function getToolCategory(name: string): ToolCategory | null {
