@@ -19,6 +19,7 @@ import {
   type AgentMessage,
   type AgentProposal,
   type ClarificationRequest,
+  type MemoryEntry,
 } from "@/stores/ai-agent.store";
 import { useAdminWorkspace } from "@/stores/admin-workspace.store";
 import type { AgentNextAction } from "@/lib/agent-ooda";
@@ -92,6 +93,20 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
   const markProposalFailed = useAgent((s) => s.markProposalFailed);
   const allProposals = useAgent((s) => s.proposals);
   const resetConversation = useAgent((s) => s.resetConversation);
+
+  // ── Working-memory helper ─────────────────────────────────────────
+  // Every memory write is also surfaced inline in the conversation as a
+  // small system pill so the admin sees the agent's awareness flow
+  // alongside the chat. The raw `entry.text` reads as machine logs
+  // ("Proposed: Send invoice (tool=send_invoice, conf=0.78)"), so
+  // callers pass a human-readable `displayText` instead.
+  const rememberWorkingAndAnnounce = (
+    entry: Omit<MemoryEntry, "id" | "at">,
+    displayText?: string
+  ) => {
+    rememberWorking(entry);
+    addMessage({ role: "system", content: displayText ?? entry.text });
+  };
 
   const currentView = useAdminWorkspace((s) => s.currentView);
   const currentEntity = useAdminWorkspace((s) => s.currentEntity);
@@ -177,10 +192,13 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           content: result.summary,
           toolName: proposal.tool,
         });
-        rememberWorking({
-          kind: "learning",
-          text: `${proposal.tool} succeeded: ${result.summary}`,
-        });
+        rememberWorkingAndAnnounce(
+          {
+            kind: "learning",
+            text: `${proposal.tool} succeeded: ${result.summary}`,
+          },
+          `✓ Ran ${proposal.tool}`
+        );
 
         // Continue the loop — feed the outcome back to the agent so it
         // either summarizes or proposes the next step.
@@ -267,10 +285,13 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           role: "assistant",
           content: `⚠️ ${proposal.tool} failed: ${result.error ?? result.summary}`,
         });
-        rememberWorking({
-          kind: "learning",
-          text: `${proposal.tool} failed: ${result.error ?? result.summary}`,
-        });
+        rememberWorkingAndAnnounce(
+          {
+            kind: "learning",
+            text: `${proposal.tool} failed: ${result.error ?? result.summary}`,
+          },
+          `⚠️ ${proposal.tool} failed`
+        );
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -326,10 +347,13 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
             content: decision.response,
             nextActions: decision.nextActions,
           });
-          rememberWorking({
-            kind: "fact",
-            text: `Told admin: ${decision.response.slice(0, 160)}`,
-          });
+          rememberWorkingAndAnnounce(
+            {
+              kind: "fact",
+              text: `Told admin: ${decision.response.slice(0, 160)}`,
+            },
+            "Replied"
+          );
         } else if (decision.kind === "clarify" && result.clarification) {
           const cr = addClarification({
             question: result.clarification.question,
@@ -349,10 +373,13 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
             content: `**${decision.title}** — running ${decision.steps.length} steps.`,
             nextActions: decision.nextActions,
           });
-          rememberWorking({
-            kind: "fact",
-            text: `Chain: ${decision.title} (${decision.steps.length} steps)`,
-          });
+          rememberWorkingAndAnnounce(
+            {
+              kind: "fact",
+              text: `Chain: ${decision.title} (${decision.steps.length} steps)`,
+            },
+            `Running ${decision.steps.length}-step chain`
+          );
           for (const step of decision.steps) {
             const stepProposal = addProposal({
               title: step.title,
@@ -381,10 +408,13 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
             entityRefs: decision.entityRefs,
             confidence: decision.confidence,
           });
-          rememberWorking({
-            kind: "fact",
-            text: `Proposed: ${decision.title} (tool=${decision.tool}, conf=${decision.confidence.toFixed(2)})`,
-          });
+          rememberWorkingAndAnnounce(
+            {
+              kind: "fact",
+              text: `Proposed: ${decision.title} (tool=${decision.tool}, conf=${decision.confidence.toFixed(2)})`,
+            },
+            `Proposed: ${decision.title}`
+          );
 
           if (toolRequiresApproval(decision.tool)) {
             addMessage({
@@ -419,10 +449,15 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
     runProposal(proposalId, { humanApproved: true });
 
   const handleProposalReject = async (proposalId: string, reason?: string) => {
-    rememberWorking({
-      kind: "learning",
-      text: `Admin rejected proposal ${proposalId}${reason ? `: ${reason}` : ""}. Avoid similar.`,
-    });
+    rememberWorkingAndAnnounce(
+      {
+        kind: "learning",
+        text: `Admin rejected proposal ${proposalId}${reason ? `: ${reason}` : ""}. Avoid similar.`,
+      },
+      reason
+        ? `Rejected — ${reason}`
+        : "Rejected proposal — will avoid similar"
+    );
   };
 
   return {

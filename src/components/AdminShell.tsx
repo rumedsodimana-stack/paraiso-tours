@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 
 import { GlobalAdminAiChat } from "@/components/GlobalAdminAiChat";
+import { AgentContextWatcher } from "@/components/agent/AgentContextWatcher";
 
 interface RuntimeSummary {
   enabled: boolean;
@@ -84,6 +85,10 @@ export function AdminShell({
 
   return (
     <div className="admin-shell flex h-screen overflow-hidden print:block print:h-auto print:overflow-auto">
+      {/* Bridges admin workspace context into the shared agent
+          conversation as inline system pills. Mounted unconditionally
+          so /admin/ai also sees focus / view changes. */}
+      <AgentContextWatcher />
       <Sidebar brandName={brandName} logoUrl={logoUrl} />
       <div className="relative z-10 ml-64 flex h-full min-w-0 flex-1 flex-col overflow-hidden print:ml-0">
         <Suspense

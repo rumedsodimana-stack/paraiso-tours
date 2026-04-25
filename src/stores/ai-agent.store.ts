@@ -391,9 +391,17 @@ export const useAgent = create<AgentState>()(
         // Persist long-term memory across sessions; the rest is session-scoped
         // but we keep working memory + last 50 messages for continuity on
         // accidental reloads.
+        //
+        // ⚠️  System-role messages (the inline context/memory pills the
+        // unified `<AgentConversation />` renders) describe live workspace
+        // state — view, focused entity, "Ran X". Replaying them on reload
+        // would be misleading because the world they describe may have
+        // moved on. Keep only real dialogue + tool messages.
         longTermMemory: state.longTermMemory,
         workingMemory: state.workingMemory.slice(0, 20),
-        messages: state.messages.slice(-50),
+        messages: state.messages
+          .filter((m) => m.role !== "system")
+          .slice(-50),
       }),
       version: 1,
     }
