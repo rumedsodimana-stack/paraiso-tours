@@ -2108,6 +2108,55 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
       return ok(`Found ${all.length} payroll run${all.length === 1 ? "" : "s"}.`, all.slice(0, limit ?? 50));
     },
   },
+
+  // ── Sub-agent dispatch (Cowork Phase C.1) ─────────────────────────────
+  //
+  // Spawns a focused sub-agent for a scoped research/analysis task.
+  // Category is `read` because from the parent admin's perspective the
+  // dispatch itself is non-destructive — every mutating action a sub-
+  // agent might take is governed by the sub-agent's own filtered tool
+  // catalog, which excludes deletes. So no HITL gate fires on dispatch.
+  //
+  // Concurrency: when the model emits multiple dispatch_subagent calls
+  // in one turn, the parent runLoop fires them in parallel via
+  // Promise.all (same fan-out path as any safe-tool batch). 3 dispatches
+  // = 3 concurrent sub-agent runs, not sequential.
+  {
+    name: "dispatch_subagent",
+    category: "read",
+    summary:
+      "Spawn a focused sub-agent for a scoped research/analysis task. Sub-agents have a fresh context, can call read/create/update/send tools, and return a single text summary. Use for parallel research (call this multiple times in one turn — they run concurrently), deep dives, or specialized analysis that would crowd your main context. Sub-agents cannot delete or spawn nested sub-agents.",
+    inputSchema: z.object({
+      task: z
+        .string()
+        .min(1)
+        .max(2000)
+        .describe(
+          "Specific scoped task. Be precise about what to find or do. Example: 'List all bookings for destination Bali in Q3 2026 and summarize the top 3 most-booked packages.'"
+        ),
+      context: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe(
+          "Optional 1-3 line briefing if the sub-agent needs context the task statement doesn't carry (e.g. relevant entity IDs, prior decisions)."
+        ),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          task: z.string().min(1).max(2000),
+          context: z.string().max(2000).optional(),
+        })
+        .parse(raw);
+      const { runSubagent } = await import("./agent-runtime");
+      const result = await runSubagent(input);
+      if (!result.ok) {
+        return fail(result.summary);
+      }
+      return ok(result.summary, result.data);
+    },
+  },
 ];
 
 // ── Lookup helpers ──────────────────────────────────────────────────────

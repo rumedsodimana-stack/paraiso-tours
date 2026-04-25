@@ -201,6 +201,14 @@ export interface RunAgentTurnInput {
    *  when the client wants to continue a long-running thread instead of
    *  re-flattening. */
   priorMessages?: Message[];
+  /** When > 0, this turn is a sub-agent invocation dispatched by a parent
+   *  turn's `dispatch_subagent` tool call. Sub-agents see a filtered tool
+   *  catalog (no deletes, no nested dispatch) and a focused system prompt.
+   *  Default 0 = top-level admin turn. The catalog filter strips
+   *  `dispatch_subagent` from sub-agents, so depth > 1 is unreachable —
+   *  the depth field is purely a "this is a sub-agent" signal, not a
+   *  recursion counter. */
+  _subagentDepth?: number;
 }
 
 // ── Tool catalog publishing ─────────────────────────────────────────────
@@ -212,15 +220,33 @@ interface AnthropicToolSpec {
 }
 
 /**
- * Convert AGENT_TOOLS into Anthropic-format tool specs. Every tool is
- * exposed — including `delete` tools — but the loop intercepts delete
- * tool_use blocks and suspends for HITL approval before executing.
+ * Convert AGENT_TOOLS into Anthropic-format tool specs.
+ *
+ * Top-level agent (default): every tool is exposed — including `delete`
+ * tools — but the loop intercepts delete tool_use blocks and suspends
+ * for HITL approval before executing.
+ *
+ * Sub-agent (`opts.isSubagent === true`): delete tools and
+ * `dispatch_subagent` are filtered out. Sub-agents are scoped researchers
+ * — they should never destructively mutate (the admin doesn't see their
+ * tool cards) and they shouldn't recursively spawn nested sub-agents
+ * (worst-case branching). Depth cap = 1, enforced by tool catalog rather
+ * than a runtime counter so the model literally cannot see the dispatch
+ * tool to call it.
  *
  * The category is encoded into the description so the model's prompt can
  * still reason about which tools auto-run vs which ones need approval.
  */
-function buildToolSpecs(): AnthropicToolSpec[] {
-  return AGENT_TOOLS.map((t) => ({
+function buildToolSpecs(opts?: {
+  isSubagent?: boolean;
+}): AnthropicToolSpec[] {
+  const isSubagent = opts?.isSubagent === true;
+  return AGENT_TOOLS.filter((t) => {
+    if (!isSubagent) return true;
+    if (t.category === "delete") return false;
+    if (t.name === "dispatch_subagent") return false;
+    return true;
+  }).map((t) => ({
     name: t.name,
     description: `[${t.category}] ${t.summary}`,
     input_schema: zodToJsonSchema(t.inputSchema),
@@ -450,6 +476,43 @@ function buildSystemPrompt(observation: AgentObservation): string {
 }
 
 /**
+ * Build the system prompt for a sub-agent turn. Inherits the full action
+ * bias, never-refuse, error-recovery, and tool-protocol guards from the
+ * top-level prompt, but layers on a sub-agent addendum that:
+ *   - Forbids clarifying questions (no admin to answer them)
+ *   - Demands a dense, decision-ready final summary (becomes the parent
+ *     agent's tool_result content)
+ *   - Names the missing capabilities (no delete, no nested dispatch) so
+ *     the model doesn't waste a turn searching for them
+ */
+function buildSubagentSystemPrompt(observation: AgentObservation): string {
+  const orient = buildOrientPrompt(observation);
+  return [
+    AGENT_NATIVE_SYSTEM_PROMPT,
+    "",
+    "── SUB-AGENT MODE ──",
+    "You are a sub-agent dispatched by the main admin agent for a focused",
+    "research / analysis task. The user message is your scoped mission.",
+    "",
+    "RULES SPECIFIC TO SUB-AGENT MODE:",
+    "- You have NO admin to answer clarifying questions. Never ask 'which",
+    "  one?' or 'should I…?'. Make a sensible default and proceed; the",
+    "  parent agent will adjudicate any ambiguity in its synthesis.",
+    "- Your final assistant text becomes the parent's tool_result content.",
+    "  Make it dense and decision-ready: concrete numbers, names, and 1-2",
+    "  actionable observations. Avoid filler. Aim for ≤200 words unless",
+    "  the parent explicitly asked for a detailed report.",
+    "- Tools available: read, create, update, send. Delete tools and",
+    "  nested sub-agent dispatch are NOT in your catalog — those stay",
+    "  with the parent agent. If your research surfaces a delete-worthy",
+    "  finding, name it in your summary so the parent can act.",
+    "",
+    "Live observation (sub-agent fresh start):",
+    orient || "(no admin context — stand-alone task)",
+  ].join("\n");
+}
+
+/**
  * Iteration loop body — shared between fresh turns and resumes. Runs
  * model → tool execution → loop, with parallel tool execution within
  * each iteration. Returns when the model finishes (no more tool_use),
@@ -628,6 +691,12 @@ async function runLoop(
  * Run the full server-side agent loop: tool-call → execute → loop, until
  * the model is done (no more tool_use) or hits a delete that needs admin
  * approval.
+ *
+ * When `input._subagentDepth > 0` we run in sub-agent mode: filtered
+ * tool catalog (no deletes, no nested dispatch) and a focused system
+ * prompt that forbids clarifying questions and demands a dense final
+ * summary. Sub-agent mode is invoked recursively from `runSubagent`,
+ * which is the handler for the `dispatch_subagent` tool.
  */
 export async function runAgentTurn(
   input: RunAgentTurnInput
@@ -646,8 +715,11 @@ export async function runAgentTurn(
     };
   }
 
-  const tools = buildToolSpecs();
-  const systemPrompt = buildSystemPrompt(input.observation);
+  const isSubagent = (input._subagentDepth ?? 0) > 0;
+  const tools = buildToolSpecs({ isSubagent });
+  const systemPrompt = isSubagent
+    ? buildSubagentSystemPrompt(input.observation)
+    : buildSystemPrompt(input.observation);
 
   // Seed messages: prior conversation if continuing, plus the new user turn.
   const messages: Message[] = [
@@ -799,6 +871,92 @@ export async function resumeAgentTurn(
     startedAt,
     events
   );
+}
+
+// ── Sub-agent dispatch ──────────────────────────────────────────────────
+//
+// Sub-agents are invoked through the `dispatch_subagent` tool. The tool
+// handler (in agent-tools.ts) imports `runSubagent` lazily and awaits its
+// result, which becomes the tool_result content the parent agent sees.
+//
+// Concurrency: the parent's `runLoop` fires all safe tool_use blocks in
+// parallel via Promise.all. So when the model emits 3 dispatch_subagent
+// calls in one turn, all 3 sub-agents run concurrently — same fan-out
+// machinery the read tools use, no special path.
+
+export interface RunSubagentInput {
+  /** The scoped task the parent wants the sub-agent to perform. Becomes
+   *  the sub-agent's user message verbatim (with optional context
+   *  prepended). */
+  task: string;
+  /** Optional 1-3 line briefing the parent wants to share. Helps when
+   *  the task references entities the sub-agent wouldn't otherwise
+   *  know about. */
+  context?: string;
+}
+
+export interface RunSubagentResult {
+  ok: boolean;
+  summary: string;
+  data?: unknown;
+  error?: string;
+}
+
+/**
+ * Dispatch a focused sub-agent run. Sub-agents have a fresh empty
+ * observation (no parent entity or dialogue), see a filtered tool catalog
+ * (no deletes, no nested dispatch), and return a single text summary the
+ * parent can synthesize.
+ *
+ * On the wire this is just `runAgentTurn({ ..., _subagentDepth: 1 })` —
+ * the sub-agent reuses the entire iterative loop, parallel tool
+ * execution, error handling, audit logging, and timeout machinery the
+ * top-level agent uses. Only the prompt and tool catalog differ.
+ */
+export async function runSubagent(
+  input: RunSubagentInput
+): Promise<RunSubagentResult> {
+  const userMessage = input.context
+    ? `${input.task}\n\nContext from parent agent:\n${input.context}`
+    : input.task;
+
+  const fresh: AgentObservation = {
+    recentDialogue: [],
+  };
+
+  const outcome = await runAgentTurn({
+    userMessage,
+    observation: fresh,
+    _subagentDepth: 1,
+  });
+
+  if (outcome.kind === "complete") {
+    return {
+      ok: true,
+      summary: outcome.finalText || "Sub-agent finished without final text.",
+      data: {
+        iterations: outcome.iterations,
+        toolCount: outcome.events.filter((e) => e.kind === "tool_result")
+          .length,
+      },
+    };
+  }
+  if (outcome.kind === "pending_approval") {
+    // Defensive guard — sub-agents should never reach pending_approval
+    // because their tool catalog has no delete tools. If they do, the
+    // catalog filter has regressed and we surface that loudly to the
+    // parent so it can pivot rather than hang.
+    return {
+      ok: false,
+      summary: `Sub-agent unexpectedly suspended on ${outcome.pending.toolName}; the sub-agent tool catalog filter may have regressed.`,
+      error: "subagent_unexpected_pending_approval",
+    };
+  }
+  return {
+    ok: false,
+    summary: `Sub-agent failed: ${outcome.error}`,
+    error: outcome.error,
+  };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────

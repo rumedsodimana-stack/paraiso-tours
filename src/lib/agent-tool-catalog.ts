@@ -142,6 +142,11 @@ export const TOOL_CATEGORY: Record<string, ToolCategory> = {
   // Self-extension: agent records new procedures + context.
   register_procedure: "create",
   remember_context: "create",
+
+  // Sub-agent dispatch (Cowork Phase C.1) — non-destructive from the
+  // parent's perspective; the sub-agent's own tool catalog (filtered
+  // server-side) governs what it can do internally.
+  dispatch_subagent: "read",
 };
 
 export function getToolCategory(name: string): ToolCategory | null {
