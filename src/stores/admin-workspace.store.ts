@@ -81,7 +81,7 @@ interface AdminWorkspaceState {
   recent: EntityReference[];
   filters: Record<string, FilterState>;
 
-  setView: (view: AdminView, entity?: EntityReference) => void;
+  setView: (view: AdminView, entity?: Omit<EntityReference, "at">) => void;
   touchEntity: (entity: Omit<EntityReference, "at">) => void;
   clearEntity: () => void;
   setFilter: (scope: string, filter: FilterState) => void;

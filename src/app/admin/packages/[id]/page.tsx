@@ -4,6 +4,7 @@ import { getPackage } from "@/lib/db";
 import { PackageActions } from "./PackageActions";
 import { CostBreakdown } from "./CostBreakdown";
 import { SaveSuccessBanner } from "../../SaveSuccessBanner";
+import { EntityFocusBeacon } from "@/components/agent/EntityFocusBeacon";
 
 export default async function PackageDetailPage({
   params,
@@ -31,8 +32,14 @@ export default async function PackageDetailPage({
     );
   }
 
+  const aiSeed = `Rewrite the marketing copy for package ${pkg.name}. Keep it punchy, benefit-led, and on-brand.`;
+
   return (
     <div className="space-y-6">
+      <EntityFocusBeacon
+        view="packages"
+        entity={{ kind: "package", id: pkg.id, label: pkg.name }}
+      />
       {saved === "1" && <SaveSuccessBanner message="Package updated successfully" />}
       <div className="flex items-center justify-between gap-4">
         <Link
@@ -44,7 +51,7 @@ export default async function PackageDetailPage({
         </Link>
         <div className="flex items-center gap-3">
           <Link
-            href={`/admin/ai?tool=package_writer&packageId=${pkg.id}`}
+            href={`/admin/ai?seed=${encodeURIComponent(aiSeed)}`}
             className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd]"
           >
             <Bot className="h-4 w-4" />

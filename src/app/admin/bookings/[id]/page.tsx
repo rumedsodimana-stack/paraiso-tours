@@ -27,6 +27,7 @@ import { EmailSuppliersButton } from "../EmailSuppliersButton";
 import { InvoiceButton } from "../InvoiceButton";
 import { ApproveScheduleButton } from "./ApproveScheduleButton";
 import { CustomRouteBreakdown } from "../CustomRouteBreakdown";
+import { EntityFocusBeacon } from "@/components/agent/EntityFocusBeacon";
 
 export const dynamic = "force-dynamic";
 
@@ -105,8 +106,21 @@ export default async function BookingDetailPage({
   const currentStatus = lead.status ?? "new";
   const isScheduled = currentStatus === "scheduled" || currentStatus === "completed";
 
+  const aiSeed = `Give me a brief for booking ${lead.reference || lead.id}: status, what's missing, and the next action.`;
+
   return (
     <div className="space-y-6">
+      {/* Tells the agent we're focused on this booking — so prompts like
+          "rename this" or "send the invoice" hard-bind to lead.id without
+          the agent having to ask. */}
+      <EntityFocusBeacon
+        view="booking_detail"
+        entity={{
+          kind: "lead",
+          id: lead.id,
+          label: lead.reference || lead.name,
+        }}
+      />
       <div className="flex items-center justify-between gap-4">
         <Link
           href="/admin/bookings"
@@ -117,7 +131,7 @@ export default async function BookingDetailPage({
         </Link>
         <div className="flex items-center gap-3">
           <Link
-            href={`/admin/ai?tool=booking_brief&leadId=${lead.id}`}
+            href={`/admin/ai?seed=${encodeURIComponent(aiSeed)}`}
             className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#5e7279] transition hover:bg-[#f4ecdd]"
           >
             <Bot className="h-4 w-4" />

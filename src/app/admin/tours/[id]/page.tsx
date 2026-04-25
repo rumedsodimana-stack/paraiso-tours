@@ -30,6 +30,7 @@ import {
   isSnapshotBackedPackageSelection,
   SUPPLIER_AVAILABILITY_UNVERIFIED_WARNING,
 } from "@/lib/tour-availability";
+import { EntityFocusBeacon } from "@/components/agent/EntityFocusBeacon";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,14 @@ export default async function TourDetailPage({
 
   return (
     <div className="space-y-6">
+      <EntityFocusBeacon
+        view="tour_detail"
+        entity={{
+          kind: "tour",
+          id: tour.id,
+          label: tour.confirmationId || lead?.name || tour.id,
+        }}
+      />
       {scheduled ? (
         <SaveSuccessBanner message="Tour scheduled successfully. This booking has moved into Scheduled Tours." />
       ) : null}

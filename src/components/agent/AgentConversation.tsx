@@ -79,6 +79,10 @@ interface AgentConversationProps {
   /** Optional content to slot to the right of the close button (e.g. a
    *  drawer-specific "open in full page" link). */
   headerExtra?: ReactNode;
+  /** Pre-fill the composer with this text (e.g. from `/admin/ai?seed=…`).
+   *  Only applied when the conversation is empty — never overwrites a
+   *  draft the admin is mid-typing. */
+  initialDraft?: string;
 }
 
 export function AgentConversation({
@@ -88,6 +92,7 @@ export function AgentConversation({
   onClose,
   compact = false,
   headerExtra,
+  initialDraft,
 }: AgentConversationProps) {
   const {
     phase,
@@ -102,9 +107,22 @@ export function AgentConversation({
     resetConversation,
   } = useAgentLoop(pageContext);
 
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialDraft ?? "");
+  const seedAppliedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // If `initialDraft` arrives after mount (search params resolving on
+  // the client) and the admin hasn't typed anything, apply it once.
+  useEffect(() => {
+    if (seedAppliedRef.current) return;
+    if (!initialDraft) return;
+    if (input.length > 0) return;
+    if (messages.length > 0) return;
+    setInput(initialDraft);
+    seedAppliedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialDraft]);
 
   const runtimeReady = runtime ? runtime.ready : true;
   const headerLabel = pageContext?.label ?? "Admin workspace";

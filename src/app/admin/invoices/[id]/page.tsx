@@ -7,6 +7,7 @@ import { getAuditLogsForEntities } from "@/lib/audit";
 import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { InvoiceDocument } from "../InvoiceDocument";
 import { InvoiceActions } from "./InvoiceActions";
+import { EntityFocusBeacon } from "@/components/agent/EntityFocusBeacon";
 
 function getBaseUrl() {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
@@ -48,6 +49,14 @@ export default async function InvoiceViewPage({
 
   return (
     <div className="space-y-6">
+      <EntityFocusBeacon
+        view="invoice_detail"
+        entity={{
+          kind: "invoice",
+          id: invoice.id,
+          label: invoice.invoiceNumber || invoice.reference || invoice.id,
+        }}
+      />
       <div className="flex items-center justify-between gap-4 print:hidden">
         <Link
           href={`/admin/bookings/${invoice.leadId}`}

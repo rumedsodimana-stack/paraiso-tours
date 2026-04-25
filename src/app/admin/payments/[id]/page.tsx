@@ -11,6 +11,7 @@ import { PaymentVoucherDocument } from "../PaymentVoucherDocument";
 import { CreateInvoiceForPaymentButton } from "../CreateInvoiceForPaymentButton";
 import { CreateInvoiceFromPaymentButton } from "../CreateInvoiceFromPaymentButton";
 import { MarkPaymentReceivedButton } from "../MarkPaymentReceivedButton";
+import { EntityFocusBeacon } from "@/components/agent/EntityFocusBeacon";
 
 async function getInvoiceForPayment(payment: { invoiceId?: string; leadId?: string; type: string; clientName?: string }) {
   if (payment.invoiceId) return getInvoice(payment.invoiceId);
@@ -51,6 +52,14 @@ export default async function PaymentDetailPage({
 
   return (
     <div className="space-y-6">
+      <EntityFocusBeacon
+        view="payments"
+        entity={{
+          kind: "payment",
+          id: payment.id,
+          label: payment.reference || payment.clientName || payment.id,
+        }}
+      />
       <Link
         href="/admin/payments"
         className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b] print:hidden"
