@@ -148,8 +148,19 @@ export function getToolCategory(name: string): ToolCategory | null {
   return TOOL_CATEGORY[name] ?? null;
 }
 
-/** True if this tool category triggers the HITL approval card. */
+/**
+ * True if this tool category triggers the HITL approval card.
+ *
+ * Policy: only `delete` operations are gated. Updates (status changes,
+ * mark-as-paid, edits to entities) auto-run alongside reads / creates /
+ * sends. The admin can always undo by chatting again, and every
+ * execution is logged in `ai_interactions` and visible in the audit
+ * trail. Gating every update was creating fatigue with no clear win.
+ *
+ * To revert to the old behavior, change to:
+ *   return cat === "update" || cat === "delete";
+ */
 export function toolRequiresApproval(name: string): boolean {
   const cat = TOOL_CATEGORY[name];
-  return cat === "update" || cat === "delete";
+  return cat === "delete";
 }

@@ -232,7 +232,7 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
             if (toolRequiresApproval(follow.decision.tool)) {
               addMessage({
                 role: "assistant",
-                content: `Next: **${follow.decision.title}** (edit/delete) — approve below.`,
+                content: `Next: **${follow.decision.title}** (delete) — approve below to run.`,
                 proposalId: next.id,
                 nextActions: follow.decision.nextActions,
               });
@@ -257,7 +257,7 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
               if (toolRequiresApproval(step.tool)) {
                 addMessage({
                   role: "assistant",
-                  content: `Step paused: **${step.title}** (edit/delete) — approve below to continue the chain.`,
+                  content: `Step paused: **${step.title}** (delete) — approve below to continue the chain.`,
                   proposalId: stepProposal.id,
                 });
                 break;
@@ -392,7 +392,7 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
             if (toolRequiresApproval(step.tool)) {
               addMessage({
                 role: "assistant",
-                content: `Step paused: **${step.title}** (edit/delete) — approve below to continue the chain.`,
+                content: `Step paused: **${step.title}** (delete) — approve below to continue the chain.`,
                 proposalId: stepProposal.id,
               });
               break;
@@ -419,7 +419,7 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           if (toolRequiresApproval(decision.tool)) {
             addMessage({
               role: "assistant",
-              content: `**${decision.title}** is an edit/delete — approve it below to run.`,
+              content: `**${decision.title}** is a delete — approve it below to run.`,
               proposalId: proposal.id,
               nextActions: decision.nextActions,
             });

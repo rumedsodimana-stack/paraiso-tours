@@ -3,20 +3,22 @@
  *
  * Every admin capability is exposed as a typed tool the agent can propose.
  *
- * Approval policy (matches the user's contract: "ask permission only for
- * edits and deletes"):
+ * Approval policy (simplified — only deletes are gated):
  *
  *   category   | auto-execute? | user confirmation required?
  *   -----------+---------------+----------------------------
  *   read       | YES           | no
  *   create     | YES           | no
- *   send       | YES           | no (guest/supplier email — irreversible-ish)
- *   update     | NO            | YES — HITL approval card
+ *   update     | YES           | no  (status changes, edits, marks)
+ *   send       | YES           | no  (guest/supplier email — irreversible-ish)
  *   delete     | NO            | YES — HITL approval card
  *
  * The dispatcher (`executeProposalAction`) enforces this at the server
  * level, so even if a client tried to auto-approve a delete, the handler
  * would still require the proposal to carry an approved flag.
+ *
+ * To restore the stricter policy (gate updates too), change
+ * `requiresApproval` below to `category === "update" || category === "delete"`.
  */
 
 import { z } from "zod";
@@ -42,7 +44,7 @@ export interface ToolResult {
 
 /** True if the category requires explicit human approval before running. */
 export function requiresApproval(category: ToolCategory): boolean {
-  return category === "update" || category === "delete";
+  return category === "delete";
 }
 
 // ── Shared helpers ──────────────────────────────────────────────────────
@@ -2133,7 +2135,7 @@ export function listToolsForPrompt(): string {
     if (cat === "read") return "READ TOOLS (auto-execute, no approval needed):";
     if (cat === "create") return "CREATE TOOLS (auto-execute, no approval needed):";
     if (cat === "send") return "SEND TOOLS (auto-execute — emails go out immediately):";
-    if (cat === "update") return "UPDATE TOOLS (REQUIRE admin approval — proposal card):";
+    if (cat === "update") return "UPDATE TOOLS (auto-execute — status changes, edits, marks):";
     return "DELETE TOOLS (REQUIRE admin approval — proposal card):";
   };
   for (const cat of ["read", "create", "send", "update", "delete"] as ToolCategory[]) {

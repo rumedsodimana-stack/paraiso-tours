@@ -34,9 +34,9 @@ test("client catalog: no stale entries", () => {
   }
 });
 
-test("requiresApproval: update and delete only", () => {
-  assert.equal(requiresApproval("update"), true);
+test("requiresApproval: delete only (updates auto-run)", () => {
   assert.equal(requiresApproval("delete"), true);
+  assert.equal(requiresApproval("update"), false);
   assert.equal(requiresApproval("read"), false);
   assert.equal(requiresApproval("create"), false);
   assert.equal(requiresApproval("send"), false);
@@ -46,9 +46,11 @@ test("toolRequiresApproval: unknown tool → false (safe default)", () => {
   assert.equal(toolRequiresApproval("definitely_not_a_tool"), false);
 });
 
-test("toolRequiresApproval: update/delete true, others false", () => {
-  assert.equal(toolRequiresApproval("update_lead_status"), true);
+test("toolRequiresApproval: only deletes are gated", () => {
   assert.equal(toolRequiresApproval("delete_package"), true);
+  assert.equal(toolRequiresApproval("delete_lead"), true);
+  assert.equal(toolRequiresApproval("update_lead_status"), false);
+  assert.equal(toolRequiresApproval("mark_payment_received"), false);
   assert.equal(toolRequiresApproval("search_leads"), false);
   assert.equal(toolRequiresApproval("create_lead"), false);
   assert.equal(toolRequiresApproval("send_invoice_to_guest"), false);

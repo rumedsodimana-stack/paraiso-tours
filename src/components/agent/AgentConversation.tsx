@@ -287,7 +287,7 @@ export function AgentConversation({
         <div className="mb-2.5 flex items-center gap-1.5">
           <Zap className="h-3 w-3 text-[#12343b]" />
           <span className="text-xs font-medium text-[#12343b]">
-            Reads run instantly · edits ask for approval
+            Most actions run instantly · only deletes ask first
           </span>
         </div>
         <div

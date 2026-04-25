@@ -56,7 +56,7 @@ test("listToolsForPrompt: includes every tool name and category headers", () => 
   assert.match(out, /READ TOOLS/);
   assert.match(out, /CREATE TOOLS/);
   assert.match(out, /SEND TOOLS/);
-  assert.match(out, /UPDATE TOOLS \(REQUIRE admin approval/);
+  assert.match(out, /UPDATE TOOLS \(auto-execute/);
   assert.match(out, /DELETE TOOLS \(REQUIRE admin approval/);
 });
 

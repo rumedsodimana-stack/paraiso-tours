@@ -90,8 +90,8 @@ export default async function AdminAiPage() {
         </h1>
         <p className="mt-1 text-sm text-[#5e7279]">
           One chat controls the whole app. The agent observes your context,
-          proposes actions, auto-executes reads / creates / sends, and pauses
-          for your approval on edits and deletes.
+          auto-executes reads, creates, edits, and sends, and only pauses for
+          your approval before deleting anything.
         </p>
       </div>
 
