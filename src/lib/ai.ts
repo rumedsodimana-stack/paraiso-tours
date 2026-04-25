@@ -131,6 +131,22 @@ function isFeatureEnabled(
     case "admin_assistant":
       // Agent features piggyback on the booking_brief toggle
       return settings.ai.bookingBriefEnabled;
+    case "agent_decide":
+    case "agent_clarifier":
+      // The OODA agent surfaces (full /admin/ai page + the floating
+      // widget) cover everything workspace_copilot used to cover plus
+      // booking_brief / admin_assistant flows. Treat it as enabled if
+      // ANY of those upstream flags is on, so the agent works
+      // automatically for tenants whose settings predate these cases
+      // (otherwise the missing case falls through to `false` and the
+      // chat surface throws "AI tool disabled in settings").
+      return (
+        settings.ai.workspaceCopilotEnabled ||
+        settings.ai.bookingBriefEnabled ||
+        settings.ai.journeyAssistantEnabled ||
+        settings.ai.packageWriterEnabled ||
+        settings.ai.clientConciergeEnabled
+      );
     default:
       return false;
   }
