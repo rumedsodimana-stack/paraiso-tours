@@ -26,16 +26,34 @@ import { generateItineraryPdf } from "@/lib/itinerary-pdf";
 import { requireAdmin } from "@/lib/admin-session";
 
 export type ResendEmailInput = {
+  /**
+   * Full set of email templates the system emits. Note that not every
+   * template is *resendable* from this action — booking-change and
+   * supplier-change notices need a fresh `summary` the admin types in,
+   * and `internal_new_booking` is a one-shot internal alert. Those
+   * fall through to the default branch which surfaces a friendly
+   * "cannot be resent from here" error.
+   */
   template:
     | "tour_confirmation_with_invoice"
     | "supplier_reservation"
     | "payment_receipt"
     | "invoice"
     | "itinerary"
+    | "pre_trip_reminder"
+    | "post_trip_followup"
+    | "booking_revision"
+    | "booking_cancellation"
+    | "supplier_remittance"
+    | "supplier_schedule_update"
+    | "supplier_cancellation"
+    | "internal_new_booking"
     | "other";
   invoiceId?: string;
   tourId?: string;
   leadId?: string;
+  /** Used for supplier_remittance — the source-of-truth lookup key. */
+  paymentId?: string;
   /** Supplier-specific resend context. Recipient email used to find the
    *  supplier when only that much of the history is preserved. */
   supplierEmail?: string;
@@ -62,6 +80,22 @@ export async function resendEmailAction(input: ResendEmailInput): Promise<Result
           input.supplierEmail,
           input.supplierName
         );
+      case "pre_trip_reminder":
+        return await sendPreTripReminderAction(input.tourId ?? "");
+      case "post_trip_followup":
+        return await sendPostTripFollowUpAction(input.tourId ?? "");
+      case "supplier_remittance":
+        return await sendSupplierRemittanceAction(input.paymentId ?? "");
+      // Fall-through templates: the admin must re-trigger from the
+      // detail page where the original input lives. Surfacing this
+      // explicitly so the UI can hide the resend button instead of
+      // showing a confusing error.
+      case "booking_revision":
+      case "booking_cancellation":
+      case "supplier_schedule_update":
+      case "supplier_cancellation":
+      case "internal_new_booking":
+      case "other":
       default:
         return { error: "This template cannot be resent from here." };
     }
@@ -565,5 +599,86 @@ export async function sendSupplierChangeNoticeAction(
 
   revalidatePath("/admin/communications");
   return result.ok ? { success: true } : { error: result.error ?? "Send failed" };
+}
+
+// ── Bulk retry ────────────────────────────────────────────────────────────
+
+/**
+ * Subset of `ResendEmailInput` the bulk-retry button posts per failed
+ * row. We accept the audit-log `id` purely so the server can include
+ * it in error reporting later if we need to — it's not used as a key
+ * for fetching anything (we don't have a single-row audit-log getter
+ * and the resend handlers only need the entity references below).
+ */
+export interface BulkRetryItem {
+  id: string;
+  template: ResendEmailInput["template"];
+  invoiceId?: string;
+  tourId?: string;
+  leadId?: string;
+  paymentId?: string;
+  supplierEmail?: string;
+  supplierName?: string;
+}
+
+export interface BulkRetryResult {
+  ok: number;
+  failed: number;
+  /** Templates we deliberately can't resend without fresh admin input. */
+  skipped: number;
+  error?: string;
+}
+
+/**
+ * Re-fire each resendable failed message in sequence. We do NOT
+ * parallelize — the underlying resend handlers each touch Resend, the
+ * audit log, and `revalidatePath`, and going wide would just rate-limit
+ * us into more failures. Sequential keeps the audit trail clean too:
+ * each retry's audit event lands before the next one starts.
+ */
+export async function retryFailedMessagesAction(
+  items: BulkRetryItem[]
+): Promise<BulkRetryResult> {
+  await requireAdmin();
+  if (!Array.isArray(items) || items.length === 0) {
+    return { ok: 0, failed: 0, skipped: 0 };
+  }
+  // Hard cap to keep a runaway click from holding the request open
+  // forever — admins running a real flood should reload and retry the
+  // remainder rather than queue 500 emails behind one button.
+  const MAX = 50;
+  const slice = items.slice(0, MAX);
+
+  let ok = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  for (const item of slice) {
+    try {
+      const result = await resendEmailAction({
+        template: item.template,
+        invoiceId: item.invoiceId,
+        tourId: item.tourId,
+        leadId: item.leadId,
+        paymentId: item.paymentId,
+        supplierEmail: item.supplierEmail,
+        supplierName: item.supplierName,
+      });
+      if (result.success) {
+        ok += 1;
+      } else if (
+        result.error === "This template cannot be resent from here."
+      ) {
+        skipped += 1;
+      } else {
+        failed += 1;
+      }
+    } catch {
+      failed += 1;
+    }
+  }
+
+  revalidatePath("/admin/communications");
+  return { ok, failed, skipped };
 }
 

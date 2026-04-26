@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
+  CircleSlash,
   FileText,
   Inbox,
   Mail,
@@ -11,6 +12,7 @@ import { getAuditLogs, getLeads, getTours } from "@/lib/db";
 import type { AuditLog, Lead, Tour } from "@/lib/types";
 import { CommunicationsFilters } from "./CommunicationsFilters";
 import { ResendEmailButton } from "./ResendEmailButton";
+import { BulkRetryButton } from "./BulkRetryButton";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,17 @@ type MessageTemplate =
   | "payment_receipt"
   | "invoice"
   | "itinerary"
+  | "pre_trip_reminder"
+  | "post_trip_followup"
+  | "booking_revision"
+  | "booking_cancellation"
+  | "supplier_remittance"
+  | "supplier_schedule_update"
+  | "supplier_cancellation"
+  | "internal_new_booking"
   | "other";
+
+type DateRange = "today" | "7d" | "30d" | "90d" | "all";
 
 interface MessageRow {
   id: string;
@@ -37,9 +49,17 @@ interface MessageRow {
   tourId?: string;
   leadId?: string;
   invoiceId?: string;
+  paymentId?: string;
   supplierName?: string;
 }
 
+// Audit `action` strings that represent an outbound email event. Kept
+// in sync with every `recordAuditEvent({ action: ... })` call across
+// the codebase that emits an email — see /actions/{tours,invoices,
+// communications,client-booking}.ts. Adding a new email type? Add the
+// matching `*_emailed`/`*_email_failed`/`*_email_skipped` action here
+// AND extend `MessageTemplate` + `templateFromMetadata` below so the
+// row renders with a real label instead of "Other".
 const EMAIL_ACTIONS = new Set([
   "guest_confirmation_emailed",
   "guest_confirmation_email_failed",
@@ -58,17 +78,37 @@ const EMAIL_ACTIONS = new Set([
   "post_trip_followup_email_failed",
   "booking_change_notice_emailed",
   "booking_change_notice_email_failed",
+  "remittance_emailed",
+  "remittance_email_failed",
+  "supplier_change_notice_emailed",
+  "supplier_change_notice_email_failed",
+  // Internal alert when a client books from the public site — uses a
+  // bespoke action name (not the *_emailed pattern) but still flows to
+  // an admin inbox so it belongs in this view.
+  "admin_new_booking_alert_sent",
 ]);
 
 function templateFromMetadata(meta: Record<string, unknown> | undefined): MessageTemplate {
   const t = meta?.template;
   if (typeof t !== "string") return "other";
-  if (t === "tour_confirmation_with_invoice") return t;
-  if (t === "supplier_reservation") return t;
-  if (t === "payment_receipt") return t;
-  if (t === "invoice") return t;
-  if (t === "itinerary") return t;
-  return "other";
+  switch (t) {
+    case "tour_confirmation_with_invoice":
+    case "supplier_reservation":
+    case "payment_receipt":
+    case "invoice":
+    case "itinerary":
+    case "pre_trip_reminder":
+    case "post_trip_followup":
+    case "booking_revision":
+    case "booking_cancellation":
+    case "supplier_remittance":
+    case "supplier_schedule_update":
+    case "supplier_cancellation":
+    case "internal_new_booking":
+      return t;
+    default:
+      return "other";
+  }
 }
 
 function templateLabel(t: MessageTemplate) {
@@ -83,9 +123,47 @@ function templateLabel(t: MessageTemplate) {
       return "Invoice";
     case "itinerary":
       return "Itinerary";
+    case "pre_trip_reminder":
+      return "Pre-trip reminder";
+    case "post_trip_followup":
+      return "Post-trip follow-up";
+    case "booking_revision":
+      return "Booking revision";
+    case "booking_cancellation":
+      return "Booking cancellation";
+    case "supplier_remittance":
+      return "Supplier remittance";
+    case "supplier_schedule_update":
+      return "Supplier schedule update";
+    case "supplier_cancellation":
+      return "Supplier cancellation";
+    case "internal_new_booking":
+      return "Internal new-booking alert";
     default:
       return "Other";
   }
+}
+
+// Normalize the `range` searchParam — anything we don't recognize falls
+// back to the 30-day default so a typo'd URL doesn't spam an admin with
+// every email ever sent.
+function parseRange(raw: string | undefined): DateRange {
+  if (raw === "today" || raw === "7d" || raw === "30d" || raw === "90d" || raw === "all") {
+    return raw;
+  }
+  return "30d";
+}
+
+function rangeCutoffMs(range: DateRange): number | null {
+  if (range === "all") return null;
+  const now = Date.now();
+  if (range === "today") {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  return now - days * 24 * 60 * 60 * 1000;
 }
 
 function toMessageRow(log: AuditLog): MessageRow | null {
@@ -120,6 +198,8 @@ function toMessageRow(log: AuditLog): MessageRow | null {
     row.leadId = log.entityId;
   } else if (log.entityType === "invoice") {
     row.invoiceId = log.entityId;
+  } else if (log.entityType === "payment") {
+    row.paymentId = log.entityId;
   }
   return row;
 }
@@ -127,15 +207,31 @@ function toMessageRow(log: AuditLog): MessageRow | null {
 export default async function CommunicationsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ status?: string; template?: string; q?: string }>;
+  searchParams?: Promise<{
+    status?: string;
+    template?: string;
+    q?: string;
+    range?: string;
+  }>;
 }) {
   const sp = (await searchParams) ?? {};
-  const statusFilter = sp.status === "failed" ? "failed" : sp.status === "sent" ? "sent" : "all";
+  const statusFilter =
+    sp.status === "failed"
+      ? "failed"
+      : sp.status === "sent"
+        ? "sent"
+        : sp.status === "skipped"
+          ? "skipped"
+          : "all";
   const templateFilter = sp.template ?? "all";
   const query = (sp.q ?? "").trim().toLowerCase();
+  const range = parseRange(sp.range);
+  const cutoff = rangeCutoffMs(range);
 
+  // Pull a wide window so the date filter has data to chew on. The
+  // file-store implementation already orders by createdAt DESC.
   const [allLogs, tours, leads] = await Promise.all([
-    getAuditLogs({ limit: 500 }),
+    getAuditLogs({ limit: 1500 }),
     getTours(),
     getLeads(),
   ]);
@@ -146,6 +242,13 @@ export default async function CommunicationsPage({
   let messages: MessageRow[] = allLogs
     .map(toMessageRow)
     .filter((row): row is MessageRow => row !== null);
+
+  // Apply the date-range cap first so KPI counts reflect the window the
+  // admin is actually looking at. (Counting "Sent" against the last 7
+  // days while the table shows last 30 would be confusing.)
+  if (cutoff !== null) {
+    messages = messages.filter((m) => new Date(m.createdAt).getTime() >= cutoff);
+  }
 
   // Attach lead context (for resend buttons we need a leadId)
   messages = messages.map((row) => {
@@ -158,6 +261,12 @@ export default async function CommunicationsPage({
 
   const totalSent = messages.filter((m) => m.status === "sent").length;
   const totalFailed = messages.filter((m) => m.status === "failed").length;
+  const totalSkipped = messages.filter((m) => m.status === "skipped").length;
+
+  // Snapshot of failed messages BEFORE further filters so the bulk
+  // retry button always operates on the full failed set in the current
+  // date range — not just whatever sliver the admin is viewing.
+  const failedInRange = messages.filter((m) => m.status === "failed");
 
   if (statusFilter !== "all") {
     messages = messages.filter((m) => m.status === statusFilter);
@@ -186,21 +295,49 @@ export default async function CommunicationsPage({
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Total messages"
-          value={totalSent + totalFailed}
+          value={totalSent + totalFailed + totalSkipped}
           icon={Mail}
           tone="neutral"
         />
         <KpiCard label="Sent" value={totalSent} icon={CheckCircle2} tone="ok" />
-        <KpiCard label="Failed" value={totalFailed} icon={AlertTriangle} tone="bad" />
+        <KpiCard
+          label="Failed"
+          value={totalFailed}
+          icon={AlertTriangle}
+          tone="bad"
+          action={
+            failedInRange.length > 0 ? (
+              <BulkRetryButton
+                messages={failedInRange.map((m) => ({
+                  id: m.id,
+                  template: m.template,
+                  invoiceId: m.invoiceId,
+                  tourId: m.tourId,
+                  leadId: m.leadId,
+                  paymentId: m.paymentId,
+                  recipient: m.recipient,
+                  supplierName: m.supplierName,
+                }))}
+              />
+            ) : null
+          }
+        />
+        <KpiCard
+          label="Skipped"
+          value={totalSkipped}
+          icon={CircleSlash}
+          tone="warn"
+        />
       </div>
 
       <CommunicationsFilters
         status={statusFilter}
         template={templateFilter}
         query={sp.q ?? ""}
+        range={range}
       />
 
       <div className="paraiso-card overflow-hidden rounded-2xl">
@@ -299,12 +436,21 @@ export default async function CommunicationsPage({
                             Booking
                           </Link>
                         )}
+                        {m.paymentId && (
+                          <Link
+                            href={`/admin/payments/${m.paymentId}`}
+                            className="inline-flex items-center gap-1 rounded-lg border border-[#e0e4dd] px-2.5 py-1.5 text-xs font-medium text-[#12343b] transition hover:bg-[#f4ecdd]"
+                          >
+                            Payment
+                          </Link>
+                        )}
                         <ResendEmailButton
                           message={{
                             template: m.template,
                             invoiceId: m.invoiceId,
                             tourId: m.tourId,
                             leadId: m.leadId ?? (tour?.leadId ?? lead?.id),
+                            paymentId: m.paymentId,
                             recipient: m.recipient,
                             supplierName: m.supplierName,
                           }}
@@ -327,29 +473,37 @@ function KpiCard({
   value,
   icon: Icon,
   tone,
+  action,
 }: {
   label: string;
   value: number;
   icon: React.ElementType;
-  tone: "neutral" | "ok" | "bad";
+  tone: "neutral" | "ok" | "bad" | "warn";
+  action?: React.ReactNode;
 }) {
   const colorMap = {
     neutral: { bg: "bg-[#eef4f4]", text: "text-[#12343b]" },
     ok: { bg: "bg-[#dce8dc]", text: "text-[#375a3f]" },
     bad: { bg: "bg-[#eed9cf]", text: "text-[#7c3a24]" },
+    warn: { bg: "bg-[#f3e8ce]", text: "text-[#7a5a17]" },
   }[tone];
   return (
     <div className="paraiso-card rounded-2xl p-5">
-      <div className="flex items-center gap-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${colorMap.bg} ${colorMap.text}`}>
-          <Icon className="h-5 w-5" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-xl ${colorMap.bg} ${colorMap.text}`}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">
+              {label}
+            </p>
+            <p className="mt-0.5 text-2xl font-bold text-[#11272b]">{value}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#8a9ba1]">
-            {label}
-          </p>
-          <p className="mt-0.5 text-2xl font-bold text-[#11272b]">{value}</p>
-        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
     </div>
   );
