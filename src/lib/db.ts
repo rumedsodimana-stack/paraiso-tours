@@ -460,6 +460,25 @@ export async function getPackagesForClient(): Promise<TourPackage[]> {
   return packages.filter((p) => p.published !== false);
 }
 
+/**
+ * Returns the id of a shared placeholder package row used as the FK
+ * target for custom-route tours (those have no real `packages` row, but
+ * `tours.package_id` is NOT NULL + FK-constrained). Idempotent —
+ * creates the row on first call, returns the same id thereafter.
+ *
+ * For the file/memory fallback we just return a sentinel id; that
+ * backend has no FK enforcement.
+ */
+export const CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID = "__custom_route__";
+
+export async function ensureCustomRoutePlaceholderPackageId(): Promise<string> {
+  if (USE_SUPABASE) {
+    const mod = await getSupabaseDb();
+    return mod.ensureCustomRoutePlaceholderPackageId();
+  }
+  return CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID;
+}
+
 export async function createPackage(data: Omit<TourPackage, "id" | "createdAt">): Promise<TourPackage> {
   if (USE_SUPABASE) {
     try {

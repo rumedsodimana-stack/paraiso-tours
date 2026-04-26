@@ -21,6 +21,7 @@ import {
   getInvoiceByLeadId,
   updateInvoice,
   deleteInvoice,
+  ensureCustomRoutePlaceholderPackageId,
 } from "@/lib/db";
 import { createInvoiceFromLead } from "@/app/actions/invoices";
 import { getLeadBookingFinancials } from "@/lib/booking-pricing";
@@ -227,11 +228,18 @@ export async function scheduleTourFromLeadAction(
     // Custom routes synthesize `pkg.id = "custom_route_<lead.id>"` (see
     // `lib/custom-route-booking.ts`) — that id has no row in the
     // `packages` table, so writing it to `tours.package_id` violates the
-    // FK constraint (Supabase 23503). The full pricing/itinerary lives
-    // on `pkg`/`packageSnapshot` either way, so for these we leave the
-    // FK column null and rely on `resolveTourPackage` for reads.
+    // FK constraint (Supabase 23503). And the column is also NOT NULL,
+    // so we can't just write null (Supabase 23502).
+    //
+    // Solution: route every custom-route tour at a single shared
+    // placeholder package row (`ensureCustomRoutePlaceholderPackageId`
+    // creates it on first use, archived so it never appears in the
+    // catalog). The full pricing + itinerary still lives on
+    // `tour.packageSnapshot`, which is what `resolveTourPackage` reads.
     const isCustomRoutePackage = pkg.id.startsWith("custom_route_");
-    const tourPackageId = isCustomRoutePackage ? undefined : pkg.id;
+    const tourPackageId = isCustomRoutePackage
+      ? await ensureCustomRoutePlaceholderPackageId()
+      : pkg.id;
 
     const rollbackLeadId = lead.id;
     const originalLeadState = toLeadRollbackData(lead);

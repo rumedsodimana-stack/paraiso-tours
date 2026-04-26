@@ -428,6 +428,67 @@ async function seedPackagesIfEmpty(): Promise<void> {
   if (insertError) throw insertError;
 }
 
+/**
+ * Shared "Custom Sri Lanka journey" package row used as a foreign-key
+ * target for tours that were built via the journey/route builder. Custom
+ * routes carry their full pricing + itinerary on `tour.packageSnapshot`,
+ * so this placeholder doesn't need real data — it just needs to exist
+ * so `tours.package_id` (which has both NOT NULL and FK constraints)
+ * is satisfied.
+ *
+ * Hidden from the customer catalog via `archived_at`. Created on first
+ * call; subsequent calls are no-ops.
+ */
+export const CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID = "__custom_route__";
+
+export async function ensureCustomRoutePlaceholderPackageId(): Promise<string> {
+  // Cheap existence check first — avoids the upsert round-trip on the
+  // hot path once the row exists.
+  const { data: existing, error: selectError } = await supabase!
+    .from("packages")
+    .select("id")
+    .eq("id", CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID)
+    .maybeSingle();
+  if (!selectError && existing?.id) {
+    return CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID;
+  }
+
+  const now = new Date().toISOString();
+  const placeholderRow = packageToRow({
+    id: CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID,
+    reference: "CUSTOM-ROUTE",
+    name: "Custom Sri Lanka journey",
+    duration: "Custom",
+    destination: "Sri Lanka",
+    price: 0,
+    currency: "USD",
+    description:
+      "Placeholder package for custom routes built via the journey builder. Each tour stores its real itinerary on packageSnapshot.",
+    itinerary: [],
+    inclusions: [],
+    exclusions: [],
+    mealOptions: [],
+    transportOptions: [],
+    accommodationOptions: [],
+    customOptions: [],
+    featured: false,
+    published: false,
+    archivedAt: now,
+    createdAt: now,
+  });
+
+  // Upsert with `ignoreDuplicates` so two parallel scheduling actions
+  // racing on first creation both succeed.
+  const { error: insertError } = await supabase!
+    .from("packages")
+    .upsert(placeholderRow, {
+      onConflict: "id",
+      ignoreDuplicates: true,
+    });
+  if (insertError) throw insertError;
+  return CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID;
+}
+
 export async function getLeads(): Promise<Lead[]> {
   const { data, error } = await supabase!
     .from("leads")
