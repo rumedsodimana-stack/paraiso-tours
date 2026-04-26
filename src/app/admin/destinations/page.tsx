@@ -3,6 +3,14 @@ import { MapPin, Building2, Compass, ChevronRight } from "lucide-react";
 import { getHotels, getPlannerActivityRecords } from "@/lib/db";
 import { getPlannerDestinations } from "@/lib/route-planner";
 
+// The hotel/activity catalog mutates from /admin (admin saves a new
+// hotel against Colombo, archives an old activity, etc.) and the
+// destination cards must reflect the latest counts. Without
+// force-dynamic Next.js caches the prebuilt page at deploy time, so
+// newly-saved hotels never bump the per-destination tally until the
+// next deploy.
+export const dynamic = "force-dynamic";
+
 export default async function DestinationsPage() {
   const [destinations, hotels, activities] = await Promise.all([
     Promise.resolve(getPlannerDestinations()),

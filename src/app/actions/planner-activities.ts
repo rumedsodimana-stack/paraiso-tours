@@ -51,6 +51,12 @@ export async function createActivityAction(formData: FormData) {
   });
 
   revalidatePath("/admin/activities");
+  // Destination overview + detail count activities per destinationId,
+  // and the journey-builder pulls the same activity catalog. Keep all
+  // three surfaces in sync on create.
+  revalidatePath("/admin/destinations");
+  revalidatePath(`/admin/destinations/${destinationId}`);
+  revalidatePath("/journey-builder");
   return { success: true, id: record.id };
 }
 
@@ -91,6 +97,9 @@ export async function updateActivityAction(id: string, formData: FormData) {
   if (!ok) return { error: "Failed to update activity." };
 
   revalidatePath("/admin/activities");
+  revalidatePath("/admin/destinations");
+  if (destinationId) revalidatePath(`/admin/destinations/${destinationId}`);
+  revalidatePath("/journey-builder");
   return { success: true };
 }
 
@@ -99,5 +108,9 @@ export async function deleteActivityAction(id: string) {
   const ok = await deletePlannerActivity(id);
   if (!ok) return { error: "Failed to archive activity." };
   revalidatePath("/admin/activities");
+  // Activity archive drops from the destination cards — without this
+  // the count stays stale until the next deploy.
+  revalidatePath("/admin/destinations");
+  revalidatePath("/journey-builder");
   return { success: true };
 }

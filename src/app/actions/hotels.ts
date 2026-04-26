@@ -155,6 +155,10 @@ export async function createHotelAction(formData: FormData) {
   // (e.g. "Palace, Colombo") wouldn't appear in the destination picker
   // until the next deploy.
   revalidatePath("/journey-builder");
+  // Destination cards count hotels per destinationId — bust the cache
+  // so the new row bumps the count immediately.
+  revalidatePath("/admin/destinations");
+  if (hotel.destinationId) revalidatePath(`/admin/destinations/${hotel.destinationId}`);
   return { success: true, id: hotel.id };
 }
 
@@ -223,6 +227,11 @@ export async function updateHotelAction(id: string, formData: FormData) {
   revalidatePath(`/admin/hotels/${id}`);
   if (updated.type === "transport") revalidatePath("/admin/transportation");
   revalidatePath("/journey-builder");
+  // Refresh the destination overview cards + the detail page for both
+  // the previous AND new destinationId so a re-assignment (Colombo →
+  // Kandy) clears the old card and populates the new one in one save.
+  revalidatePath("/admin/destinations");
+  if (updated.destinationId) revalidatePath(`/admin/destinations/${updated.destinationId}`);
   return { success: true };
 }
 
@@ -289,6 +298,10 @@ export async function deleteHotelAction(id: string) {
   revalidatePath("/admin/payables");
   if (hotel?.type === "transport") revalidatePath("/admin/transportation");
   revalidatePath("/journey-builder");
+  // Archived hotels disappear from the destination card counts —
+  // refresh so the count drops immediately.
+  revalidatePath("/admin/destinations");
+  if (hotel?.destinationId) revalidatePath(`/admin/destinations/${hotel.destinationId}`);
   return {
     success: true,
     cleanedPackages: cleanedPackageNames.length,

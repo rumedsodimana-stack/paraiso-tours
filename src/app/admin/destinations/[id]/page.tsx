@@ -15,6 +15,12 @@ import type { PlannerDestinationId } from "@/lib/route-planner";
 import type { HotelMealPlan } from "@/lib/types";
 import { DeleteActivityButton } from "../../activities/DeleteActivityButton";
 
+// Mirrors the parent /admin/destinations page — the hotels and
+// activities tables on this detail view need to update as soon as an
+// admin saves changes elsewhere in the app. Statically rendering this
+// route would mean Palace stays missing from "Colombo" until redeploy.
+export const dynamic = "force-dynamic";
+
 export default async function DestinationDetailPage({
   params,
 }: {
