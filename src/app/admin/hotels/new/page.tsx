@@ -20,7 +20,7 @@ export default async function NewHotelPage({
           className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
         >
           <ArrowLeft className="h-5 w-5" />
-          Back to Hotels &amp; Suppliers
+          Back to Hotels
         </Link>
         <div className="paraiso-card rounded-2xl p-6">
           <div className="flex items-start gap-4">
@@ -62,14 +62,25 @@ export default async function NewHotelPage({
         ? "Add Supplier"
         : "Add Hotel";
 
+  // Contextual back-link: vehicles return to /admin/transportation, hotels
+  // and generic suppliers return to /admin/hotels.
+  const backHref =
+    defaultType === "transport" ? "/admin/transportation" : "/admin/hotels";
+  const backLabel =
+    defaultType === "transport"
+      ? "Back to Transportation"
+      : defaultType === "supplier"
+        ? "Back to Suppliers"
+        : "Back to Hotels";
+
   return (
     <div className="space-y-6">
       <Link
-        href="/admin/hotels"
+        href={backHref}
         className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[#5e7279] transition hover:bg-[#f4ecdd] hover:text-[#11272b]"
       >
         <ArrowLeft className="h-5 w-5" />
-        Back to Hotels & Suppliers
+        {backLabel}
       </Link>
       <div className="paraiso-card rounded-2xl p-6">
         <h1 className="text-xl font-semibold text-[#11272b]">{formTitle}</h1>
