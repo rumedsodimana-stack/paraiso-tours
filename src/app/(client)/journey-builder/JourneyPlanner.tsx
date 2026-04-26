@@ -599,14 +599,21 @@ export function JourneyPlanner({
           if (!last.activities.includes(act.title)) last.activities.push(act.title);
         }
       } else {
+        // When the guest opted to "Book my own" for this day, attaching
+        // a fallback hotel here makes the rest of the pipeline (pricing,
+        // confirmation email, supplier reservation) treat the night as
+        // included — even though the guest didn't pick anything. Skip
+        // the hotel fields entirely in that branch so the routeStop
+        // travels through the system as a guest-arranged night.
+        const includeHotel = day.hotelMode === "pick" && !!day.selectedHotel;
         stops.push({
           destinationId: day.destination.id,
           destinationName: day.destination.name,
           nights: 1,
-          hotelName: day.selectedHotel?.name,
-          hotelId: day.selectedHotel?.id,
-          hotelRate: day.selectedHotel?.pricePerNight,
-          hotelCurrency: day.selectedHotel?.currency,
+          hotelName: includeHotel ? day.selectedHotel?.name : undefined,
+          hotelId: includeHotel ? day.selectedHotel?.id : undefined,
+          hotelRate: includeHotel ? day.selectedHotel?.pricePerNight : undefined,
+          hotelCurrency: includeHotel ? day.selectedHotel?.currency : undefined,
           activities: day.allActivities.filter((a) => day.selectedActivities.includes(a.id)).map((a) => a.title),
           legDistanceKm: day.leg?.distanceKm,
           legDriveHours: day.leg?.driveHours,

@@ -148,12 +148,20 @@ function dedupeOptions(options: CustomJourneyOption[]) {
 
 export function getCustomJourneyTransportOptions(
   hotels: HotelSupplier[],
-  packages: TourPackage[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _packages: TourPackage[],
   fallbackCurrency = "USD"
 ) {
+  // Catalog is the single source of truth — pulls fresh data from the
+  // vehicle catalog at /admin/transportation (hotels with type === "transport").
+  // Archived suppliers are filtered so removed vehicles don't leak into the
+  // booking surface. The `_packages` param is retained for backwards
+  // compatibility with existing callers but is no longer mixed in: stale
+  // copies of frozen package transport snapshots used to surface as ghost
+  // options that didn't match anything in the live catalog.
   const supplierOptions: CustomJourneyOption[] = hotels
-    .filter((supplier) => supplier.type === "transport")
-    .map((supplier) => ({
+    .filter((supplier) => supplier.type === "transport" && !supplier.archivedAt)
+    .map<CustomJourneyOption>((supplier) => ({
       id: supplier.id,
       label: supplier.name,
       description: supplier.location
@@ -165,28 +173,15 @@ export function getCustomJourneyTransportOptions(
       capacity: supplier.capacity ?? guessTransportCapacity(supplier.name),
       source: "supplier",
       supplierId: supplier.id,
-    }));
+    }))
+    .sort((a, b) => a.price - b.price);
 
-  const packageOptions: CustomJourneyOption[] = collectPackageOptions(
-    packages,
-    "transport"
-  ).map(({ option, currency, packageName }) => ({
-    id: option.id,
-    label: option.label,
-    description: `Used in published package pricing (${packageName})`,
-    price: option.price,
-    priceType: option.priceType,
-    currency,
-    capacity: option.capacity,
-    source: "package_library",
-    supplierId: option.supplierId,
-  }));
-
-  const deduped = dedupeOptions([...supplierOptions, ...packageOptions]);
-  if (deduped.length > 0) {
-    return deduped;
+  if (supplierOptions.length > 0) {
+    return supplierOptions;
   }
 
+  // Empty catalog: surface hardcoded planner profiles so guests aren't
+  // stuck with zero options on a freshly-seeded environment.
   return plannerTransportProfiles.map((profile) => ({
     id: profile.id,
     label: profile.label,

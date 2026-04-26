@@ -162,16 +162,24 @@ export function getToolCategory(name: string): ToolCategory | null {
 /**
  * True if this tool category triggers the HITL approval card.
  *
- * Policy: only `delete` operations are gated. Updates (status changes,
- * mark-as-paid, edits to entities) auto-run alongside reads / creates /
- * sends. The admin can always undo by chatting again, and every
- * execution is logged in `ai_interactions` and visible in the audit
- * trail. Gating every update was creating fatigue with no clear win.
+ * Policy: ANY tool that mutates state or sends an external message is
+ * gated. Reads run silently; everything else (create, update, send,
+ * delete) requires the admin to approve in the conversation. This
+ * matches the explicit user contract — "only ask approval if I want to
+ * change or delete; enquiries should run without approval."
  *
- * To revert to the old behavior, change to:
- *   return cat === "update" || cat === "delete";
+ * The previous policy gated only deletes. We brought updates / creates /
+ * sends back under the gate because admins were seeing irreversible
+ * side effects (status flips, emails sent, payable rows created)
+ * without an explicit click — and because update tools occasionally
+ * targeted the wrong entity when the model misbound `currentEntity`.
+ *
+ * To loosen this for power users later, the cleanest knob is to add a
+ * per-category override in `TOOL_CATEGORY` rather than changing this
+ * single switch.
  */
 export function toolRequiresApproval(name: string): boolean {
   const cat = TOOL_CATEGORY[name];
-  return cat === "delete";
+  if (!cat) return false;
+  return cat !== "read";
 }

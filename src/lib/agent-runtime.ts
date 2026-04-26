@@ -243,7 +243,11 @@ function buildToolSpecs(opts?: {
   const isSubagent = opts?.isSubagent === true;
   return AGENT_TOOLS.filter((t) => {
     if (!isSubagent) return true;
-    if (t.category === "delete") return false;
+    // Sub-agents are research-only. They cannot write (no HITL gate
+    // available in their context — any non-read would fail server-side
+    // anyway under the parent's "all writes need approval" policy) and
+    // cannot recursively spawn more sub-agents.
+    if (t.category !== "read") return false;
     if (t.name === "dispatch_subagent") return false;
     return true;
   }).map((t) => ({
@@ -355,8 +359,9 @@ async function executeToolUse(
     };
   }
 
-  // Server-side double-gate for delete operations.
-  if (tool.category === "delete" && !approved) {
+  // Server-side double-gate for any state-changing operation. Reads run
+  // freely; create / update / send / delete must arrive `approved`.
+  if (tool.category !== "read" && !approved) {
     return {
       ok: false,
       summary: `Tool "${tool.name}" requires admin approval before executing.`,
@@ -605,12 +610,13 @@ async function runLoop(
       });
     }
 
-    // Partition: deletes need HITL approval, everything else can run.
+    // Partition: any state-changing tool needs HITL approval. Only
+    // reads (and unknown tools, which fail loudly downstream) auto-run.
     const safeBlocks: ToolUseBlock[] = [];
     const deleteBlocks: ToolUseBlock[] = [];
     for (const b of toolUses) {
       const tool = getTool(b.name);
-      if (tool && tool.category === "delete") deleteBlocks.push(b);
+      if (tool && tool.category !== "read") deleteBlocks.push(b);
       else safeBlocks.push(b);
     }
 
@@ -1352,12 +1358,13 @@ async function* streamIterationLoop(
       return;
     }
 
-    // Partition + parallel execute — same logic as runLoop.
+    // Partition + parallel execute — same logic as runLoop. Any tool
+    // that mutates state or sends a message is gated for HITL approval.
     const safeBlocks: ToolUseBlock[] = [];
     const deleteBlocks: ToolUseBlock[] = [];
     for (const b of toolUses) {
       const tool = getTool(b.name);
-      if (tool && tool.category === "delete") deleteBlocks.push(b);
+      if (tool && tool.category !== "read") deleteBlocks.push(b);
       else safeBlocks.push(b);
     }
 

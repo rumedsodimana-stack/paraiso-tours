@@ -884,12 +884,19 @@ export function ClientBookingForm({
               {hasHotelMealPlans ? "Choose your stay & meals" : "Choose accommodation"}
             </h2>
             <p className="mb-4 text-sm text-[var(--portal-text-muted)]">
-              {hasHotelMealPlans
-                ? "Pick a hotel per night, then the meal plan (Room Only / Bed & Breakfast / Half Board / Full Board / All Inclusive) straight from that hotel. Meals are charged with the stay — no separate step."
-                : "Pick from our curated hotels below, or select "}
-              {!hasHotelMealPlans && (
+              {hasHotelMealPlans ? (
                 <>
-                  <b>{OWN_HOTEL_CTA_LABEL}</b> if you prefer to arrange your own stay.
+                  Pick a hotel per night and choose its meal plan (Room
+                  Only / Bed &amp; Breakfast / Half Board / Full Board /
+                  All Inclusive) — meals are charged with the stay. Or
+                  pick <b>{OWN_HOTEL_CTA_LABEL}</b> for any night you&apos;d
+                  rather arrange yourself.
+                </>
+              ) : (
+                <>
+                  Pick from our curated hotels below, or select{" "}
+                  <b>{OWN_HOTEL_CTA_LABEL}</b> if you prefer to arrange
+                  your own stay.
                 </>
               )}
             </p>

@@ -308,7 +308,7 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
             if (toolRequiresApproval(follow.decision.tool)) {
               addMessage({
                 role: "assistant",
-                content: `Next: **${follow.decision.title}** (delete) — approve below to run.`,
+                content: `Next: **${follow.decision.title}** needs your approval — review and click **Approve & run** below.`,
                 proposalId: next.id,
                 nextActions: follow.decision.nextActions,
               });
@@ -333,7 +333,7 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
               if (toolRequiresApproval(step.tool)) {
                 addMessage({
                   role: "assistant",
-                  content: `Step paused: **${step.title}** (delete) — approve below to continue the chain.`,
+                  content: `Step paused: **${step.title}** needs your approval — review and click **Approve & run** below to continue the chain.`,
                   proposalId: stepProposal.id,
                 });
                 break;
@@ -409,9 +409,16 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
         // Plan tools are conversational state — the plan card renders the
         // outcome on tool_result. Skip the proposal-card noise here.
         if (isPlanTool(ev.toolName)) continue;
-        // Show the tool call as a proposal so the existing UI surface
-        // (proposal card with pending → executed transition) renders it
-        // consistently with the legacy path.
+        // Reads auto-execute silently: the tool_result bubble + memory
+        // pill ("✓ Ran list_tours") already convey "the agent looked
+        // something up". Surfacing a transient "Approve & run" card
+        // would force the admin to glance at every enquiry, so we skip
+        // the proposal here. Writes are gated separately via the
+        // `pendingApproval` event below — there's no risk of a write
+        // slipping through unannounced.
+        if (!toolRequiresApproval(ev.toolName)) continue;
+        // Writes get a proposal so the audit trail / running state /
+        // memory all line up the same way they always have.
         const proposal = addProposal({
           title: ev.toolName,
           summary: `Calling ${ev.toolName}`,
@@ -454,8 +461,9 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
     }
 
     if (response.pendingApproval) {
-      // The model stopped on a delete tool_use. Surface it as a pending
-      // proposal so the existing approval-card UI gates it.
+      // The model stopped on a state-changing tool_use (create / update /
+      // send / delete). Surface it as a pending proposal so the existing
+      // approval-card UI gates it.
       const pending = response.pendingApproval;
       const proposal = addProposal({
         title: pending.toolName,
@@ -468,7 +476,7 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
       pendingProposalId = proposal.id;
       addMessage({
         role: "assistant",
-        content: `**${pending.toolName}** is a delete — approve below to run.`,
+        content: `**${pending.toolName}** needs your approval — review and click **Approve & run** below.`,
         proposalId: proposal.id,
       });
     } else if (response.finalText && response.finalText.trim()) {
@@ -579,9 +587,14 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           // renders the outcome on tool_result. Skip the proposal-card
           // noise here so the conversation surface stays clean.
           if (isPlanTool(ev.toolName)) return;
-          // Surface the tool call as a pending proposal card. Input
-          // is empty at this point — the input_complete event below
-          // will fill it in as the model finishes deciding the args.
+          // Reads auto-execute and shouldn't surface a transient
+          // "Approve & run" card to the admin (per the explicit
+          // "only ask approval on change/delete" contract). The
+          // tool_result bubble + system pill below already convey
+          // that the agent looked something up. Writes still get a
+          // placeholder so the matching `pending_approval` event has
+          // a proposal to attach the resume state to.
+          if (!toolRequiresApproval(ev.toolName)) return;
           const proposal = addProposal({
             title: ev.toolName,
             summary: `Calling ${ev.toolName}…`,
@@ -637,18 +650,26 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           return;
         }
         case "pending_approval": {
-          const proposal = addProposal({
-            title: ev.toolName,
-            summary: `Pending admin approval: ${ev.toolName}`,
-            tool: ev.toolName,
-            input: ev.input,
-            confidence: 1,
-          });
-          pendingTurnStates.current.set(proposal.id, ev.state);
+          // Reuse the placeholder proposal added on tool_use_start when
+          // present so the admin only ever sees one card per tool call.
+          const existingProposalId = toolUseToProposal.get(ev.toolUseId);
+          let proposalId = existingProposalId;
+          if (!proposalId) {
+            const proposal = addProposal({
+              title: ev.toolName,
+              summary: `Pending admin approval: ${ev.toolName}`,
+              tool: ev.toolName,
+              input: ev.input,
+              confidence: 1,
+            });
+            proposalId = proposal.id;
+            toolUseToProposal.set(ev.toolUseId, proposalId);
+          }
+          pendingTurnStates.current.set(proposalId, ev.state);
           addMessage({
             role: "assistant",
-            content: `**${ev.toolName}** is a delete — approve below to run.`,
-            proposalId: proposal.id,
+            content: `**${ev.toolName}** needs your approval — review and click **Approve & run** below.`,
+            proposalId,
           });
           return;
         }
@@ -813,6 +834,10 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
         }
         case "tool_use_start": {
           if (isPlanTool(ev.toolName)) return;
+          // Reads run silently — see comments in `applyNativeEvents`.
+          // Only writes get a "Calling X…" placeholder card; the matching
+          // `pending_approval` event flips it to the gated approval UI.
+          if (!toolRequiresApproval(ev.toolName)) return;
           const proposal = addProposal({
             title: ev.toolName,
             summary: `Calling ${ev.toolName}…`,
@@ -855,18 +880,27 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           return;
         }
         case "pending_approval": {
-          const proposal = addProposal({
-            title: ev.toolName,
-            summary: `Pending admin approval: ${ev.toolName}`,
-            tool: ev.toolName,
-            input: ev.input,
-            confidence: 1,
-          });
-          pendingTurnStates.current.set(proposal.id, ev.state);
+          // If `tool_use_start` already created a placeholder proposal
+          // for this tool_use_id, reuse it so we don't render two cards
+          // for the same call.
+          const existingProposalId = toolUseToProposal.get(ev.toolUseId);
+          let proposalId = existingProposalId;
+          if (!proposalId) {
+            const proposal = addProposal({
+              title: ev.toolName,
+              summary: `Pending admin approval: ${ev.toolName}`,
+              tool: ev.toolName,
+              input: ev.input,
+              confidence: 1,
+            });
+            proposalId = proposal.id;
+            toolUseToProposal.set(ev.toolUseId, proposalId);
+          }
+          pendingTurnStates.current.set(proposalId, ev.state);
           addMessage({
             role: "assistant",
-            content: `**${ev.toolName}** is a delete — approve below to run.`,
-            proposalId: proposal.id,
+            content: `**${ev.toolName}** needs your approval — review and click **Approve & run** below.`,
+            proposalId,
           });
           return;
         }
@@ -1047,7 +1081,7 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
             if (toolRequiresApproval(step.tool)) {
               addMessage({
                 role: "assistant",
-                content: `Step paused: **${step.title}** (delete) — approve below to continue the chain.`,
+                content: `Step paused: **${step.title}** needs your approval — review and click **Approve & run** below to continue the chain.`,
                 proposalId: stepProposal.id,
               });
               break;
@@ -1074,7 +1108,7 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
           if (toolRequiresApproval(decision.tool)) {
             addMessage({
               role: "assistant",
-              content: `**${decision.title}** is a delete — approve it below to run.`,
+              content: `**${decision.title}** needs your approval — review and click **Approve & run** below.`,
               proposalId: proposal.id,
               nextActions: decision.nextActions,
             });

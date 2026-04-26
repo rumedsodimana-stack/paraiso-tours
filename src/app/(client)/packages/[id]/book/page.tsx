@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarRange, MapPin, Star } from "lucide-react";
 import { getPackage, getHotels, getAllMealPlans } from "@/lib/db";
-import type { HotelMealPlan } from "@/lib/types";
+import type { HotelMealPlan, TourPackage } from "@/lib/types";
+import { resolvePackageTransportFromCatalog } from "@/lib/package-transport";
 import { ClientBookingForm } from "./ClientBookingForm";
 import { getClientPackageVisual } from "../../../client-visuals";
 
@@ -11,11 +12,23 @@ export default async function ClientBookPackagePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [pkg, hotels, allMealPlans] = await Promise.all([
+  const [pkgRaw, hotels, allMealPlans] = await Promise.all([
     getPackage(id),
     getHotels(),
     getAllMealPlans(),
   ]);
+
+  // Refresh transport options from the live vehicle catalog
+  // (`/admin/transportation`) so guests always see current prices,
+  // capacities, and additions — instead of the frozen snapshot stored
+  // on the package row at curation time. See resolvePackageTransportFromCatalog
+  // for resolution rules.
+  const pkg: TourPackage | null = pkgRaw
+    ? {
+        ...pkgRaw,
+        transportOptions: resolvePackageTransportFromCatalog(pkgRaw, hotels),
+      }
+    : null;
 
   // Group hotel meal plans by hotel id so the form can render the right
   // plan list the instant a guest picks a room. We only keep active plans

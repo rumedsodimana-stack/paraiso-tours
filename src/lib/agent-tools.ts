@@ -1967,11 +1967,20 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
       const sinceMs = input.sinceDays ? Date.now() - input.sinceDays * 86400_000 : 0;
       const db = await import("./db");
 
-      // Map fuzzy target → loader
+      // Map fuzzy target → loader.
+      //
+      // ⚠️  In Paraiso admin parlance a "booking" is a guest request
+      // (a Lead row), NOT a scheduled tour. The bookings page lives at
+      // /admin/bookings and renders leads. So `target: "bookings"` MUST
+      // route to leads — historically it routed to tours and the agent
+      // miscounted (4 tours when only 1 lead/booking existed).
+      // Tours / trips remain on their own loader; the order matters:
+      // the leads regex must match before the tours regex so "booking"
+      // is captured by the right entity.
       type Loader = () => Promise<unknown[]>;
       const table: Array<[RegExp, Loader]> = [
-        [/lead|request|inquir/, async () => db.getLeads()],
-        [/tour|trip|booking/, async () => db.getTours()],
+        [/lead|request|inquir|booking/, async () => db.getLeads()],
+        [/tour|trip|scheduled/, async () => db.getTours()],
         [/invoice|bill/, async () => db.getInvoices()],
         [/payment|receipt|receive|payable/, async () => db.getPayments()],
         [/employee|staff|team/, async () => db.getEmployees()],
