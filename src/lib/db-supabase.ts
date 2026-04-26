@@ -816,6 +816,7 @@ export async function createHotel(
     name: data.name,
     type: data.type,
     location: toNullable(data.location),
+    destination_id: toNullable(data.destinationId),
     email: toNullable(data.email),
     contact: toNullable(data.contact),
     default_price_per_night: toNullable(data.defaultPricePerNight),
@@ -850,6 +851,9 @@ export async function updateHotel(
   if (data.name !== undefined) update.name = data.name;
   if (data.type !== undefined) update.type = data.type;
   if (data.location !== undefined) update.location = toNullable(data.location);
+  if (data.destinationId !== undefined) {
+    update.destination_id = toNullable(data.destinationId);
+  }
   if (data.email !== undefined) update.email = toNullable(data.email);
   if (data.contact !== undefined) update.contact = toNullable(data.contact);
   if (data.defaultPricePerNight !== undefined) {

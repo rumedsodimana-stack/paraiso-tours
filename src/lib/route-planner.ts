@@ -1853,7 +1853,7 @@ export function getPlannerHotelsForDestination(
   );
 
   const supplierMatches = hotels
-    .filter((hotel) => hotel.type === "hotel")
+    .filter((hotel) => hotel.type === "hotel" && !hotel.archivedAt)
     .filter(
       (hotel) =>
         packageSupplierIds.has(hotel.id) || matchesDestinationHotel(destination, hotel)
