@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarRange, MapPin, Star } from "lucide-react";
 import { getPackage, getHotels, getAllMealPlans } from "@/lib/db";
+import {
+  sanitizeHotelsForClient,
+  sanitizePackageForClient,
+} from "@/lib/client-sanitize";
 import type { HotelMealPlan, TourPackage } from "@/lib/types";
 import { resolvePackageTransportFromCatalog } from "@/lib/package-transport";
 import { ClientBookingForm } from "./ClientBookingForm";
@@ -98,8 +102,8 @@ export default async function ClientBookPackagePage({
       </div>
 
       <ClientBookingForm
-        pkg={pkg}
-        hotels={hotels}
+        pkg={sanitizePackageForClient(pkg)}
+        hotels={sanitizeHotelsForClient(hotels)}
         mealPlansByHotelId={mealPlansByHotelId}
       />
     </div>

@@ -3,6 +3,10 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 import { getAppSettings } from "@/lib/app-config";
 import { getAiRuntimeStatus } from "@/lib/ai";
 import { getAllMealPlans, getHotels, getPackagesForClient } from "@/lib/db";
+import {
+  sanitizeHotelsForClient,
+  sanitizePackagesForClient,
+} from "@/lib/client-sanitize";
 import type { HotelMealPlan } from "@/lib/types";
 import { JourneyPlanner } from "./JourneyPlanner";
 
@@ -43,6 +47,13 @@ export default async function JourneyBuilderPage() {
     (mealPlansByHotelId[mp.hotelId] ??= []).push(mp);
   }
 
+  // Strip admin-only fields (banking, contact emails, internal notes,
+  // wholesale costPrice) before handing the catalog to the Client
+  // Component. Anything passed as a prop is serialized into the RSC
+  // payload that any guest can read — see src/lib/client-sanitize.ts.
+  const safeHotels = sanitizeHotelsForClient(hotels);
+  const safePackages = sanitizePackagesForClient(packages);
+
   return (
     <div className="-mx-4 -my-8 sm:-mx-6 sm:-my-12">
       <div className="border-b border-[var(--portal-border)]/60 bg-[var(--portal-paper)]/70 backdrop-blur-sm">
@@ -70,8 +81,8 @@ export default async function JourneyBuilderPage() {
       </div>
 
       <JourneyPlanner
-        hotels={hotels}
-        packages={packages}
+        hotels={safeHotels}
+        packages={safePackages}
         mealPlansByHotelId={mealPlansByHotelId}
         guidanceFee={settings.portal.customJourneyGuidanceFee}
         guidanceLabel={settings.portal.customJourneyGuidanceLabel}
