@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Car, ChevronRight, Plus, Users } from "lucide-react";
+import { Car, ChevronRight, Mail, MailX, Plus, Users } from "lucide-react";
 import { getHotels } from "@/lib/db";
 import { SaveSuccessBanner } from "../SaveSuccessBanner";
 
@@ -49,38 +49,66 @@ export default async function TransportationPage({
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {suppliers.map((s) => (
-            <Link
-              key={s.id}
-              href={`/admin/hotels/${s.id}`}
-              className="paraiso-card group flex items-start justify-between gap-3 rounded-2xl p-4 transition hover:bg-[#f4ecdd]"
-            >
-              <div className="flex gap-3 min-w-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#eef4f4] text-[#12343b]">
-                  <Car className="h-5 w-5" />
+          {suppliers.map((s) => {
+            // Check both `email` and `contact` (which sometimes carries an
+            // address parsed by getSupplierEmail). Mirrors the same
+            // fallback the booking pipeline uses to decide whether to
+            // send a reservation email — see src/lib/booking-breakdown.ts.
+            const hasEmail =
+              !!s.email?.trim() ||
+              /[\w.+%-]+@[\w.-]+\.[A-Za-z]{2,}/.test(s.contact ?? "");
+            return (
+              <Link
+                key={s.id}
+                href={`/admin/hotels/${s.id}`}
+                className="paraiso-card group flex items-start justify-between gap-3 rounded-2xl p-4 transition hover:bg-[#f4ecdd]"
+              >
+                <div className="flex gap-3 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#eef4f4] text-[#12343b]">
+                    <Car className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[#11272b] truncate">{s.name}</p>
+                    {s.location && (
+                      <p className="mt-0.5 text-sm text-[#5e7279] truncate">{s.location}</p>
+                    )}
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {s.capacity != null && (
+                        <span className="inline-flex items-center gap-1 text-xs text-[#8a9ba1]">
+                          <Users className="h-3 w-3" />
+                          {s.capacity} pax
+                        </span>
+                      )}
+                      {hasEmail ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-[#dce8dc] px-2 py-0.5 text-[11px] font-medium text-[#375a3f]"
+                          title="Booking confirmations will email this supplier"
+                        >
+                          <Mail className="h-3 w-3" />
+                          Email on file
+                        </span>
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-[#f4ecdd] px-2 py-0.5 text-[11px] font-medium text-[#7a5a17]"
+                          title="No email saved — bookings won't auto-notify this supplier"
+                        >
+                          <MailX className="h-3 w-3" />
+                          No email
+                        </span>
+                      )}
+                    </div>
+                    {s.defaultPricePerNight != null && (
+                      <p className="mt-1 text-sm font-semibold text-[#12343b]">
+                        {s.defaultPricePerNight.toLocaleString()} {s.currency}
+                        <span className="font-normal text-[#8a9ba1]">/day</span>
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-[#11272b] truncate">{s.name}</p>
-                  {s.location && (
-                    <p className="mt-0.5 text-sm text-[#5e7279] truncate">{s.location}</p>
-                  )}
-                  {s.capacity != null && (
-                    <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-[#8a9ba1]">
-                      <Users className="h-3 w-3" />
-                      {s.capacity} pax
-                    </p>
-                  )}
-                  {s.defaultPricePerNight != null && (
-                    <p className="mt-1 text-sm font-semibold text-[#12343b]">
-                      {s.defaultPricePerNight.toLocaleString()} {s.currency}
-                      <span className="font-normal text-[#8a9ba1]">/day</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 shrink-0 text-[#8a9ba1] transition group-hover:text-[#12343b] mt-0.5" />
-            </Link>
-          ))}
+                <ChevronRight className="h-5 w-5 shrink-0 text-[#8a9ba1] transition group-hover:text-[#12343b] mt-0.5" />
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
