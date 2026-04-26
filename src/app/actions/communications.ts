@@ -196,6 +196,25 @@ async function resendTourConfirmation(tourId?: string): Promise<Result> {
   if (!email) return { error: "No guest email on booking" };
 
   const invoice = await getInvoiceByLeadId(lead.id);
+
+  // Re-render the itinerary so the resend matches the original
+  // confirmation (invoice + itinerary PDFs). If the package has
+  // drifted since scheduling, `resolveTourPackage` falls back to the
+  // frozen snapshot stored on the tour — same logic the standalone
+  // itinerary resend uses.
+  let itineraryAttachment: { content: Buffer; filename?: string } | undefined;
+  try {
+    const livePackage = await getPackage(tour.packageId);
+    const pkg = resolveTourPackage(tour, livePackage, lead);
+    const itineraryBuffer = await generateItineraryPdf({ tour, pkg, lead });
+    itineraryAttachment = {
+      content: itineraryBuffer,
+      filename: `Itinerary-${(tour.confirmationId || tour.id).replace(/[^a-zA-Z0-9_-]/g, "-")}.pdf`,
+    };
+  } catch {
+    // Itinerary failure must not block the resend — invoice still goes.
+  }
+
   const result = await sendTourConfirmationWithInvoice({
     clientName: lead.name,
     clientEmail: email,
@@ -205,6 +224,7 @@ async function resendTourConfirmation(tourId?: string): Promise<Result> {
     pax: tour.pax,
     reference: lead.reference,
     invoice: invoice ?? undefined,
+    itineraryPdf: itineraryAttachment,
   });
 
   await recordAuditEvent({

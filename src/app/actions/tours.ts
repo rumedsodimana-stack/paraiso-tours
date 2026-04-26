@@ -697,6 +697,34 @@ export async function scheduleTourFromLeadAction(
 
       if (!tour.clientConfirmationSentAt && lead.email?.trim()) {
         try {
+          // Pre-render the itinerary so the confirmation email ships
+          // both the invoice and the day-by-day plan as PDFs in one
+          // shot. We swallow render errors here — the email should
+          // still go out with whatever attachments succeeded rather
+          // than fail the whole confirmation step.
+          let itineraryAttachment:
+            | { content: Buffer; filename?: string }
+            | undefined;
+          try {
+            const { generateItineraryPdf } = await import(
+              "@/lib/itinerary-pdf"
+            );
+            const itineraryBuffer = await generateItineraryPdf({
+              tour,
+              pkg,
+              lead,
+            });
+            itineraryAttachment = {
+              content: itineraryBuffer,
+              filename: `Itinerary-${(tour.confirmationId || tour.id).replace(/[^a-zA-Z0-9_-]/g, "-")}.pdf`,
+            };
+          } catch (pdfErr) {
+            debugLog("Itinerary PDF skipped on confirmation", {
+              error: pdfErr instanceof Error ? pdfErr.message : String(pdfErr),
+              tourId: tour.id,
+            });
+          }
+
           const emailResult = await sendTourConfirmationWithInvoice({
             clientName: lead.name,
             clientEmail: lead.email,
@@ -706,6 +734,7 @@ export async function scheduleTourFromLeadAction(
             pax,
             reference,
             invoice: invoice ?? undefined,
+            itineraryPdf: itineraryAttachment,
           });
           if (emailResult.ok) {
             const updatedTour = await updateTour(tour.id, {

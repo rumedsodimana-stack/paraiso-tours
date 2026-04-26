@@ -430,16 +430,40 @@ export async function sendBookingRequestConfirmation(
 }
 
 /**
- * Send tour confirmation to client with invoice PDF attached.
+ * Send the tour confirmation email to the guest with both the invoice
+ * PDF and the day-by-day itinerary PDF attached.
+ *
+ * Either attachment is optional so the function still works when:
+ *   - The booking has no invoice yet (e.g. quotation-only flow).
+ *   - The package has no itinerary days populated (rendered PDF
+ *     would be near-empty, so the caller skips it).
+ *
+ * The intro copy adapts to whatever ends up attached so the wording
+ * never claims a PDF is attached that isn't.
  */
 export async function sendTourConfirmationWithInvoice(
-  params: TourConfirmationParams & { invoice?: Invoice }
+  params: TourConfirmationParams & {
+    invoice?: Invoice;
+    /** Pre-rendered itinerary PDF. Caller controls generation so
+     *  this module stays decoupled from `Tour`/`TourPackage`/`Lead`. */
+    itineraryPdf?: { content: Buffer; filename?: string };
+  }
 ): Promise<{ ok: boolean; error?: string }> {
   if (!resend) {
     return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
   }
 
-  const { clientName, clientEmail, packageName, startDate, endDate, pax, reference, invoice } = params;
+  const {
+    clientName,
+    clientEmail,
+    packageName,
+    startDate,
+    endDate,
+    pax,
+    reference,
+    invoice,
+    itineraryPdf,
+  } = params;
   const email = clientEmail?.trim();
   if (!email) return { ok: false, error: "No client email" };
   const branding = await getEmailBranding();
@@ -461,12 +485,22 @@ export async function sendTourConfirmationWithInvoice(
     ? `${getBaseUrl()}/booking/${encodeURIComponent(reference)}?email=${encodeURIComponent(email)}`
     : null;
 
+  // Pick the right attachment phrase so the body never lies about
+  // what the recipient will find clipped to the message.
+  const attachmentPhrase = (() => {
+    if (itineraryPdf && invoice)
+      return "your day-by-day itinerary and invoice are attached as PDFs";
+    if (itineraryPdf) return "your day-by-day itinerary is attached as a PDF";
+    if (invoice) return "your invoice is attached as a PDF";
+    return "your full trip details are below";
+  })();
+
   const html = buildBrandedEmail(
     {
       preheader: `Your ${packageName} is confirmed. Travel ${startFmt} to ${endFmt}.`,
       eyebrow: "Tour confirmed",
       title: `You're booked, ${clientName.split(/\s+/)[0] || clientName}`,
-      intro: `We've locked in your tour. Here's everything at a glance — your full itinerary${invoice ? " and invoice are" : " is"} attached.`,
+      intro: `We've locked in your tour. Here's everything at a glance — ${attachmentPhrase}.`,
       sections: [
         {
           label: "Your trip",
@@ -484,6 +518,15 @@ export async function sendTourConfirmationWithInvoice(
               : []),
           ],
         },
+        ...(itineraryPdf
+          ? [
+              {
+                label: "Itinerary",
+                variant: "callout-ok" as const,
+                body: `<p style="margin:0;font-size:14px;color:#11272b;">Your full day-by-day itinerary is attached as a PDF — accommodations, transfers, meals, and activities for every day of your trip.</p>`,
+              },
+            ]
+          : []),
         ...(invoice
           ? [
               {
@@ -510,6 +553,14 @@ export async function sendTourConfirmationWithInvoice(
     attachments.push({
       filename: `Invoice-${invoice.invoiceNumber}.pdf`,
       content: pdfBuffer,
+    });
+  }
+  if (itineraryPdf) {
+    attachments.push({
+      filename:
+        itineraryPdf.filename?.trim() ||
+        `Itinerary-${(reference || "tour").replace(/[^a-zA-Z0-9_-]/g, "-")}.pdf`,
+      content: itineraryPdf.content,
     });
   }
 
