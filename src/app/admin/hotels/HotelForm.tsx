@@ -44,26 +44,41 @@ export function HotelForm({
 }) {
   const [error, setError] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [type, setType] = useState<HotelSupplier["type"]>(
     hotel?.type ?? defaultType
   );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // Guard against double-submit (slow first click + a second click while
+    // the network call was still in-flight previously created two separate
+    // hotel rows with auto-generated IDs).
+    if (submitting) return;
     setError("");
     setSaved(false);
-    const formData = new FormData(e.currentTarget);
-    const result = await action(formData);
-    if (result?.error) {
-      setError(result.error);
-      return;
-    }
-    if (result?.success && result?.id && !hotel) {
-      window.location.href = `/admin/hotels/${result.id}?saved=1`;
-      return;
-    }
-    if (hotel && result && !result.error) {
-      setSaved(true);
+    setSubmitting(true);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const result = await action(formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      if (result?.success && result?.id && !hotel) {
+        // window.location.href triggers a full nav — `submitting` stays
+        // true until the page unloads, which is the correct UX (button
+        // remains disabled while we redirect).
+        window.location.href = `/admin/hotels/${result.id}?saved=1`;
+        return;
+      }
+      if (hotel && result && !result.error) {
+        setSaved(true);
+      }
+    } finally {
+      // For the create-and-redirect path we never reach here (location.href
+      // unloads the page first); for update + error paths we re-enable.
+      setSubmitting(false);
     }
   }
 
@@ -398,9 +413,16 @@ export function HotelForm({
       <div className="flex gap-3">
         <button
           type="submit"
-          className="rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
+          disabled={submitting}
+          className="rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {hotel ? "Update" : "Create"}
+          {submitting
+            ? hotel
+              ? "Saving…"
+              : "Creating…"
+            : hotel
+              ? "Update"
+              : "Create"}
         </button>
       </div>
     </form>
