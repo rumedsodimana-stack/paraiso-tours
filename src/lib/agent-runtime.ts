@@ -1273,7 +1273,36 @@ export async function* streamAgentTurn(
   ];
 
   const startedAt = Date.now();
+  yield* streamIterationLoop(
+    creds,
+    tools,
+    messages,
+    creds.model,
+    systemPrompt,
+    startedAt
+  );
+}
 
+/**
+ * Shared streaming iteration loop. Both `streamAgentTurn` (fresh user
+ * turn) and `streamAgentResume` (post-approval continuation) call into
+ * this — they differ only in pre-loop setup. Pulled out so the resume
+ * path doesn't have to clone the entire iteration body.
+ *
+ * `messages` must already include any pre-loop tool_result message the
+ * caller computed (resume seeds it; fresh turn doesn't need to).
+ * `model` + `systemPrompt` are passed explicitly so resume can reuse
+ * what the original turn ran with — switching mid-conversation would
+ * break the model's continuity.
+ */
+async function* streamIterationLoop(
+  creds: Awaited<ReturnType<typeof resolveAnthropicCredentials>>,
+  tools: AnthropicToolSpec[],
+  messages: Message[],
+  model: string,
+  systemPrompt: string,
+  startedAt: number
+): AsyncGenerator<StreamEvent, void, unknown> {
   for (let iter = 0; iter < MAX_ITERATIONS; iter += 1) {
     if (Date.now() - startedAt > TOTAL_TURN_TIMEOUT_MS) {
       yield {
@@ -1291,7 +1320,7 @@ export async function* streamAgentTurn(
         creds,
         tools,
         messages,
-        creds.model,
+        model,
         systemPrompt
       );
     } catch (err) {
@@ -1372,7 +1401,7 @@ export async function* streamAgentTurn(
         input: first.input,
         state: {
           messages,
-          model: creds.model,
+          model,
           systemPrompt,
           pendingToolUseId: first.id,
           pendingToolName: first.name,
@@ -1395,4 +1424,132 @@ export async function* streamAgentTurn(
     kind: "error",
     error: `Agent did not finish within ${MAX_ITERATIONS} tool iterations.`,
   };
+}
+
+/**
+ * Streaming counterpart of `resumeAgentTurn`. After admin approves or
+ * rejects a pending delete, this generator:
+ *   1. Executes (or rejects) the pending tool, yielding a tool_result.
+ *   2. If more deletes are queued in the same iteration, suspends with
+ *      pending_approval for the next one (mirrors the batch path).
+ *   3. Otherwise feeds the cumulative tool_results forward and enters
+ *      `streamIterationLoop`, where any follow-up assistant text streams
+ *      live just like in a fresh turn.
+ *
+ * Same model + systemPrompt as the suspended turn — switching either
+ * mid-conversation would desync the model's continuity. The runtime is
+ * stateless across requests; the client holds `AgentTurnState` and
+ * passes it back verbatim.
+ */
+export async function* streamAgentResume(
+  input: ResumeAgentTurnInput
+): AsyncGenerator<StreamEvent, void, unknown> {
+  let creds: Awaited<ReturnType<typeof resolveAnthropicCredentials>>;
+  try {
+    creds = await resolveAnthropicCredentials();
+  } catch (err) {
+    yield {
+      kind: "error",
+      error: err instanceof Error ? err.message : String(err),
+    };
+    return;
+  }
+
+  const tools = buildToolSpecs();
+  const messages: Message[] = [...input.state.messages];
+
+  // Build the tool_result block for the pending tool — execute on
+  // approve, synthesize a rejection on reject. Mirrors
+  // `resumeAgentTurn` exactly (the batch path) so behavior stays in
+  // lockstep.
+  const pendingToolUseBlock: ToolUseBlock = {
+    type: "tool_use",
+    id: input.state.pendingToolUseId,
+    name: input.state.pendingToolName,
+    input: input.state.pendingToolInput as Record<string, unknown>,
+  };
+
+  let pendingResultBlock: ToolResultBlock;
+  if (input.approved) {
+    yield {
+      kind: "tool_executing",
+      toolUseId: input.state.pendingToolUseId,
+      toolName: input.state.pendingToolName,
+    };
+    const exec = await executeToolUse(pendingToolUseBlock, true);
+    yield {
+      kind: "tool_result",
+      toolUseId: input.state.pendingToolUseId,
+      toolName: exec.toolName,
+      ok: exec.ok,
+      summary: exec.summary,
+      data: exec.data,
+    };
+    pendingResultBlock = {
+      type: "tool_result",
+      tool_use_id: input.state.pendingToolUseId,
+      content: stringifyToolResultForModel(exec),
+      ...(exec.ok ? {} : { is_error: true }),
+    };
+  } else {
+    const reason = input.rejectionReason ?? "Admin rejected this action.";
+    yield {
+      kind: "tool_result",
+      toolUseId: input.state.pendingToolUseId,
+      toolName: input.state.pendingToolName,
+      ok: false,
+      summary: `Rejected by admin: ${reason}`,
+    };
+    pendingResultBlock = {
+      type: "tool_result",
+      tool_use_id: input.state.pendingToolUseId,
+      content: `Action rejected by admin. Reason: ${reason}. Do NOT retry the same delete; pivot or explain.`,
+      is_error: true,
+    };
+  }
+
+  const cumulativeResults: ToolResultBlock[] = [
+    ...(input.state.partialToolResults ?? []),
+    pendingResultBlock,
+  ];
+
+  // Multiple deletes queued in the same iteration? Suspend on the next
+  // and let another approval round come in. Carries forward the full
+  // tool_result set so the eventual user message stays well-formed.
+  const queuedDeletes = input.state.queuedDeletes ?? [];
+  if (queuedDeletes.length > 0) {
+    const [next, ...remaining] = queuedDeletes;
+    yield {
+      kind: "pending_approval",
+      toolName: next.name,
+      toolUseId: next.id,
+      input: next.input,
+      state: {
+        messages,
+        model: input.state.model,
+        systemPrompt: input.state.systemPrompt,
+        pendingToolUseId: next.id,
+        pendingToolName: next.name,
+        pendingToolInput: next.input,
+        partialToolResults: cumulativeResults,
+        queuedDeletes: remaining,
+      },
+    };
+    return;
+  }
+
+  // All deletes resolved for this iteration — push the complete
+  // tool_result user message and continue with live streaming for any
+  // follow-up assistant text.
+  messages.push({ role: "user", content: cumulativeResults });
+
+  const startedAt = Date.now();
+  yield* streamIterationLoop(
+    creds,
+    tools,
+    messages,
+    input.state.model,
+    input.state.systemPrompt,
+    startedAt
+  );
 }

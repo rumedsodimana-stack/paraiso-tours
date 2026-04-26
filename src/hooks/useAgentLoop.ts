@@ -717,14 +717,15 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
   /** Public entry: prefer streaming; fall back to batch on failure. */
   const sendTextNative = sendTextNativeStream;
 
-  /** Resume a paused native turn after admin approves/rejects. */
-  const resumeNative = async (
+  /** Resume via the legacy server-action batch path. Used as the fallback
+   *  when SSE resume can't run (network drop, non-200 status, malformed
+   *  body). Kept as a separate function so the streaming path has
+   *  somewhere to fall through to without touching `setBusy` twice. */
+  const resumeNativeBatch = async (
     state: AgentTurnState,
     approved: boolean,
     rejectionReason?: string
-  ) => {
-    setBusy(true);
-    setPhase("act");
+  ): Promise<void> => {
     try {
       const response = await resumeAgentTurnAction({
         state,
@@ -747,6 +748,197 @@ export function useAgentLoop(pageContext?: PageContext): AgentLoopApi {
             ? `Resume failed: ${err.message}`
             : "Resume failed.",
       });
+    }
+  };
+
+  /** Streaming resume: post-approval continuation flows through SSE so
+   *  any follow-up assistant text appears live, just like a fresh turn.
+   *
+   *  Mirrors `sendTextNativeStream` byte-for-byte in its SSE-reading
+   *  loop and event handling — only the URL and request body differ.
+   *  Falls back to `resumeNativeBatch` on any pre-stream failure. */
+  const resumeNativeStream = async (
+    state: AgentTurnState,
+    approved: boolean,
+    rejectionReason?: string
+  ): Promise<void> => {
+    let response: Response;
+    try {
+      response = await fetch("/api/agent/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state, approved, rejectionReason }),
+      });
+    } catch (err) {
+      console.warn(
+        "[agent] streaming resume fetch failed, falling back to batch:",
+        err
+      );
+      await resumeNativeBatch(state, approved, rejectionReason);
+      return;
+    }
+
+    if (!response.ok || !response.body) {
+      const fallbackMsg = await response.text().catch(() => "");
+      console.warn(
+        `[agent] streaming resume returned ${response.status}, falling back to batch. Body: ${fallbackMsg.slice(0, 200)}`
+      );
+      await resumeNativeBatch(state, approved, rejectionReason);
+      return;
+    }
+
+    // Per-stream maps mirroring `sendTextNativeStream`. We can't share
+    // the parent function's maps because each stream session has its
+    // own iteration boundaries.
+    const toolUseToProposal = new Map<string, string>();
+    const textBubbleByIndex = new Map<number, string>();
+
+    const handleEvent = (
+      ev: import("@/lib/agent-runtime").StreamEvent
+    ): void => {
+      switch (ev.kind) {
+        case "iteration_start": {
+          textBubbleByIndex.clear();
+          return;
+        }
+        case "assistant_text_delta": {
+          const existing = textBubbleByIndex.get(ev.index);
+          if (existing) {
+            useAgent.getState().appendToMessage(existing, ev.text);
+          } else {
+            const msg = addMessage({ role: "assistant", content: ev.text });
+            textBubbleByIndex.set(ev.index, msg.id);
+          }
+          return;
+        }
+        case "tool_use_start": {
+          if (isPlanTool(ev.toolName)) return;
+          const proposal = addProposal({
+            title: ev.toolName,
+            summary: `Calling ${ev.toolName}…`,
+            tool: ev.toolName,
+            input: {},
+            confidence: 1,
+          });
+          toolUseToProposal.set(ev.toolUseId, proposal.id);
+          return;
+        }
+        case "tool_use_input_complete": {
+          return;
+        }
+        case "tool_executing": {
+          return;
+        }
+        case "tool_result": {
+          if (isPlanTool(ev.toolName) && applyPlanToolResult(ev.toolName, ev.ok, ev.data)) {
+            return;
+          }
+          const proposalId = toolUseToProposal.get(ev.toolUseId);
+          if (proposalId) {
+            if (ev.ok) markProposalExecuted(proposalId, ev.data);
+            else markProposalFailed(proposalId, ev.summary);
+          }
+          addMessage({
+            role: "tool",
+            content: ev.summary,
+            toolName: ev.toolName,
+          });
+          rememberWorkingAndAnnounce(
+            {
+              kind: ev.ok ? "learning" : "fact",
+              text: ev.ok
+                ? `${ev.toolName} succeeded: ${ev.summary}`
+                : `${ev.toolName} failed: ${ev.summary}`,
+            },
+            ev.ok ? `✓ Ran ${ev.toolName}` : `⚠️ ${ev.toolName} failed`
+          );
+          return;
+        }
+        case "pending_approval": {
+          const proposal = addProposal({
+            title: ev.toolName,
+            summary: `Pending admin approval: ${ev.toolName}`,
+            tool: ev.toolName,
+            input: ev.input,
+            confidence: 1,
+          });
+          pendingTurnStates.current.set(proposal.id, ev.state);
+          addMessage({
+            role: "assistant",
+            content: `**${ev.toolName}** is a delete — approve below to run.`,
+            proposalId: proposal.id,
+          });
+          return;
+        }
+        case "complete": {
+          return;
+        }
+        case "error": {
+          addMessage({
+            role: "assistant",
+            content: `⚠️ ${ev.error}`,
+          });
+          return;
+        }
+      }
+    };
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let sep: number;
+        while ((sep = buffer.indexOf("\n\n")) !== -1) {
+          const block = buffer.slice(0, sep);
+          buffer = buffer.slice(sep + 2);
+          if (!block.trim()) continue;
+          const dataLine = block
+            .split("\n")
+            .find((l) => l.startsWith("data: "));
+          if (!dataLine) continue;
+          const payload = dataLine.slice(6);
+          if (payload === "[DONE]") return;
+          try {
+            const ev = JSON.parse(payload) as import(
+              "@/lib/agent-runtime"
+            ).StreamEvent;
+            handleEvent(ev);
+          } catch {
+            // Skip malformed frames silently.
+          }
+        }
+      }
+    } catch (err) {
+      addMessage({
+        role: "assistant",
+        content: `⚠️ Resume stream interrupted: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    } finally {
+      try {
+        reader.releaseLock();
+      } catch {
+        // already released
+      }
+    }
+  };
+
+  /** Public resume entry: prefer streaming; fall back to batch on
+   *  network or status failure (handled inside resumeNativeStream). */
+  const resumeNative = async (
+    state: AgentTurnState,
+    approved: boolean,
+    rejectionReason?: string
+  ): Promise<void> => {
+    setBusy(true);
+    setPhase("act");
+    try {
+      await resumeNativeStream(state, approved, rejectionReason);
     } finally {
       setBusy(false);
       setPhase("idle");
