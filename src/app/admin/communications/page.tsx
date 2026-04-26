@@ -27,6 +27,8 @@ type MessageTemplate =
   | "post_trip_followup"
   | "booking_revision"
   | "booking_cancellation"
+  | "booking_request_confirmation"
+  | "quotation"
   | "supplier_remittance"
   | "supplier_schedule_update"
   | "supplier_cancellation"
@@ -82,6 +84,17 @@ const EMAIL_ACTIONS = new Set([
   "remittance_email_failed",
   "supplier_change_notice_emailed",
   "supplier_change_notice_email_failed",
+  // Auto-confirmation sent to a guest the moment they finish booking
+  // from the public client portal (both the package wizard and the
+  // custom journey flow). See client-booking.ts + custom-route-request.ts.
+  "booking_request_confirmation_emailed",
+  "booking_request_confirmation_email_failed",
+  // Quotation email when an admin clicks "send" in /admin/quotations.
+  "quotation_emailed",
+  "quotation_email_failed",
+  // Cancellation notice fired when a lead's status flips to cancelled.
+  "booking_cancellation_emailed",
+  "booking_cancellation_email_failed",
   // Internal alert when a client books from the public site — uses a
   // bespoke action name (not the *_emailed pattern) but still flows to
   // an admin inbox so it belongs in this view.
@@ -101,6 +114,8 @@ function templateFromMetadata(meta: Record<string, unknown> | undefined): Messag
     case "post_trip_followup":
     case "booking_revision":
     case "booking_cancellation":
+    case "booking_request_confirmation":
+    case "quotation":
     case "supplier_remittance":
     case "supplier_schedule_update":
     case "supplier_cancellation":
@@ -131,6 +146,10 @@ function templateLabel(t: MessageTemplate) {
       return "Booking revision";
     case "booking_cancellation":
       return "Booking cancellation";
+    case "booking_request_confirmation":
+      return "Booking request confirmation";
+    case "quotation":
+      return "Quotation";
     case "supplier_remittance":
       return "Supplier remittance";
     case "supplier_schedule_update":

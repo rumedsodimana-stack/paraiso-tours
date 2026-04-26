@@ -192,20 +192,58 @@ export async function createClientBookingAction(
   revalidatePath("/");
   revalidatePath("/my-bookings");
 
-  // Send email confirmation to guest
-  sendBookingRequestConfirmation({
-    clientName: lead.name,
-    clientEmail: lead.email,
-    packageName: pkg.name,
-    reference: lead.reference ?? lead.id,
-    travelDate: lead.travelDate,
-    pax: lead.pax ?? 1,
-  }).catch((err) => {
+  // Send email confirmation to guest. We await rather than fire-and-forget
+  // so the audit event below records reliably in serverless — and so the
+  // Communications module ( /admin/communications ) shows every guest
+  // email under a tracked `*_emailed` action. See EMAIL_ACTIONS in
+  // src/app/admin/communications/page.tsx.
+  try {
+    const emailResult = await sendBookingRequestConfirmation({
+      clientName: lead.name,
+      clientEmail: lead.email,
+      packageName: pkg.name,
+      reference: lead.reference ?? lead.id,
+      travelDate: lead.travelDate,
+      pax: lead.pax ?? 1,
+    });
+    await recordAuditEvent({
+      entityType: "lead",
+      entityId: lead.id,
+      action: emailResult.ok
+        ? "booking_request_confirmation_emailed"
+        : "booking_request_confirmation_email_failed",
+      summary: emailResult.ok
+        ? `Booking confirmation emailed to ${lead.email}`
+        : `Booking confirmation email failed for ${lead.email}: ${emailResult.error ?? "unknown"}`,
+      actor: "Client Portal",
+      metadata: {
+        channel: "email",
+        template: "booking_request_confirmation",
+        recipient: lead.email,
+        status: emailResult.ok ? "sent" : "failed",
+        error: emailResult.error,
+      },
+    });
+  } catch (err) {
     debugLog("Booking request email failed", {
       error: err instanceof Error ? err.message : String(err),
       leadId: lead.id,
     });
-  });
+    await recordAuditEvent({
+      entityType: "lead",
+      entityId: lead.id,
+      action: "booking_request_confirmation_email_failed",
+      summary: `Booking confirmation email threw for ${lead.email}`,
+      actor: "Client Portal",
+      metadata: {
+        channel: "email",
+        template: "booking_request_confirmation",
+        recipient: lead.email,
+        status: "failed",
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+  }
 
   // Fire-and-forget internal admin alert for the new booking
   (async () => {

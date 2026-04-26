@@ -226,18 +226,48 @@ export async function updateLeadStatusAction(id: string, status: LeadStatus) {
     const pkgName = lead.packageSnapshot?.name ?? updated.packageId ?? "your tour";
     const ref = updated.reference ?? updated.id;
     try {
-      await sendBookingStatusChangeEmail({
+      const emailResult = await sendBookingStatusChangeEmail({
         clientName: updated.name,
         clientEmail: updated.email,
         packageName: pkgName,
         reference: ref,
         status,
       });
+      await recordAuditEvent({
+        entityType: "lead",
+        entityId: updated.id,
+        action: emailResult.ok
+          ? "booking_cancellation_emailed"
+          : "booking_cancellation_email_failed",
+        summary: emailResult.ok
+          ? `Booking cancellation emailed to ${updated.email}`
+          : `Booking cancellation email failed for ${updated.email}: ${emailResult.error ?? "unknown"}`,
+        metadata: {
+          channel: "email",
+          template: "booking_cancellation",
+          recipient: updated.email,
+          status: emailResult.ok ? "sent" : "failed",
+          error: emailResult.error,
+        },
+      });
     } catch (err) {
       debugLog("Booking status change email failed", {
         error: err instanceof Error ? err.message : String(err),
         leadId: id,
         status,
+      });
+      await recordAuditEvent({
+        entityType: "lead",
+        entityId: updated.id,
+        action: "booking_cancellation_email_failed",
+        summary: `Booking cancellation email threw for ${updated.email}`,
+        metadata: {
+          channel: "email",
+          template: "booking_cancellation",
+          recipient: updated.email,
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        },
       });
     }
   }

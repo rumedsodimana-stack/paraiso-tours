@@ -18,6 +18,8 @@ const TEMPLATE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "post_trip_followup", label: "Post-trip follow-up" },
   { value: "booking_revision", label: "Booking revision" },
   { value: "booking_cancellation", label: "Booking cancellation" },
+  { value: "booking_request_confirmation", label: "Booking request confirmation" },
+  { value: "quotation", label: "Quotation" },
   { value: "supplier_remittance", label: "Supplier remittance" },
   { value: "supplier_schedule_update", label: "Supplier schedule update" },
   { value: "supplier_cancellation", label: "Supplier cancellation" },

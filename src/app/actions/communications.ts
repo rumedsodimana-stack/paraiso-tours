@@ -44,6 +44,8 @@ export type ResendEmailInput = {
     | "post_trip_followup"
     | "booking_revision"
     | "booking_cancellation"
+    | "booking_request_confirmation"
+    | "quotation"
     | "supplier_remittance"
     | "supplier_schedule_update"
     | "supplier_cancellation"
@@ -92,6 +94,8 @@ export async function resendEmailAction(input: ResendEmailInput): Promise<Result
       // showing a confusing error.
       case "booking_revision":
       case "booking_cancellation":
+      case "booking_request_confirmation":
+      case "quotation":
       case "supplier_schedule_update":
       case "supplier_cancellation":
       case "internal_new_booking":

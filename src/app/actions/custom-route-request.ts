@@ -185,19 +185,55 @@ export async function createCustomRouteRequestAction(
   revalidatePath("/my-bookings");
   revalidatePath("/journey-builder");
 
-  sendBookingRequestConfirmation({
-    clientName: lead.name,
-    clientEmail: lead.email,
-    packageName: "Custom Sri Lanka journey",
-    reference: lead.reference ?? lead.id,
-    travelDate: lead.travelDate,
-    pax: lead.pax ?? 1,
-  }).catch((err) => {
+  // Awaited (not fire-and-forget) so the audit event below records
+  // reliably in serverless and the email shows up in /admin/communications.
+  try {
+    const emailResult = await sendBookingRequestConfirmation({
+      clientName: lead.name,
+      clientEmail: lead.email,
+      packageName: "Custom Sri Lanka journey",
+      reference: lead.reference ?? lead.id,
+      travelDate: lead.travelDate,
+      pax: lead.pax ?? 1,
+    });
+    await recordAuditEvent({
+      entityType: "lead",
+      entityId: lead.id,
+      action: emailResult.ok
+        ? "booking_request_confirmation_emailed"
+        : "booking_request_confirmation_email_failed",
+      summary: emailResult.ok
+        ? `Custom journey confirmation emailed to ${lead.email}`
+        : `Custom journey confirmation email failed for ${lead.email}: ${emailResult.error ?? "unknown"}`,
+      actor: "Client Portal",
+      metadata: {
+        channel: "email",
+        template: "booking_request_confirmation",
+        recipient: lead.email,
+        status: emailResult.ok ? "sent" : "failed",
+        error: emailResult.error,
+      },
+    });
+  } catch (err) {
     debugLog("Custom route email failed", {
       error: err instanceof Error ? err.message : String(err),
       leadId: lead.id,
     });
-  });
+    await recordAuditEvent({
+      entityType: "lead",
+      entityId: lead.id,
+      action: "booking_request_confirmation_email_failed",
+      summary: `Custom journey confirmation email threw for ${lead.email}`,
+      actor: "Client Portal",
+      metadata: {
+        channel: "email",
+        template: "booking_request_confirmation",
+        recipient: lead.email,
+        status: "failed",
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+  }
 
   if (isWhatsAppConfigured() && lead.phone?.trim()) {
     sendWhatsAppBookingConfirmation({

@@ -218,11 +218,30 @@ export async function markQuotationSentAction(id: string) {
     quotationId: quotation.id,
   });
 
+  // Two audit events: one for the status change (so the quotation
+  // timeline still reflects the state), one tagged as a tracked email
+  // action so the Communications module ( /admin/communications ) picks
+  // it up. Splitting them keeps the timeline + comms inbox both honest.
   await recordAuditEvent({
     entityType: "quotation",
     entityId: id,
     action: "status_changed",
-    summary: `Quotation ${quotation.reference} sent to ${quotation.contactEmail}${emailResult.ok ? " (email delivered)" : emailResult.error ? ` (email failed: ${emailResult.error})` : ""}`,
+    summary: `Quotation ${quotation.reference} marked sent`,
+  });
+  await recordAuditEvent({
+    entityType: "quotation",
+    entityId: id,
+    action: emailResult.ok ? "quotation_emailed" : "quotation_email_failed",
+    summary: emailResult.ok
+      ? `Quotation ${quotation.reference} emailed to ${quotation.contactEmail}`
+      : `Quotation ${quotation.reference} email failed for ${quotation.contactEmail}: ${emailResult.error ?? "unknown"}`,
+    metadata: {
+      channel: "email",
+      template: "quotation",
+      recipient: quotation.contactEmail,
+      status: emailResult.ok ? "sent" : "failed",
+      error: emailResult.error,
+    },
   });
 
   revalidatePath("/admin/quotations");
