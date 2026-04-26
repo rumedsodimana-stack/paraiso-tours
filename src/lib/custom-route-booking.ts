@@ -1,10 +1,25 @@
-import type { AuditLog, ItineraryDay, Lead, PackageSnapshot } from "./types";
+import type {
+  AuditLog,
+  ItineraryDay,
+  Lead,
+  PackageOption,
+  PackageSnapshot,
+} from "./types";
 
 export type CustomRouteStopMeta = {
   destinationId?: string;
   destinationName?: string;
   nights?: number;
   hotelName?: string;
+  /**
+   * Catalog `HotelSupplier.id` selected by the route builder. When
+   * present this lets us link each per-night accommodation option in the
+   * snapshot back to a real supplier — which is what
+   * `getBookingBreakdownBySupplier` and `getSuppliersForSchedule` use to
+   * generate supplier payable rows and reservation emails. Without it,
+   * custom-route bookings silently produce zero supplier items.
+   */
+  hotelId?: string;
   hotelRate?: number;
   hotelCurrency?: string;
   activities?: string[];
@@ -76,6 +91,74 @@ function describeStop(stop: CustomRouteStopMeta, includeTransfer: boolean): stri
   }
 
   return details.join(" ") || "Custom journey day.";
+}
+
+/**
+ * Build per-stop accommodation options keyed back to their catalog
+ * supplier (`stop.hotelId`). Returns the option list (one per stop that
+ * had a hotel chosen) plus a "stop index -> option id" map used to
+ * materialize `selectedAccommodationByNight`.
+ *
+ * Skips stops without `hotelId`: those are auto-allocate ("best
+ * available") requests where no specific supplier was chosen yet, so
+ * there's no payable row or reservation email to emit at schedule time.
+ */
+function buildCustomRouteAccommodationOptions(
+  route: CustomRouteMeta
+): { options: PackageOption[]; stopOptionIds: Map<number, string> } {
+  const options: PackageOption[] = [];
+  const stopOptionIds = new Map<number, string>();
+
+  route.routeStops.forEach((stop, index) => {
+    const supplierId = trimToUndefined(stop.hotelId);
+    const label =
+      trimToUndefined(stop.hotelName) ?? trimToUndefined(stop.destinationName);
+    const rate = Number.isFinite(stop.hotelRate) ? Math.max(0, stop.hotelRate ?? 0) : 0;
+    if (!supplierId || !label) return;
+
+    const optionId = `custom_route_stop_${index}_${supplierId}`;
+    options.push({
+      id: optionId,
+      label,
+      price: rate,
+      // Per-night pricing — the breakdown calls calcOptionPrice with
+      // nightsUsed=1 for each night entry in selectedAccommodationByNight.
+      priceType: "per_night",
+      // Same rate used for cost — the route builder doesn't model
+      // markup, so what the supplier charges is what the guest pays.
+      // Stripped from RSC payloads by sanitizePackageForClient before
+      // anything reaches the browser.
+      costPrice: rate,
+      supplierId,
+    });
+    stopOptionIds.set(index, optionId);
+  });
+
+  return { options, stopOptionIds };
+}
+
+/**
+ * Materialize a `selectedAccommodationByNight` map for the snapshot.
+ * Walks the route stop-by-stop, using each stop's nights to fill the
+ * appropriate slice of the map ("0", "1", ... up to total nights).
+ */
+function buildCustomRouteSelectedAccommodationByNight(
+  route: CustomRouteMeta,
+  stopOptionIds: Map<number, string>
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  let nightIndex = 0;
+  route.routeStops.forEach((stop, index) => {
+    const stopNights = getStopNights(stop);
+    const optionId = stopOptionIds.get(index);
+    if (optionId && stopNights > 0) {
+      for (let i = 0; i < stopNights; i += 1) {
+        map[String(nightIndex + i)] = optionId;
+      }
+    }
+    nightIndex += stopNights;
+  });
+  return map;
 }
 
 function buildCustomRouteItinerary(route: CustomRouteMeta): ItineraryDay[] {
@@ -200,6 +283,22 @@ export function createCustomRoutePackageSnapshot(
       : undefined,
   ].filter((value): value is string => Boolean(value));
 
+  // Build per-stop accommodation options + per-night selection map so
+  // getBookingBreakdownBySupplier (booking-breakdown.ts) emits real
+  // supplier rows for custom routes — that drives:
+  //   - supplier reservation emails (sendSupplierReservationEmail)
+  //   - supplier payable rows (getPayablesForDateRange / payables.ts)
+  // Without these two fields, custom-route bookings silently produce
+  // zero supplier items even after we patch lead.packageId in tours.ts.
+  const { options: accommodationOptions, stopOptionIds } =
+    buildCustomRouteAccommodationOptions(route);
+  const selectedAccommodationByNightMap =
+    buildCustomRouteSelectedAccommodationByNight(route, stopOptionIds);
+  const selectedAccommodationByNight =
+    Object.keys(selectedAccommodationByNightMap).length > 0
+      ? selectedAccommodationByNightMap
+      : undefined;
+
   return {
     packageId: `custom_route_${lead.id}`,
     name: "Custom Sri Lanka journey",
@@ -212,6 +311,8 @@ export function createCustomRoutePackageSnapshot(
     itinerary: buildCustomRouteItinerary(route),
     inclusions,
     exclusions: [],
+    accommodationOptions: accommodationOptions.length > 0 ? accommodationOptions : undefined,
+    selectedAccommodationByNight,
     totalPrice,
     capturedAt: new Date().toISOString(),
   };

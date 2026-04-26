@@ -22,6 +22,7 @@ import {
   updateInvoice,
   deleteInvoice,
   ensureCustomRoutePlaceholderPackageId,
+  extractErrorMessage,
 } from "@/lib/db";
 import { createInvoiceFromLead } from "@/app/actions/invoices";
 import { getLeadBookingFinancials } from "@/lib/booking-pricing";
@@ -92,8 +93,34 @@ async function hydrateCustomRouteSnapshot(lead: Lead): Promise<Lead> {
   if (!customRoute) return lead;
 
   const packageSnapshot = createCustomRoutePackageSnapshot(lead, customRoute);
-  const snappedLead = await updateLead(lead.id, { packageSnapshot });
-  return snappedLead ?? { ...lead, packageSnapshot };
+
+  // Mirror the snapshot's per-night accommodation selection back onto
+  // the lead row. The supplier breakdown helper
+  // (`getBookingBreakdownBySupplier`) reads `lead.selectedAccommodationByNight`
+  // *not* `lead.packageSnapshot.selectedAccommodationByNight`, so without
+  // this write the per-night selection only lives on the snapshot and
+  // the breakdown still emits zero supplier rows for custom routes.
+  // Only write the lead column when we actually have a map to set, to
+  // avoid clobbering anything an admin added manually.
+  const leadPatch: Parameters<typeof updateLead>[1] = { packageSnapshot };
+  if (
+    packageSnapshot.selectedAccommodationByNight &&
+    Object.keys(packageSnapshot.selectedAccommodationByNight).length > 0 &&
+    !lead.selectedAccommodationByNight
+  ) {
+    leadPatch.selectedAccommodationByNight =
+      packageSnapshot.selectedAccommodationByNight;
+  }
+
+  const snappedLead = await updateLead(lead.id, leadPatch);
+  return (
+    snappedLead ?? {
+      ...lead,
+      packageSnapshot,
+      selectedAccommodationByNight:
+        leadPatch.selectedAccommodationByNight ?? lead.selectedAccommodationByNight,
+    }
+  );
 }
 
 export async function createTourAction(formData: FormData) {
@@ -224,6 +251,19 @@ export async function scheduleTourFromLeadAction(
 
     const pkg = resolveLeadPackage(lead, livePackage);
     if (!pkg) return { error: "Package not found" };
+
+    // For custom-route leads, `lead.packageId` is undefined (the route
+    // builder doesn't set it — route data lives on `packageSnapshot`).
+    // But several downstream helpers (`getBookingBreakdownBySupplier`,
+    // `getSuppliersForSchedule`, etc.) guard on
+    // `lead.packageId === pkg.id` and bail to null otherwise — which
+    // silently skips supplier payable rows AND supplier reservation
+    // emails for every custom-route booking. Patch the in-memory lead
+    // so those guards pass; we don't persist this back to the leads
+    // table — it's a runtime-only alignment.
+    if (!lead.packageId && pkg.id) {
+      lead = { ...lead, packageId: pkg.id };
+    }
 
     // Custom routes synthesize `pkg.id = "custom_route_<lead.id>"` (see
     // `lib/custom-route-booking.ts`) — that id has no row in the
@@ -469,7 +509,7 @@ export async function scheduleTourFromLeadAction(
             "Invoice was not confirmed automatically. You can create it from the booking later.";
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = extractErrorMessage(err);
         invoiceWarning = `Invoice was not created automatically: ${msg}`;
       }
     }
@@ -503,7 +543,7 @@ export async function scheduleTourFromLeadAction(
         if (updatedInv) invoice = updatedInv;
       } catch (err) {
         debugLog("Invoice confirmationId link failed", {
-          error: err instanceof Error ? err.message : String(err),
+          error: extractErrorMessage(err),
           invoiceId: invoice.id,
           tourId: tour.id,
         });
@@ -529,7 +569,7 @@ export async function scheduleTourFromLeadAction(
         });
         createdPaymentId = payment.id;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = extractErrorMessage(err);
         debugLog("createPayment failed during scheduling", {
           error: msg,
           leadId: rollbackLeadId,
@@ -623,12 +663,14 @@ export async function scheduleTourFromLeadAction(
       });
     } catch (err) {
       debugLog("Audit events after scheduling failed", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
         tourId: tour.id,
       });
     }
 
     // Best-effort supplier payables (outgoing records per supplier).
+    // (`lead.packageId` was already patched above for custom routes so
+    // the breakdown's guard passes.)
     try {
       const breakdown = getBookingBreakdownBySupplier(lead, pkg, suppliers);
       if (breakdown && breakdown.supplierItems.length > 0) {
@@ -665,7 +707,7 @@ export async function scheduleTourFromLeadAction(
             });
           } catch (err) {
             debugLog("Supplier payable creation failed", {
-              error: err instanceof Error ? err.message : String(err),
+              error: extractErrorMessage(err),
               supplierId,
               tourId: tour.id,
             });
@@ -674,7 +716,7 @@ export async function scheduleTourFromLeadAction(
       }
     } catch (err) {
       debugLog("Supplier payables block threw", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
         tourId: tour.id,
       });
     }
@@ -692,7 +734,7 @@ export async function scheduleTourFromLeadAction(
           createdTodoIds.push(todo.id);
         } catch (err) {
           debugLog("Todo creation failed during tour scheduling", {
-            error: err instanceof Error ? err.message : String(err),
+            error: extractErrorMessage(err),
             leadId: rollbackLeadId,
             title,
           });
@@ -738,7 +780,7 @@ export async function scheduleTourFromLeadAction(
             };
           } catch (pdfErr) {
             debugLog("Itinerary PDF skipped on confirmation", {
-              error: pdfErr instanceof Error ? pdfErr.message : String(pdfErr),
+              error: extractErrorMessage(pdfErr),
               tourId: tour.id,
             });
           }
@@ -789,7 +831,7 @@ export async function scheduleTourFromLeadAction(
             });
           }
         } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
+          const msg = extractErrorMessage(err);
           debugLog("Tour confirmation email failed", {
             error: msg,
             leadId: rollbackLeadId,
@@ -933,7 +975,7 @@ export async function scheduleTourFromLeadAction(
               );
             }
           } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
+            const msg = extractErrorMessage(err);
             debugLog("Supplier reservation email failed", {
               error: msg,
               supplier: supplier.supplierName,
@@ -972,7 +1014,7 @@ export async function scheduleTourFromLeadAction(
       }
     } catch (err) {
       debugLog("Post-schedule notifications failed", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
         leadId: rollbackLeadId,
         tourId: tour.id,
       });
@@ -994,7 +1036,14 @@ export async function scheduleTourFromLeadAction(
       availabilityStatus,
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    // Use extractErrorMessage so plain-object Supabase errors
+    // (`{ message, code, details, hint }`, NOT Error instances) render
+    // as readable text instead of "[object Object]". This is defense
+    // in depth — every db.ts write helper already wraps with
+    // reportWriteFailure, but anything that bypasses that path (a
+    // direct supabase call, a third-party SDK, a thrown literal) lands
+    // here and would otherwise produce useless error UI.
+    const msg = extractErrorMessage(err);
     await rollback?.();
     if (leadId) {
       await recordAuditEvent({
@@ -1153,7 +1202,7 @@ export async function markTourCompletedPaidAction(
       debugLog("Failed to mark lead completed after tour completion", {
         tourId,
         leadId: tour.leadId,
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
       });
     }
 
@@ -1240,7 +1289,7 @@ export async function markTourCompletedPaidAction(
           });
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = extractErrorMessage(err);
         debugLog("Payment receipt email failed", {
           error: msg,
           tourId,
@@ -1268,7 +1317,7 @@ export async function markTourCompletedPaidAction(
     revalidatePath("/");
     return { success: true, paymentId: payment.id };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = extractErrorMessage(err);
     await rollback?.();
     return { error: msg };
   }

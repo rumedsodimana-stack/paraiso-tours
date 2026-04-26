@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createLead, updateLead, deleteLead, getLead, getPackage } from "@/lib/db";
+import { createLead, updateLead, deleteLead, getLead, getPackage, extractErrorMessage } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import { createPackageSnapshot } from "@/lib/package-snapshot";
 import type { LeadStatus } from "@/lib/types";
@@ -91,7 +91,7 @@ export async function createLeadAction(formData: FormData) {
     if (err instanceof Error && "digest" in err && String(err.message).includes("NEXT_REDIRECT")) {
       throw err;
     }
-    debugLog("createLeadAction error", { error: err instanceof Error ? err.message : String(err) });
+    debugLog("createLeadAction error", { error: extractErrorMessage(err) });
     return { error: err instanceof Error ? err.message : "Failed to create booking. Please try again." };
   }
 }
@@ -222,13 +222,38 @@ export async function updateLeadStatusAction(id: string, status: LeadStatus) {
     details: [`Client: ${updated.name}`],
   });
 
-  if (status === "cancelled" && updated.email?.trim()) {
+  if (status === "cancelled") {
     const pkgName = lead.packageSnapshot?.name ?? updated.packageId ?? "your tour";
     const ref = updated.reference ?? updated.id;
+    const recipientEmail = updated.email?.trim();
+
+    if (!recipientEmail) {
+      // No email on file → log a *_skipped event so the admin sees a
+      // row in /admin/communications and knows to follow up by phone
+      // or WhatsApp. Without this the cancellation drops silently —
+      // which violates the "no silent failures" requirement.
+      await recordAuditEvent({
+        entityType: "lead",
+        entityId: updated.id,
+        action: "booking_cancellation_email_skipped",
+        summary: `Booking cancellation email skipped (no email on file) for ${updated.name}`,
+        metadata: {
+          channel: "email",
+          template: "booking_cancellation",
+          recipient: "",
+          status: "skipped",
+          reason: "no_recipient_email",
+        },
+      });
+      revalidatePath("/admin/bookings");
+      revalidatePath("/");
+      return { success: true };
+    }
+
     try {
       const emailResult = await sendBookingStatusChangeEmail({
         clientName: updated.name,
-        clientEmail: updated.email,
+        clientEmail: recipientEmail,
         packageName: pkgName,
         reference: ref,
         status,
@@ -240,19 +265,20 @@ export async function updateLeadStatusAction(id: string, status: LeadStatus) {
           ? "booking_cancellation_emailed"
           : "booking_cancellation_email_failed",
         summary: emailResult.ok
-          ? `Booking cancellation emailed to ${updated.email}`
-          : `Booking cancellation email failed for ${updated.email}: ${emailResult.error ?? "unknown"}`,
+          ? `Booking cancellation emailed to ${recipientEmail}`
+          : `Booking cancellation email failed for ${recipientEmail}: ${emailResult.error ?? "unknown"}`,
         metadata: {
           channel: "email",
           template: "booking_cancellation",
-          recipient: updated.email,
+          recipient: recipientEmail,
           status: emailResult.ok ? "sent" : "failed",
           error: emailResult.error,
         },
       });
     } catch (err) {
+      const errMsg = extractErrorMessage(err);
       debugLog("Booking status change email failed", {
-        error: err instanceof Error ? err.message : String(err),
+        error: errMsg,
         leadId: id,
         status,
       });
@@ -260,13 +286,13 @@ export async function updateLeadStatusAction(id: string, status: LeadStatus) {
         entityType: "lead",
         entityId: updated.id,
         action: "booking_cancellation_email_failed",
-        summary: `Booking cancellation email threw for ${updated.email}`,
+        summary: `Booking cancellation email threw for ${recipientEmail}`,
         metadata: {
           channel: "email",
           template: "booking_cancellation",
-          recipient: updated.email,
+          recipient: recipientEmail,
           status: "failed",
-          error: err instanceof Error ? err.message : String(err),
+          error: errMsg,
         },
       });
     }

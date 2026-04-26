@@ -47,28 +47,50 @@ async function getSupabaseDb() {
  * Read helpers keep their silent fallthrough — returning null is gentler
  * than a 500 page when a read momentarily fails.
  */
-function reportWriteFailure(op: string, err: unknown): never {
-  // Supabase / PostgREST errors are plain objects of shape
-  // `{ message, code, details, hint }`, NOT instances of Error. So
-  // `String(err)` would produce "[object Object]" — useless. Pull the
-  // message + code out explicitly so the UI surfaces something actionable
-  // (e.g. "column 'confirmation_id' of relation 'payments' does not exist").
-  let message: string;
-  if (err instanceof Error) {
-    message = err.message;
-  } else if (err && typeof err === "object") {
-    const e = err as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown };
+/**
+ * Render any thrown value as a readable message string.
+ *
+ * Used by `reportWriteFailure` (which then re-throws as a real Error)
+ * and by server-action outer catches (which need to put the message
+ * into a returned `{ error }` payload so the admin UI can render it).
+ *
+ * Without this, plain Supabase / PostgREST errors — which are objects
+ * of shape `{ message, code, details, hint }` and NOT `Error`
+ * instances — render as the literal string "[object Object]" via
+ * `String(err)`, which is useless in the admin UI.
+ */
+export function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object") {
+    const e = err as {
+      message?: unknown;
+      code?: unknown;
+      details?: unknown;
+      hint?: unknown;
+    };
     const parts = [
       typeof e.message === "string" ? e.message : null,
       typeof e.details === "string" && e.details ? `details: ${e.details}` : null,
       typeof e.hint === "string" && e.hint ? `hint: ${e.hint}` : null,
       typeof e.code === "string" && e.code ? `code: ${e.code}` : null,
     ].filter(Boolean);
-    message = parts.length > 0 ? parts.join(" — ") : JSON.stringify(err);
-  } else {
-    message = String(err);
+    if (parts.length > 0) return parts.join(" — ");
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return "Unknown error (un-serializable error object)";
+    }
   }
+  return String(err);
+}
 
+function reportWriteFailure(op: string, err: unknown): never {
+  // Supabase / PostgREST errors are plain objects of shape
+  // `{ message, code, details, hint }`, NOT instances of Error. So
+  // `String(err)` would produce "[object Object]" — useless. Pull the
+  // message + code out explicitly so the UI surfaces something actionable
+  // (e.g. "column 'confirmation_id' of relation 'payments' does not exist").
+  const message = extractErrorMessage(err);
   debugError(`Supabase ${op} failed — surfacing instead of silently using local backend`, message);
   throw new Error(`Supabase ${op}: ${message}`);
 }
@@ -473,8 +495,18 @@ export const CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID = "__custom_route__";
 
 export async function ensureCustomRoutePlaceholderPackageId(): Promise<string> {
   if (USE_SUPABASE) {
-    const mod = await getSupabaseDb();
-    return mod.ensureCustomRoutePlaceholderPackageId();
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.ensureCustomRoutePlaceholderPackageId();
+    } catch (err) {
+      // Without this wrapper, a Supabase plain-object error
+      // (`{ message, code, details, hint }`) would bubble up unwrapped
+      // through `scheduleTourFromLeadAction` — its outer catch does
+      // `String(err)` for non-Error values, which renders "[object
+      // Object]" in the admin UI. Route through reportWriteFailure so
+      // the real PostgREST message reaches the user instead.
+      reportWriteFailure("ensureCustomRoutePlaceholderPackageId", err);
+    }
   }
   return CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID;
 }

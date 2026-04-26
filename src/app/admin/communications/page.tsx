@@ -93,8 +93,12 @@ const EMAIL_ACTIONS = new Set([
   "quotation_emailed",
   "quotation_email_failed",
   // Cancellation notice fired when a lead's status flips to cancelled.
+  // `*_skipped` covers the case where the booking has no client email
+  // on file — we still want a row in the inbox so the admin knows to
+  // follow up by phone/WhatsApp instead of silently dropping it.
   "booking_cancellation_emailed",
   "booking_cancellation_email_failed",
+  "booking_cancellation_email_skipped",
   // Internal alert when a client books from the public site — uses a
   // bespoke action name (not the *_emailed pattern) but still flows to
   // an admin inbox so it belongs in this view.

@@ -248,86 +248,12 @@ export interface TourConfirmationParams {
   reference?: string;
 }
 
-/**
- * Send tour confirmation email to the client when a tour is scheduled.
- */
-export async function sendTourConfirmationEmail(
-  params: TourConfirmationParams
-): Promise<{ ok: boolean; error?: string }> {
-  if (!resend) {
-    return { ok: false, error: "Email not configured (RESEND_API_KEY missing)" };
-  }
-
-  const { clientName, clientEmail, packageName, startDate, endDate, pax, reference } = params;
-  const email = clientEmail?.trim();
-  if (!email) return { ok: false, error: "No client email" };
-  const branding = await getEmailBranding();
-
-  const startFmt = new Date(startDate).toLocaleDateString("en-GB", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const endFmt = new Date(endDate).toLocaleDateString("en-GB", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const bookingLink = reference
-    ? `${getBaseUrl()}/booking/${encodeURIComponent(reference)}?email=${encodeURIComponent(email)}`
-    : null;
-
-  const html = buildBrandedEmail(
-    {
-      preheader: `Your tour is scheduled. ${startFmt} to ${endFmt}.`,
-      eyebrow: "Tour scheduled",
-      title: `You're booked, ${clientName.split(/\s+/)[0] || clientName}`,
-      intro: `Great news — we've locked in your dates for ${packageName}. The details below, and the full itinerary to follow shortly.`,
-      sections: [
-        {
-          label: "Your trip",
-          variant: "card",
-          rows: [
-            { label: "Package", value: escapeHtml(packageName), emphasis: true },
-            { label: "Start", value: startFmt },
-            { label: "End", value: endFmt },
-            {
-              label: "Travelers",
-              value: `${pax} ${pax === 1 ? "person" : "people"}`,
-            },
-            ...(reference
-              ? [{ label: "Reference", value: escapeHtml(reference) }]
-              : []),
-          ],
-        },
-      ],
-      ...(bookingLink
-        ? { primaryCta: { label: "View my booking online", href: bookingLink } }
-        : {}),
-      closing:
-        "Any last updates — flight info, dietary needs, pickup points — just reply. We'll re-confirm everything the week before travel.",
-    },
-    branding
-  );
-
-  try {
-    const { error } = await withEmailRetry(() => resend.emails.send({
-      from: getFromEmail(branding.companyName),
-      to: [email],
-      subject: `Tour confirmed: ${packageName} – ${branding.companyName}`,
-      html,
-    }));
-
-    if (error) return { ok: false, error };
-    return { ok: true };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return { ok: false, error: msg };
-  }
-}
+// Note: `sendTourConfirmationEmail` was removed in favor of
+// `sendTourConfirmationWithInvoice` (defined later in this file), which
+// attaches both the invoice PDF and the itinerary PDF — that's the only
+// version actually called from `scheduleTourFromLeadAction`. The
+// `TourConfirmationParams` interface above is kept because the
+// invoice+itinerary variant extends it via intersection.
 
 function escapeHtml(s: string): string {
   return s
@@ -841,7 +767,11 @@ export interface BookingStatusChangeParams {
 }
 
 /**
- * Send guest notification when booking status changes to hold or cancelled.
+ * Send guest notification when a booking is cancelled. The guest gets
+ * an email with the booking reference and a "view your booking online"
+ * link. Triggered from `updateLeadStatusAction` (leads.ts) — only when
+ * `status` flips to `"cancelled"`. The "hold" status was scoped out and
+ * is not handled here.
  */
 export async function sendBookingStatusChangeEmail(
   params: BookingStatusChangeParams
