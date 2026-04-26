@@ -11,14 +11,19 @@ const SEC_BTN = "inline-flex items-center gap-2 rounded-xl border border-[#e0e4d
 export default async function HotelsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ archived?: string; deleted?: string }>;
+  searchParams?: Promise<{ archived?: string; deleted?: string; cleaned?: string }>;
 }) {
-  const { archived, deleted } = searchParams ? await searchParams : {};
+  const { archived, deleted, cleaned } = searchParams ? await searchParams : {};
   const hotels = await getHotels();
+  const cleanedCount = cleaned ? Number(cleaned) : 0;
+  const archivedMessage =
+    cleanedCount > 0
+      ? `Archived. Cleaned references in ${cleanedCount} package${cleanedCount === 1 ? "" : "s"}.`
+      : "Archived successfully";
 
   return (
     <div className="space-y-6">
-      {(archived === "1" || deleted === "1") && <SaveSuccessBanner message="Archived successfully" />}
+      {(archived === "1" || deleted === "1") && <SaveSuccessBanner message={archivedMessage} />}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

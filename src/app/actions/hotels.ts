@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 import {
   createHotel,
   updateHotel,
+  updatePackage,
   deleteHotel,
   getPackages,
   getPayments,
   getHotel,
 } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
-import type { TourPackage } from "@/lib/types";
+import type { PackageOption, TourPackage } from "@/lib/types";
 import { requireAdmin } from "@/lib/admin-session";
 
 function parseOptionalNum(val: string | null): number | undefined {
@@ -31,6 +32,58 @@ function packageUsesSupplier(pkg: TourPackage, supplierId: string): boolean {
   return optionGroups.some((options) =>
     options.some((option) => option.supplierId === supplierId)
   );
+}
+
+/**
+ * Strip every option referencing `supplierId` out of a package's curated
+ * lists (top-level option groups + per-day accommodation options).
+ *
+ * Called from `deleteHotelAction` when archiving a supplier so leftover
+ * `PackageOption` rows don't keep pointing at a supplier that no longer
+ * appears in the live catalog. We preserve hand-typed entries (no
+ * `supplierId`) and any options pointing at OTHER suppliers — only the
+ * exact archived id is removed.
+ *
+ * Returns null when no changes are needed, otherwise a partial update
+ * payload ready to hand to `updatePackage`.
+ */
+function buildSupplierCleanupPatch(
+  pkg: TourPackage,
+  supplierId: string,
+): Partial<TourPackage> | null {
+  const stripGroup = (options: PackageOption[] | undefined) =>
+    (options ?? []).filter((opt) => opt.supplierId !== supplierId);
+
+  const accommodationOptions = stripGroup(pkg.accommodationOptions);
+  const transportOptions = stripGroup(pkg.transportOptions);
+  const mealOptions = stripGroup(pkg.mealOptions);
+  const customOptions = stripGroup(pkg.customOptions);
+
+  const itinerary = (pkg.itinerary ?? []).map((day) => ({
+    ...day,
+    accommodationOptions: stripGroup(day.accommodationOptions),
+  }));
+
+  const changed =
+    accommodationOptions.length !== (pkg.accommodationOptions ?? []).length ||
+    transportOptions.length !== (pkg.transportOptions ?? []).length ||
+    mealOptions.length !== (pkg.mealOptions ?? []).length ||
+    customOptions.length !== (pkg.customOptions ?? []).length ||
+    (pkg.itinerary ?? []).some(
+      (day, idx) =>
+        (day.accommodationOptions ?? []).length !==
+        (itinerary[idx]?.accommodationOptions ?? []).length,
+    );
+
+  if (!changed) return null;
+
+  return {
+    accommodationOptions,
+    transportOptions,
+    mealOptions,
+    customOptions,
+    itinerary,
+  };
 }
 
 export async function createHotelAction(formData: FormData) {
@@ -167,33 +220,21 @@ export async function deleteHotelAction(id: string) {
   await requireAdmin();
   const hotel = await getHotel(id);
   const [packages, payments] = await Promise.all([getPackages(), getPayments()]);
-  const blockingPackages = packages.filter((pkg) => packageUsesSupplier(pkg, id));
-  const blockingPayments = payments.filter((payment) => payment.supplierId === id);
 
-  if (blockingPackages.length > 0 || blockingPayments.length > 0) {
-    const reasons: string[] = [];
+  // Archive is a SOFT operation: we set `archivedAt`, keep the supplier row
+  // for FK resolution (payment history, lead snapshots), and let the live
+  // resolvers (`resolvePackageTransportFromCatalog`, `getCustomJourney*Options`)
+  // hide the supplier from booking surfaces. Package option references with
+  // matching `supplierId` are stale labels — we strip them in-place rather
+  // than blocking the archive.
+  const affectedPackages = packages.filter((pkg) => packageUsesSupplier(pkg, id));
 
-    if (blockingPackages.length > 0) {
-      const packageNames = blockingPackages
-        .slice(0, 3)
-        .map((pkg) => pkg.name)
-        .join(", ");
-      const morePackages =
-        blockingPackages.length > 3
-          ? ` and ${blockingPackages.length - 3} more`
-          : "";
-      reasons.push(
-        `it is still used in ${blockingPackages.length} package${blockingPackages.length === 1 ? "" : "s"} (${packageNames}${morePackages}). Remove or replace it in those package options first.`
-      );
-    }
-
-    if (blockingPayments.length > 0) {
-      reasons.push(
-        `it is linked to ${blockingPayments.length} payment${blockingPayments.length === 1 ? "" : "s"} in your finance history.`
-      );
-    }
-
-    return { error: `Cannot archive this supplier because ${reasons.join(" ")}` };
+  let cleanedPackageNames: string[] = [];
+  for (const pkg of affectedPackages) {
+    const patch = buildSupplierCleanupPatch(pkg, id);
+    if (!patch) continue;
+    const updated = await updatePackage(pkg.id, patch);
+    if (updated) cleanedPackageNames.push(updated.name);
   }
 
   const ok = await deleteHotel(id);
@@ -205,11 +246,30 @@ export async function deleteHotelAction(id: string) {
   }
 
   if (hotel) {
+    const details: string[] = [];
+    if (cleanedPackageNames.length > 0) {
+      const shown = cleanedPackageNames.slice(0, 5).join(", ");
+      const more =
+        cleanedPackageNames.length > 5
+          ? ` (+${cleanedPackageNames.length - 5} more)`
+          : "";
+      details.push(
+        `Removed from ${cleanedPackageNames.length} package${
+          cleanedPackageNames.length === 1 ? "" : "s"
+        }: ${shown}${more}`,
+      );
+    }
+    if (payments.some((payment) => payment.supplierId === id)) {
+      details.push(
+        "Existing payment history retained — archived row preserved for finance lookups.",
+      );
+    }
     await recordAuditEvent({
       entityType: "supplier",
       entityId: hotel.id,
       action: "archived",
       summary: `${hotel.type === "hotel" ? "Hotel" : "Supplier"} archived: ${hotel.name}`,
+      details: details.length > 0 ? details : undefined,
     });
   }
 
@@ -217,5 +277,8 @@ export async function deleteHotelAction(id: string) {
   revalidatePath("/admin/packages");
   revalidatePath("/admin/payments");
   revalidatePath("/admin/payables");
-  return { success: true };
+  return {
+    success: true,
+    cleanedPackages: cleanedPackageNames.length,
+  };
 }

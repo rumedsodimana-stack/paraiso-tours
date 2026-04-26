@@ -29,7 +29,14 @@ export function DeleteHotelButton({
         setError(result.error);
         return;
       }
-      router.push("/admin/hotels?archived=1");
+      // Surface "cleaned N packages" via querystring so the destination
+      // banner can show how many curated package option lists were auto-
+      // pruned during the archive — the user otherwise has no signal that
+      // their packages were touched.
+      const cleaned = result?.cleanedPackages ?? 0;
+      const qs =
+        cleaned > 0 ? `?archived=1&cleaned=${cleaned}` : "?archived=1";
+      router.push(`/admin/hotels${qs}`);
       router.refresh();
     });
   }
