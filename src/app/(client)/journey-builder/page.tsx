@@ -6,6 +6,13 @@ import { getAllMealPlans, getHotels, getPackagesForClient } from "@/lib/db";
 import type { HotelMealPlan } from "@/lib/types";
 import { JourneyPlanner } from "./JourneyPlanner";
 
+// The hotel/package catalog mutates from /admin (admins add Palace,
+// archive an old vehicle, etc.) and the planner's Choices must reflect
+// the latest state. Without force-dynamic Next.js caches the prebuilt
+// page at deploy time, so newly-saved hotels never appear in the
+// destination picker until the next deploy.
+export const dynamic = "force-dynamic";
+
 /**
  * Journey-builder shell.
  *

@@ -150,6 +150,11 @@ export async function createHotelAction(formData: FormData) {
   // /admin/transportation lists type==="transport" rows separately from
   // /admin/hotels — keep both surfaces fresh on create.
   if (hotel.type === "transport") revalidatePath("/admin/transportation");
+  // Guest-facing journey-builder consumes the hotel/transport/meal
+  // catalog through getHotels(); without this, a newly-saved hotel
+  // (e.g. "Palace, Colombo") wouldn't appear in the destination picker
+  // until the next deploy.
+  revalidatePath("/journey-builder");
   return { success: true, id: hotel.id };
 }
 
@@ -217,6 +222,7 @@ export async function updateHotelAction(id: string, formData: FormData) {
   revalidatePath("/admin/hotels");
   revalidatePath(`/admin/hotels/${id}`);
   if (updated.type === "transport") revalidatePath("/admin/transportation");
+  revalidatePath("/journey-builder");
   return { success: true };
 }
 
@@ -282,6 +288,7 @@ export async function deleteHotelAction(id: string) {
   revalidatePath("/admin/payments");
   revalidatePath("/admin/payables");
   if (hotel?.type === "transport") revalidatePath("/admin/transportation");
+  revalidatePath("/journey-builder");
   return {
     success: true,
     cleanedPackages: cleanedPackageNames.length,
