@@ -387,9 +387,18 @@ function toHotelMealPlan(row: Record<string, unknown>): HotelMealPlan {
 function packageToRow(
   data: Omit<TourPackage, "id" | "createdAt"> & { id?: string; createdAt?: string }
 ): Record<string, unknown> {
+  // NOTE: `reference` is intentionally NOT written here. The production
+  // Supabase `packages` table doesn't have a `reference` column (the TS
+  // field was added optimistically but the migration was never run), and
+  // including it triggers PGRST204 ("Could not find the 'reference'
+  // column of 'packages' in the schema cache") on every package write —
+  // including ensureCustomRoutePlaceholderPackageId, which blocked all
+  // tour scheduling. Reads in toPackage gracefully fall back to undefined,
+  // and the 6 UI sites that show pkg.reference all guard with `?? pkg.id`
+  // or `&& (...)`. If a future migration adds the column, re-introduce
+  // `reference: data.reference ?? generatePackageReference(),` here.
   return {
     id: data.id ?? generateId("pkg"),
-    reference: data.reference ?? generatePackageReference(),
     name: data.name,
     duration: data.duration,
     destination: data.destination,
@@ -456,6 +465,8 @@ export async function ensureCustomRoutePlaceholderPackageId(): Promise<string> {
   const now = new Date().toISOString();
   const placeholderRow = packageToRow({
     id: CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID,
+    // NOTE: reference is dropped by packageToRow (column doesn't exist in
+    // production schema). Kept here only for type completeness.
     reference: "CUSTOM-ROUTE",
     name: "Custom Sri Lanka journey",
     duration: "Custom",
