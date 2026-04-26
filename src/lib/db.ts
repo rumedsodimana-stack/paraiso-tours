@@ -23,6 +23,7 @@ import type {
   Quotation,
 } from "./types";
 import { mockPackages } from "./mock-data";
+import { debugError } from "./debug";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const IS_VERCEL = process.env.VERCEL === "1";
@@ -30,6 +31,25 @@ const USE_SUPABASE = supabase !== null;
 
 async function getSupabaseDb() {
   return import("./db-supabase");
+}
+
+/**
+ * When a Supabase write fails, surface the error instead of silently falling
+ * through to the local file/memory backend.
+ *
+ * On Vercel the "local" backend is per-Lambda in-memory state — writes look
+ * fine inside one request but vanish on the next request (different Lambda
+ * = empty memory). That used to bite us as "404 after schedule": createTour
+ * returned a fake id, the browser redirected, and the new request couldn't
+ * find the tour. Now the action surfaces the real Supabase error to the
+ * caller so the UI can show it instead of a dead URL.
+ *
+ * Read helpers keep their silent fallthrough — returning null is gentler
+ * than a 500 page when a read momentarily fails.
+ */
+function reportWriteFailure(op: string, err: unknown): never {
+  debugError(`Supabase ${op} failed — surfacing instead of silently using local backend`, err instanceof Error ? err.message : err);
+  throw err instanceof Error ? err : new Error(String(err));
 }
 
 // In-memory cache for local dev (avoids repeated disk reads)
@@ -272,8 +292,8 @@ export async function createLead(data: Omit<Lead, "id" | "createdAt" | "updatedA
     try {
       const mod = await getSupabaseDb();
       return await mod.createLead(data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("createLead", err);
     }
   }
   invalidateLocalCache();
@@ -292,8 +312,8 @@ export async function updateLead(id: string, data: Partial<Omit<Lead, "id" | "cr
     try {
       const mod = await getSupabaseDb();
       return await mod.updateLead(id, data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("updateLead", err);
     }
   }
   invalidateLocalCache();
@@ -310,8 +330,8 @@ export async function deleteLead(id: string): Promise<boolean> {
     try {
       const mod = await getSupabaseDb();
       return await mod.deleteLead(id);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("deleteLead", err);
     }
   }
   invalidateLocalCache();
@@ -517,8 +537,8 @@ export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
     try {
       const mod = await getSupabaseDb();
       return await mod.createTour(data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("createTour", err);
     }
   }
   invalidateLocalCache();
@@ -537,8 +557,8 @@ export async function updateTour(id: string, data: Partial<Omit<Tour, "id">>): P
     try {
       const mod = await getSupabaseDb();
       return await mod.updateTour(id, data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("updateTour", err);
     }
   }
   invalidateLocalCache();
@@ -555,8 +575,8 @@ export async function deleteTour(id: string): Promise<boolean> {
     try {
       const mod = await getSupabaseDb();
       return await mod.deleteTour(id);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("deleteTour", err);
     }
   }
   invalidateLocalCache();
@@ -707,8 +727,8 @@ export async function createInvoice(data: Omit<Invoice, "id" | "createdAt" | "up
     try {
       const mod = await getSupabaseDb();
       return await mod.createInvoice(data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("createInvoice", err);
     }
   }
   const invoices = await getInvoices();
@@ -731,8 +751,8 @@ export async function updateInvoice(id: string, data: Partial<Omit<Invoice, "id"
     try {
       const mod = await getSupabaseDb();
       return await mod.updateInvoice(id, data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("updateInvoice", err);
     }
   }
   const invoices = await getInvoices();
@@ -748,8 +768,8 @@ export async function deleteInvoice(id: string): Promise<boolean> {
     try {
       const mod = await getSupabaseDb();
       return await mod.deleteInvoice(id);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("deleteInvoice", err);
     }
   }
   const invoices = await getInvoices();
@@ -956,8 +976,8 @@ export async function createPayment(data: Omit<Payment, "id">): Promise<Payment>
     try {
       const mod = await getSupabaseDb();
       return await mod.createPayment(data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("createPayment", err);
     }
   }
   const payments = await getPayments();
@@ -973,8 +993,8 @@ export async function updatePayment(id: string, data: Partial<Omit<Payment, "id"
     try {
       const mod = await getSupabaseDb();
       return await mod.updatePayment(id, data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("updatePayment", err);
     }
   }
   const payments = await getPayments();
@@ -990,8 +1010,8 @@ export async function deletePayment(id: string): Promise<boolean> {
     try {
       const mod = await getSupabaseDb();
       return await mod.deletePayment(id);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("deletePayment", err);
     }
   }
   const payments = await getPayments();
@@ -1023,8 +1043,8 @@ export async function createTodo(data: Omit<Todo, "id" | "createdAt">): Promise<
     try {
       const mod = await getSupabaseDb();
       return await mod.createTodo(data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("createTodo", err);
     }
   }
   const todos = await getTodos();
@@ -1041,8 +1061,8 @@ export async function updateTodo(id: string, data: Partial<Omit<Todo, "id" | "cr
     try {
       const mod = await getSupabaseDb();
       return await mod.updateTodo(id, data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("updateTodo", err);
     }
   }
   const todos = await getTodos();
@@ -1058,8 +1078,8 @@ export async function deleteTodo(id: string): Promise<boolean> {
     try {
       const mod = await getSupabaseDb();
       return await mod.deleteTodo(id);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("deleteTodo", err);
     }
   }
   const todos = await getTodos();
@@ -1106,8 +1126,8 @@ export async function createAuditLog(
     try {
       const mod = await getSupabaseDb();
       return await mod.createAuditLog(data);
-    } catch {
-      // fall through to file/memory
+    } catch (err) {
+      reportWriteFailure("createAuditLog", err);
     }
   }
   const logs = await getAuditLogs();
