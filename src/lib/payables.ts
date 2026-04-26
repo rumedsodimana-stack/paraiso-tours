@@ -92,9 +92,9 @@ function getSupplierCostItems(
 
 /** Get total supplier cost for a single tour (for margin calculation). */
 export async function getCostForTour(
-  tour: { leadId: string; packageId: string },
+  tour: { leadId: string; packageId?: string },
   getLead: (id: string) => Promise<Lead | null>,
-  getPackage: (id: string) => Promise<TourPackage | null>,
+  getPackage: (id: string | undefined | null) => Promise<TourPackage | null>,
   suppliers: HotelSupplier[]
 ): Promise<number> {
   const lead = await getLead(tour.leadId);
@@ -105,9 +105,9 @@ export async function getCostForTour(
 }
 
 export interface GetPayablesInput {
-  tours: { id: string; leadId: string; clientName: string; startDate: string; packageId: string; packageName: string }[];
+  tours: { id: string; leadId: string; clientName: string; startDate: string; packageId?: string; packageName: string }[];
   getLead: (id: string) => Promise<Lead | null>;
-  getPackage: (id: string) => Promise<TourPackage | null>;
+  getPackage: (id: string | undefined | null) => Promise<TourPackage | null>;
   suppliers: HotelSupplier[];
   startDate: string;
   endDate: string;

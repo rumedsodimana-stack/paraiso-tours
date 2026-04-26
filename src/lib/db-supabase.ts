@@ -593,7 +593,12 @@ export async function getPackages(): Promise<TourPackage[]> {
   return (data ?? []).map((row) => toPackage(row));
 }
 
-export async function getPackage(id: string): Promise<TourPackage | null> {
+export async function getPackage(
+  id: string | undefined | null
+): Promise<TourPackage | null> {
+  // Custom-route tours have no packages row — return null up-front instead
+  // of hitting Supabase with `eq.id=undefined`.
+  if (!id) return null;
   await seedPackagesIfEmpty();
   const { data, error } = await supabase!
     .from("packages")

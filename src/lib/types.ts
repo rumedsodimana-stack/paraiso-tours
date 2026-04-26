@@ -200,7 +200,10 @@ export type TourStatus =
 export interface Tour {
   id: string;
   confirmationId?: string; // e.g. TCF-20260312-A3B7 — client-facing confirmation number
-  packageId: string;
+  // Optional because custom-route tours don't reference a row in the
+  // `packages` table — they live entirely on `packageSnapshot`. The
+  // Supabase column is nullable; the type now mirrors that.
+  packageId?: string;
   packageName: string;
   leadId: string;
   clientName: string;

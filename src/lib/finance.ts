@@ -39,7 +39,7 @@ export interface AgingBucket {
 
 interface FinanceLookupInput {
   getLead: (id: string) => Promise<Lead | null>;
-  getPackage: (id: string) => Promise<TourPackage | null>;
+  getPackage: (id: string | undefined | null) => Promise<TourPackage | null>;
   suppliers: HotelSupplier[];
 }
 
@@ -241,7 +241,7 @@ export interface RevenueBySource {
 export async function getMarginByPackage(input: {
   tours: Tour[];
   getLead: (id: string) => Promise<Lead | null>;
-  getPackage: (id: string) => Promise<TourPackage | null>;
+  getPackage: (id: string | undefined | null) => Promise<TourPackage | null>;
   suppliers: HotelSupplier[];
 }): Promise<MarginByPackage[]> {
   const { tours, getLead, getPackage, suppliers } = input;
@@ -250,7 +250,11 @@ export async function getMarginByPackage(input: {
 
   for (const tour of activeTours) {
     const cost = await getCostForTour(tour, getLead, getPackage, suppliers);
-    const pkg = byPkg.get(tour.packageId);
+    // Custom-route tours have no `packageId` (no row in `packages`).
+    // Pool them under one synthetic key so they aggregate into a single
+    // "Custom routes" row in the margin-by-package breakdown.
+    const pkgKey = tour.packageId ?? "__custom_routes__";
+    const pkg = byPkg.get(pkgKey);
     const pkgData = await getPackage(tour.packageId);
     const name = pkgData?.name ?? tour.packageName;
     if (pkg) {
@@ -258,7 +262,7 @@ export async function getMarginByPackage(input: {
       pkg.cost += cost;
       pkg.tourCount += 1;
     } else {
-      byPkg.set(tour.packageId, { revenue: tour.totalValue, cost, tourCount: 1, packageName: name });
+      byPkg.set(pkgKey, { revenue: tour.totalValue, cost, tourCount: 1, packageName: name });
     }
   }
 
@@ -272,7 +276,7 @@ export async function getMarginByPackage(input: {
 export async function getMarginByTour(input: {
   tours: Tour[];
   getLead: (id: string) => Promise<Lead | null>;
-  getPackage: (id: string) => Promise<TourPackage | null>;
+  getPackage: (id: string | undefined | null) => Promise<TourPackage | null>;
   suppliers: HotelSupplier[];
 }): Promise<MarginByTour[]> {
   const { tours, getLead, getPackage, suppliers } = input;

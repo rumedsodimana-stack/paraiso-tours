@@ -430,7 +430,10 @@ export async function getPackages(): Promise<TourPackage[]> {
   return pkgs.filter((pkg) => !pkg.archivedAt);
 }
 
-export async function getPackage(id: string): Promise<TourPackage | null> {
+export async function getPackage(
+  id: string | undefined | null
+): Promise<TourPackage | null> {
+  if (!id) return null;
   if (USE_SUPABASE) {
     try {
       const mod = await getSupabaseDb();

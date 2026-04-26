@@ -224,6 +224,15 @@ export async function scheduleTourFromLeadAction(
     const pkg = resolveLeadPackage(lead, livePackage);
     if (!pkg) return { error: "Package not found" };
 
+    // Custom routes synthesize `pkg.id = "custom_route_<lead.id>"` (see
+    // `lib/custom-route-booking.ts`) — that id has no row in the
+    // `packages` table, so writing it to `tours.package_id` violates the
+    // FK constraint (Supabase 23503). The full pricing/itinerary lives
+    // on `pkg`/`packageSnapshot` either way, so for these we leave the
+    // FK column null and rely on `resolveTourPackage` for reads.
+    const isCustomRoutePackage = pkg.id.startsWith("custom_route_");
+    const tourPackageId = isCustomRoutePackage ? undefined : pkg.id;
+
     const rollbackLeadId = lead.id;
     const originalLeadState = toLeadRollbackData(lead);
     let leadWasMutated = false;
@@ -315,7 +324,9 @@ export async function scheduleTourFromLeadAction(
         allTours
           .filter((tour) => tour.id !== existingTour?.id && !tour.packageSnapshot)
           .map((tour) => tour.packageId)
-          .filter((id) => id !== livePackage?.id)
+          .filter(
+            (id): id is string => Boolean(id) && id !== livePackage?.id
+          )
       ),
     ];
     const [relatedLeads, relatedPackages] = await Promise.all([
@@ -344,11 +355,10 @@ export async function scheduleTourFromLeadAction(
       currentTourId: existingTour?.id,
       getTourContext: (tour) => {
         const contextLead = leadsById.get(tour.leadId);
-        const contextPackage = resolveTourPackage(
-          tour,
-          packagesById.get(tour.packageId) ?? null,
-          contextLead
-        );
+        const livePkg = tour.packageId
+          ? packagesById.get(tour.packageId) ?? null
+          : null;
+        const contextPackage = resolveTourPackage(tour, livePkg, contextLead);
         if (!contextLead || !contextPackage) return null;
         return { lead: contextLead, pkg: contextPackage };
       },
@@ -359,7 +369,7 @@ export async function scheduleTourFromLeadAction(
     let tour = existingTour;
     if (!tour) {
       tour = await createTour({
-        packageId: pkg.id,
+        packageId: tourPackageId,
         packageName: pkg.name,
         leadId: lead.id,
         clientName: lead.name,
@@ -378,7 +388,7 @@ export async function scheduleTourFromLeadAction(
 
     if (existingTour) {
       const needsUpdate =
-        existingTour.packageId !== pkg.id ||
+        (existingTour.packageId ?? undefined) !== tourPackageId ||
         existingTour.packageName !== pkg.name ||
         existingTour.clientName !== lead.name ||
         existingTour.startDate !== date ||
@@ -394,7 +404,7 @@ export async function scheduleTourFromLeadAction(
 
       if (needsUpdate) {
         const updatedTour = await updateTour(existingTour.id, {
-          packageId: pkg.id,
+          packageId: tourPackageId,
           packageName: pkg.name,
           clientName: lead.name,
           startDate: date,
