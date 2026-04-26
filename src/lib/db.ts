@@ -48,8 +48,29 @@ async function getSupabaseDb() {
  * than a 500 page when a read momentarily fails.
  */
 function reportWriteFailure(op: string, err: unknown): never {
-  debugError(`Supabase ${op} failed — surfacing instead of silently using local backend`, err instanceof Error ? err.message : err);
-  throw err instanceof Error ? err : new Error(String(err));
+  // Supabase / PostgREST errors are plain objects of shape
+  // `{ message, code, details, hint }`, NOT instances of Error. So
+  // `String(err)` would produce "[object Object]" — useless. Pull the
+  // message + code out explicitly so the UI surfaces something actionable
+  // (e.g. "column 'confirmation_id' of relation 'payments' does not exist").
+  let message: string;
+  if (err instanceof Error) {
+    message = err.message;
+  } else if (err && typeof err === "object") {
+    const e = err as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown };
+    const parts = [
+      typeof e.message === "string" ? e.message : null,
+      typeof e.details === "string" && e.details ? `details: ${e.details}` : null,
+      typeof e.hint === "string" && e.hint ? `hint: ${e.hint}` : null,
+      typeof e.code === "string" && e.code ? `code: ${e.code}` : null,
+    ].filter(Boolean);
+    message = parts.length > 0 ? parts.join(" — ") : JSON.stringify(err);
+  } else {
+    message = String(err);
+  }
+
+  debugError(`Supabase ${op} failed — surfacing instead of silently using local backend`, message);
+  throw new Error(`Supabase ${op}: ${message}`);
 }
 
 // In-memory cache for local dev (avoids repeated disk reads)
