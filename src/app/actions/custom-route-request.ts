@@ -241,21 +241,66 @@ export async function createCustomRouteRequestAction(
       phone: lead.phone,
       reference: lead.reference ?? lead.id,
       packageName: "Custom Sri Lanka journey",
-    }).catch((err) => {
+    }).catch(async (err) => {
+      const errMsg = extractErrorMessage(err);
       debugLog("Custom route WhatsApp failed", {
-        error: extractErrorMessage(err),
+        error: errMsg,
         leadId: lead.id,
       });
+      // Surface to /admin/communications so a broken WhatsApp
+      // pipeline doesn't silently swallow custom-journey
+      // confirmations.
+      try {
+        await recordAuditEvent({
+          entityType: "lead",
+          entityId: lead.id,
+          action: "whatsapp_booking_confirmation_failed",
+          summary: `WhatsApp confirmation failed for ${lead.name}: ${errMsg}`,
+          actor: "Client Route Builder",
+          metadata: {
+            channel: "whatsapp",
+            recipient: lead.phone,
+            template: "booking_confirmation",
+            status: "failed",
+            error: errMsg,
+          },
+        });
+      } catch {
+        // Best-effort — don't bubble.
+      }
     });
   }
 
-  // Auto-trigger booking processor agent
+  // Auto-trigger booking processor agent. If startup fails (e.g. AI
+  // not configured, LangGraph compile error), record an audit row so
+  // the admin notices instead of wondering why the agent never ran.
   import("@/app/actions/agents").then(({ startBookingProcessorAction }) => {
-    startBookingProcessorAction(lead.id).catch((err) => {
+    startBookingProcessorAction(lead.id).catch(async (err) => {
+      const errMsg = extractErrorMessage(err);
       debugLog("Booking processor agent failed to start", {
-        error: extractErrorMessage(err),
+        error: errMsg,
         leadId: lead.id,
       });
+      try {
+        await recordAuditEvent({
+          entityType: "lead",
+          entityId: lead.id,
+          action: "agent_processor_failed_to_start",
+          summary: `Booking processor agent failed to start: ${errMsg}`,
+          actor: "Client Route Builder",
+          details: [
+            "The auto-triage agent couldn't run on this booking.",
+            "Triage manually from /admin/bookings if needed.",
+          ],
+          metadata: {
+            agent: "booking_processor",
+            status: "failed",
+            error: errMsg,
+          },
+        });
+      } catch {
+        // Best-effort.
+      }
     });
   });
 

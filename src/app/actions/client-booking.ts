@@ -245,14 +245,50 @@ export async function createClientBookingAction(
     });
   }
 
-  // Fire-and-forget internal admin alert for the new booking
+  // Fire-and-forget internal admin alert for the new booking. We
+  // intentionally don't await — the guest's `success: true` shouldn't
+  // wait on admin notification. But every outcome (sent/skipped/failed)
+  // is logged to /admin/communications so the admin can see when their
+  // alert pipeline is broken instead of silently missing new bookings.
   (async () => {
     try {
       const { getAppSettings } = await import("@/lib/app-config");
-      const { sendInternalAlertEmail } = await import("@/lib/email");
+      const { sendInternalAlertEmail, isEmailConfigured } = await import("@/lib/email");
       const settings = await getAppSettings();
       const adminEmail = settings.company.email?.trim();
-      if (!adminEmail) return;
+      if (!adminEmail) {
+        await recordAuditEvent({
+          entityType: "lead",
+          entityId: lead.id,
+          action: "admin_new_booking_alert_skipped",
+          summary: "New-booking alert skipped — no admin email in /admin/settings → company email.",
+          actor: "Client Portal",
+          metadata: {
+            channel: "email",
+            template: "internal_new_booking",
+            status: "skipped",
+            reason: "no_admin_email",
+          },
+        });
+        return;
+      }
+      if (!isEmailConfigured()) {
+        await recordAuditEvent({
+          entityType: "lead",
+          entityId: lead.id,
+          action: "admin_new_booking_alert_skipped",
+          summary: "New-booking alert skipped — Resend (RESEND_API_KEY) is not configured.",
+          actor: "Client Portal",
+          metadata: {
+            channel: "email",
+            template: "internal_new_booking",
+            recipient: adminEmail,
+            status: "skipped",
+            reason: "provider_not_configured",
+          },
+        });
+        return;
+      }
       await sendInternalAlertEmail({
         to: adminEmail,
         subject: `New booking: ${lead.name} — ${pkg.name}`,
@@ -274,6 +310,7 @@ export async function createClientBookingAction(
         entityId: lead.id,
         action: "admin_new_booking_alert_sent",
         summary: `New-booking alert sent to ${adminEmail}`,
+        actor: "Client Portal",
         metadata: {
           channel: "email",
           recipient: adminEmail,
@@ -282,25 +319,66 @@ export async function createClientBookingAction(
         },
       });
     } catch (err) {
+      const errMsg = extractErrorMessage(err);
       debugLog("Internal new-booking alert failed", {
-        error: extractErrorMessage(err),
+        error: errMsg,
         leadId: lead.id,
+      });
+      // Record the failure to /admin/communications so admin sees
+      // the gap. Without this row, a missing-email-config or
+      // template-render bug would silently swallow every new-booking
+      // notification — admin would only notice when guests start
+      // complaining that they booked but nobody followed up.
+      await recordAuditEvent({
+        entityType: "lead",
+        entityId: lead.id,
+        action: "admin_new_booking_alert_failed",
+        summary: `New-booking alert failed: ${errMsg}`,
+        actor: "Client Portal",
+        metadata: {
+          channel: "email",
+          template: "internal_new_booking",
+          status: "failed",
+          error: errMsg,
+        },
       });
     }
   })();
 
-  // Send WhatsApp confirmation if configured and client provided phone
+  // Send WhatsApp confirmation if configured and client provided phone.
+  // Failures get logged to /admin/communications so the admin sees when
+  // WhatsApp is broken instead of guessing. (Sending happens in
+  // background but the failure path awaits the audit write.)
   if (isWhatsAppConfigured() && lead.phone?.trim()) {
     sendWhatsAppBookingConfirmation({
       clientName: lead.name,
       phone: lead.phone,
       reference: lead.reference ?? lead.id,
       packageName: pkg.name,
-    }).catch((err) => {
+    }).catch(async (err) => {
+      const errMsg = extractErrorMessage(err);
       debugLog("WhatsApp booking confirmation failed", {
-        error: extractErrorMessage(err),
+        error: errMsg,
         leadId: lead.id,
       });
+      try {
+        await recordAuditEvent({
+          entityType: "lead",
+          entityId: lead.id,
+          action: "whatsapp_booking_confirmation_failed",
+          summary: `WhatsApp confirmation failed for ${lead.name}: ${errMsg}`,
+          actor: "Client Portal",
+          metadata: {
+            channel: "whatsapp",
+            recipient: lead.phone,
+            template: "booking_confirmation",
+            status: "failed",
+            error: errMsg,
+          },
+        });
+      } catch {
+        // Don't bubble — at this point we've done our best.
+      }
     });
   }
 

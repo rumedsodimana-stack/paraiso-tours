@@ -101,8 +101,12 @@ const EMAIL_ACTIONS = new Set([
   "booking_cancellation_email_skipped",
   // Internal alert when a client books from the public site — uses a
   // bespoke action name (not the *_emailed pattern) but still flows to
-  // an admin inbox so it belongs in this view.
+  // an admin inbox so it belongs in this view. The skipped + failed
+  // variants surface when the alert can't go out, so the admin
+  // notices missing notifications instead of silently losing them.
   "admin_new_booking_alert_sent",
+  "admin_new_booking_alert_failed",
+  "admin_new_booking_alert_skipped",
   // Provider-not-configured umbrella event recorded when scheduling
   // detects RESEND_API_KEY is missing. Lets the admin see in the
   // inbox that ALL emails for that schedule were skipped (instead of
@@ -110,6 +114,11 @@ const EMAIL_ACTIONS = new Set([
   // ends with `_skipped` so the existing status-detection logic
   // (`endsWith("_skipped")`) classifies it correctly.
   "email_provider_unconfigured_skipped",
+  // WhatsApp delivery failures from the public booking flow. Same
+  // visibility argument as admin_new_booking_alert_failed — without
+  // this row the admin can't tell whether WhatsApp is broken or
+  // just unconfigured.
+  "whatsapp_booking_confirmation_failed",
 ]);
 
 function templateFromMetadata(meta: Record<string, unknown> | undefined): MessageTemplate {
