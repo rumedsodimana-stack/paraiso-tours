@@ -640,7 +640,7 @@ export async function scheduleTourFromLeadAction(
       await recordAuditEvent({
         entityType: "tour",
         entityId: tour.id,
-        action: "schedule_emails_skipped_unconfigured",
+        action: "email_provider_unconfigured_skipped",
         summary:
           "All scheduling emails skipped — Resend (RESEND_API_KEY) is not configured.",
         details: [

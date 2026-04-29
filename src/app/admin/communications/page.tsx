@@ -103,6 +103,13 @@ const EMAIL_ACTIONS = new Set([
   // bespoke action name (not the *_emailed pattern) but still flows to
   // an admin inbox so it belongs in this view.
   "admin_new_booking_alert_sent",
+  // Provider-not-configured umbrella event recorded when scheduling
+  // detects RESEND_API_KEY is missing. Lets the admin see in the
+  // inbox that ALL emails for that schedule were skipped (instead of
+  // wading through one *_email_failed row per template). Action name
+  // ends with `_skipped` so the existing status-detection logic
+  // (`endsWith("_skipped")`) classifies it correctly.
+  "email_provider_unconfigured_skipped",
 ]);
 
 function templateFromMetadata(meta: Record<string, unknown> | undefined): MessageTemplate {
