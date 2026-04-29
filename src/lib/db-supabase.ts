@@ -619,10 +619,28 @@ async function seedPackagesIfEmpty(): Promise<void> {
   if (error) throw error;
   if ((count ?? 0) > 0) return;
 
-  const { error: insertError } = await supabase!
-    .from("packages")
-    .insert(mockPackages.map((pkg) => packageToRow(pkg)));
-  if (insertError) throw insertError;
+  // Seed mock packages one row at a time through the schema-tolerant
+  // helper so a missing column on a fresh prod schema doesn't abort
+  // the whole seed (or the request that triggered it). Any failure
+  // is swallowed — seed data is best-effort, the system works fine
+  // with an empty catalog.
+  for (const pkg of mockPackages) {
+    const result = await tolerantInsertOne("packages", packageToRow(pkg));
+    if (result.error) {
+      const { debugLog } = await import("./debug");
+      const err = result.error;
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null
+            ? JSON.stringify(err)
+            : String(err);
+      debugLog("seedPackagesIfEmpty: skipping a row", {
+        packageId: pkg.id,
+        error: errMsg,
+      });
+    }
+  }
 }
 
 /**
@@ -1083,13 +1101,10 @@ export async function createHotel(
     archived_at: toNullable(data.archivedAt),
     created_at: new Date().toISOString(),
   };
-  const { data: inserted, error } = await supabase!
-    .from("hotels")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toHotel(inserted);
+  const result = await tolerantInsertOne("hotels", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createHotel failed");
+  return toHotel(result.data);
 }
 
 export async function updateHotel(
@@ -1139,14 +1154,12 @@ export async function updateHotel(
     update.archived_at = toNullable(data.archivedAt);
   }
 
-  const { data: updated, error } = await supabase!
-    .from("hotels")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toHotel(updated);
+  const result = await tolerantUpdateOne("hotels", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toHotel(result.data);
 }
 
 export async function deleteHotel(id: string): Promise<boolean> {
@@ -1308,13 +1321,10 @@ export async function createEmployee(
     created_at: now,
     updated_at: now,
   };
-  const { data: inserted, error } = await supabase!
-    .from("employees")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toEmployee(inserted);
+  const result = await tolerantInsertOne("employees", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createEmployee failed");
+  return toEmployee(result.data);
 }
 
 export async function updateEmployee(
@@ -1357,14 +1367,12 @@ export async function updateEmployee(
     update.archived_at = toNullable(data.archivedAt);
   }
 
-  const { data: updated, error } = await supabase!
-    .from("employees")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toEmployee(updated);
+  const result = await tolerantUpdateOne("employees", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toEmployee(result.data);
 }
 
 export async function deleteEmployee(id: string): Promise<boolean> {
@@ -1417,13 +1425,10 @@ export async function createPayrollRun(
     updated_at: now,
     paid_at: toNullable(data.paidAt),
   };
-  const { data: inserted, error } = await supabase!
-    .from("payroll_runs")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toPayrollRun(inserted);
+  const result = await tolerantInsertOne("payroll_runs", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createPayrollRun failed");
+  return toPayrollRun(result.data);
 }
 
 export async function updatePayrollRun(
@@ -1446,14 +1451,12 @@ export async function updatePayrollRun(
   if (data.currency !== undefined) update.currency = data.currency;
   if (data.paidAt !== undefined) update.paid_at = toNullable(data.paidAt);
 
-  const { data: updated, error } = await supabase!
-    .from("payroll_runs")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toPayrollRun(updated);
+  const result = await tolerantUpdateOne("payroll_runs", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toPayrollRun(result.data);
 }
 
 export async function getPayment(id: string): Promise<Payment | null> {
@@ -1687,13 +1690,10 @@ export async function createAiKnowledgeDocument(
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
-  const { data: inserted, error } = await supabase!
-    .from("ai_knowledge_documents")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toAiKnowledgeDocument(inserted);
+  const result = await tolerantInsertOne("ai_knowledge_documents", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createAiKnowledgeDocument failed");
+  return toAiKnowledgeDocument(result.data);
 }
 
 export async function updateAiKnowledgeDocument(
@@ -1712,14 +1712,12 @@ export async function updateAiKnowledgeDocument(
   if (data.tags !== undefined) update.tags = data.tags;
   if (data.active !== undefined) update.active = data.active;
 
-  const { data: updated, error } = await supabase!
-    .from("ai_knowledge_documents")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toAiKnowledgeDocument(updated);
+  const result = await tolerantUpdateOne("ai_knowledge_documents", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toAiKnowledgeDocument(result.data);
 }
 
 export async function getAiInteractions(limit = 30): Promise<AiInteraction[]> {
@@ -1767,13 +1765,10 @@ export async function createAiInteraction(
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
-  const { data: inserted, error } = await supabase!
-    .from("ai_interactions")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toAiInteraction(inserted);
+  const result = await tolerantInsertOne("ai_interactions", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createAiInteraction failed");
+  return toAiInteraction(result.data);
 }
 
 export async function updateAiInteraction(
@@ -1821,14 +1816,12 @@ export async function updateAiInteraction(
     update.estimated_cost_usd = data.estimatedCostUsd;
   }
 
-  const { data: updated, error } = await supabase!
-    .from("ai_interactions")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toAiInteraction(updated);
+  const result = await tolerantUpdateOne("ai_interactions", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toAiInteraction(result.data);
 }
 
 export type ClientBookingResult =
@@ -1972,7 +1965,7 @@ export async function createPlannerActivity(
     createdAt: new Date().toISOString(),
   };
   if (supabase) {
-    await supabase.from("planner_activities").insert({
+    await tolerantInsertOne("planner_activities", {
       id,
       destination_id: input.destinationId,
       title: input.title,
@@ -2002,11 +1995,11 @@ export async function updatePlannerActivity(
   if (input.estimatedPrice !== undefined) row.estimated_price = input.estimatedPrice;
   if (input.tags !== undefined) row.tags = input.tags;
   if (input.active !== undefined) row.active = input.active;
-  const { error } = await supabase
-    .from("planner_activities")
-    .update(row)
-    .eq("id", id);
-  return !error;
+  const result = await tolerantUpdateOne("planner_activities", row, {
+    column: "id",
+    value: id,
+  });
+  return !result.error;
 }
 
 export async function deletePlannerActivity(id: string): Promise<boolean> {
@@ -2057,7 +2050,7 @@ export async function createHotelMealPlan(
     createdAt: new Date().toISOString(),
   };
   if (supabase) {
-    await supabase.from("hotel_meal_plans").insert({
+    await tolerantInsertOne("hotel_meal_plans", {
       id,
       hotel_id: input.hotelId,
       label: input.label,
@@ -2083,11 +2076,11 @@ export async function updateHotelMealPlan(
   if (input.currency !== undefined) row.currency = input.currency;
   if (input.description !== undefined) row.description = input.description;
   if (input.active !== undefined) row.active = input.active;
-  const { error } = await supabase
-    .from("hotel_meal_plans")
-    .update(row)
-    .eq("id", id);
-  return !error;
+  const result = await tolerantUpdateOne("hotel_meal_plans", row, {
+    column: "id",
+    value: id,
+  });
+  return !result.error;
 }
 
 export async function deleteHotelMealPlan(id: string): Promise<boolean> {
@@ -2211,13 +2204,10 @@ export async function createQuotation(
     tour_id: data.tourId ?? null,
   };
   if (!supabase) throw new Error("Supabase not available");
-  const { data: inserted, error } = await supabase
-    .from("quotations")
-    .insert(row)
-    .select()
-    .single();
-  if (error || !inserted) throw new Error(error?.message ?? "Insert failed");
-  return toQuotation(inserted as Record<string, unknown>);
+  const result = await tolerantInsertOne("quotations", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createQuotation failed");
+  return toQuotation(result.data);
 }
 
 export async function updateQuotation(
@@ -2252,14 +2242,12 @@ export async function updateQuotation(
   if (data.rejectedAt !== undefined) row.rejected_at = data.rejectedAt;
   if (data.leadId !== undefined) row.lead_id = data.leadId;
   if (data.tourId !== undefined) row.tour_id = data.tourId;
-  const { data: updated, error } = await supabase
-    .from("quotations")
-    .update(row)
-    .eq("id", id)
-    .select()
-    .single();
-  if (error || !updated) return null;
-  return toQuotation(updated as Record<string, unknown>);
+  const result = await tolerantUpdateOne("quotations", row, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toQuotation(result.data);
 }
 
 export async function deleteQuotation(id: string): Promise<boolean> {
