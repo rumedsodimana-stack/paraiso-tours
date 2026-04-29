@@ -8,6 +8,7 @@ import {
   getPackage,
   getPaymentByTourId,
   getTour,
+  updateTour,
   extractErrorMessage,
 } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
@@ -21,6 +22,7 @@ import {
   sendBookingChangeEmail,
   sendSupplierRemittanceEmail,
   sendSupplierScheduleUpdateEmail,
+  isEmailConfigured,
 } from "@/lib/email";
 import { resolveTourPackage } from "@/lib/package-snapshot";
 import { generateItineraryPdf } from "@/lib/itinerary-pdf";
@@ -64,6 +66,46 @@ export type ResendEmailInput = {
 };
 
 type Result = { success?: boolean; error?: string };
+
+/**
+ * Short-circuit a resend when RESEND_API_KEY is missing. Records a
+ * `*_skipped` audit event with `reason: "provider_not_configured"`
+ * (matches the pattern used during scheduling) and returns a
+ * user-visible error explaining the fix without forcing the admin to
+ * read the raw "Email not configured (RESEND_API_KEY missing)"
+ * message coming back from the email lib.
+ */
+async function guardEmailConfigured(opts: {
+  entityType: "tour" | "invoice" | "lead";
+  entityId: string;
+  template: string;
+  action: string;
+  recipient?: string;
+}): Promise<Result | null> {
+  if (isEmailConfigured()) return null;
+  await recordAuditEvent({
+    entityType: opts.entityType,
+    entityId: opts.entityId,
+    action: opts.action,
+    summary: `Resend skipped — Resend (RESEND_API_KEY) is not configured.`,
+    details: [
+      "Set RESEND_API_KEY in Vercel → Project Settings → Environment Variables.",
+      "After deploy, click Resend again.",
+    ],
+    metadata: {
+      channel: "email",
+      template: opts.template,
+      recipient: opts.recipient,
+      status: "skipped",
+      reason: "provider_not_configured",
+      resent: true,
+    },
+  });
+  return {
+    error:
+      "Email provider not configured. Set RESEND_API_KEY in Vercel and try again.",
+  };
+}
 
 export async function resendEmailAction(input: ResendEmailInput): Promise<Result> {
   await requireAdmin();
@@ -116,6 +158,15 @@ async function resendInvoice(invoiceId?: string): Promise<Result> {
   const email = invoice.clientEmail?.trim();
   if (!email) return { error: "No client email on invoice" };
 
+  const skipped = await guardEmailConfigured({
+    entityType: "invoice",
+    entityId: invoice.id,
+    template: "invoice",
+    action: "invoice_email_skipped",
+    recipient: email,
+  });
+  if (skipped) return skipped;
+
   const result = await sendInvoiceEmail({
     clientName: invoice.clientName || "Client",
     clientEmail: email,
@@ -153,6 +204,15 @@ async function resendItinerary(tourId?: string): Promise<Result> {
   if (!lead) return { error: "Booking not found for tour" };
   const email = lead.email?.trim();
   if (!email) return { error: "No guest email on booking" };
+
+  const skipped = await guardEmailConfigured({
+    entityType: "tour",
+    entityId: tour.id,
+    template: "itinerary",
+    action: "itinerary_email_skipped",
+    recipient: email,
+  });
+  if (skipped) return skipped;
 
   const livePackage = await getPackage(tour.packageId);
   const pkg = resolveTourPackage(tour, livePackage, lead);
@@ -199,6 +259,15 @@ async function resendTourConfirmation(tourId?: string): Promise<Result> {
   if (!lead) return { error: "Booking not found for tour" };
   const email = lead.email?.trim();
   if (!email) return { error: "No guest email on booking" };
+
+  const skipped = await guardEmailConfigured({
+    entityType: "tour",
+    entityId: tour.id,
+    template: "tour_confirmation_with_invoice",
+    action: "guest_confirmation_email_skipped",
+    recipient: email,
+  });
+  if (skipped) return skipped;
 
   const invoice = await getInvoiceByLeadId(lead.id);
 
@@ -250,7 +319,17 @@ async function resendTourConfirmation(tourId?: string): Promise<Result> {
     },
   });
 
+  // Bump the timestamp so the schedule pipeline doesn't try to send
+  // again on a future re-trigger. The admin clicked Resend
+  // explicitly — that's the canonical "delivered" signal.
+  if (result.ok && !tour.clientConfirmationSentAt) {
+    await updateTour(tour.id, {
+      clientConfirmationSentAt: new Date().toISOString(),
+    });
+  }
+
   revalidatePath("/admin/communications");
+  revalidatePath(`/admin/tours/${tour.id}`);
   return result.ok ? { success: true } : { error: result.error ?? "Send failed" };
 }
 
@@ -262,6 +341,15 @@ async function resendPaymentReceipt(tourId?: string): Promise<Result> {
   if (!lead) return { error: "Booking not found for tour" };
   const email = lead.email?.trim();
   if (!email) return { error: "No guest email on booking" };
+
+  const skipped = await guardEmailConfigured({
+    entityType: "tour",
+    entityId: tour.id,
+    template: "payment_receipt",
+    action: "payment_receipt_email_skipped",
+    recipient: email,
+  });
+  if (skipped) return skipped;
 
   const payment = await getPaymentByTourId(tourId);
   const description = payment?.description || `Tour: ${tour.packageName} – ${lead.name}`;
@@ -297,7 +385,16 @@ async function resendPaymentReceipt(tourId?: string): Promise<Result> {
     },
   });
 
+  // Bump the timestamp so the schedule pipeline doesn't double-send
+  // on the next re-trigger.
+  if (result.ok && !tour.paymentReceiptSentAt) {
+    await updateTour(tour.id, {
+      paymentReceiptSentAt: new Date().toISOString(),
+    });
+  }
+
   revalidatePath("/admin/communications");
+  revalidatePath(`/admin/tours/${tour.id}`);
   return result.ok ? { success: true } : { error: result.error ?? "Send failed" };
 }
 
@@ -313,6 +410,15 @@ async function resendSupplierReservation(
   if (!tour) return { error: "Tour not found" };
   const lead = await getLead(tour.leadId);
   if (!lead) return { error: "Booking not found for tour" };
+
+  const skipped = await guardEmailConfigured({
+    entityType: "tour",
+    entityId: tour.id,
+    template: "supplier_reservation",
+    action: "supplier_reservation_email_skipped",
+    recipient: supplierEmail,
+  });
+  if (skipped) return skipped;
 
   const livePackage = await getPackage(tour.packageId);
   const pkg = resolveTourPackage(tour, livePackage, lead);
@@ -391,6 +497,7 @@ async function resendSupplierReservation(
   });
 
   revalidatePath("/admin/communications");
+  revalidatePath(`/admin/tours/${tour.id}`);
   return result.ok ? { success: true } : { error: result.error ?? "Send failed" };
 }
 
