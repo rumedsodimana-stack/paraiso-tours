@@ -52,7 +52,7 @@ async function getEmailBranding() {
   return {
     companyName: getDisplayCompanyName(settings),
     tagline: settings.company.tagline || "",
-    email: settings.company.email || "hello@paraisoceylontours.com",
+    email: settings.company.email || "hello@paraiso.tours",
   };
 }
 

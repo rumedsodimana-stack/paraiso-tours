@@ -25,7 +25,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     tagline: "Crafted journeys across Sri Lanka",
     address: "Colombo, Sri Lanka",
     phone: "+94 11 234 5678",
-    email: "hello@paraisoceylontours.com",
+    email: "hello@paraiso.tours",
     logoUrl: "",
   },
   portal: {
