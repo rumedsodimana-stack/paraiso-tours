@@ -16,6 +16,7 @@ import {
 } from "@/lib/agent-ooda";
 import { AGENT_TOOLS, getTool, listToolsForPrompt, requiresApproval } from "@/lib/agent-tools";
 import { recordAuditEvent } from "@/lib/audit";
+import { extractErrorMessage } from "@/lib/db";
 
 export interface ClarificationInput {
   /** What the admin asked the agent, verbatim. */
@@ -87,7 +88,7 @@ export async function requestAgentClarificationAction(
 
     return { ok: true, clarification };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = extractErrorMessage(err);
     return { ok: false, error: msg };
   }
 }
@@ -200,7 +201,7 @@ export async function decideAgentAction(
 
     return { ok: true, decision };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = extractErrorMessage(err);
     return { ok: false, error: msg };
   }
 }
@@ -316,7 +317,7 @@ async function buildLiveDataContext(): Promise<string> {
 
     return lines.join("\n");
   } catch (err) {
-    return `(Live context unavailable: ${err instanceof Error ? err.message : String(err)})`;
+    return `(Live context unavailable: ${extractErrorMessage(err)})`;
   }
 }
 

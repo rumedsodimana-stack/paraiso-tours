@@ -13,6 +13,7 @@ import {
   createPayment,
   createInvoice,
   getInvoices,
+  extractErrorMessage,
 } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import { sendQuotationEmail } from "@/lib/email";
@@ -127,7 +128,7 @@ export async function createQuotationAction(formData: FormData) {
 
     revalidatePath("/admin/quotations");
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to create quotation" };
+    return { error: extractErrorMessage(err) };
   }
   redirect("/admin/quotations?saved=1");
 }
@@ -178,7 +179,7 @@ export async function updateQuotationAction(id: string, formData: FormData) {
     revalidatePath("/admin/quotations");
     revalidatePath(`/admin/quotations/${id}`);
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to update quotation" };
+    return { error: extractErrorMessage(err) };
   }
   redirect(`/admin/quotations/${id}?saved=1`);
 }
@@ -454,7 +455,7 @@ export async function acceptQuotationAction(
 
     return { success: true, tourId: tour.id };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to accept quotation" };
+    return { error: extractErrorMessage(err) };
   }
 }
 

@@ -18,6 +18,7 @@
 
 import { requireAdmin } from "@/lib/admin-session";
 import { recordAuditEvent } from "@/lib/audit";
+import { extractErrorMessage } from "@/lib/db";
 import {
   runAgentTurn,
   resumeAgentTurn,
@@ -116,7 +117,7 @@ export async function runAgentTurnAction(
     }
     return { ok: false, events: outcome.events, error: outcome.error };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = extractErrorMessage(err);
     return { ok: false, error: msg };
   }
 }
@@ -199,7 +200,7 @@ export async function resumeAgentTurnAction(
     }
     return { ok: false, events: outcome.events, error: outcome.error };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = extractErrorMessage(err);
     return { ok: false, error: msg };
   }
 }
@@ -233,7 +234,7 @@ export async function isNativeAgentRuntimeAvailableAction(): Promise<{
     return {
       ok: false,
       available: false,
-      reason: err instanceof Error ? err.message : String(err),
+      reason: extractErrorMessage(err),
     };
   }
 }

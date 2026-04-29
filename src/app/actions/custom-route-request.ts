@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createLead } from "@/lib/db";
+import { createLead, extractErrorMessage } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import { debugLog } from "@/lib/debug";
 import { sendBookingRequestConfirmation } from "@/lib/email";
@@ -149,7 +149,7 @@ export async function createCustomRouteRequestAction(
     });
   } catch (err) {
     debugLog("createLead failed", {
-      error: err instanceof Error ? err.message : String(err),
+      error: extractErrorMessage(err),
     });
     return { error: "Failed to save your request. Please try again." };
   }
@@ -216,7 +216,7 @@ export async function createCustomRouteRequestAction(
     });
   } catch (err) {
     debugLog("Custom route email failed", {
-      error: err instanceof Error ? err.message : String(err),
+      error: extractErrorMessage(err),
       leadId: lead.id,
     });
     await recordAuditEvent({
@@ -230,7 +230,7 @@ export async function createCustomRouteRequestAction(
         template: "booking_request_confirmation",
         recipient: lead.email,
         status: "failed",
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
       },
     });
   }
@@ -243,7 +243,7 @@ export async function createCustomRouteRequestAction(
       packageName: "Custom Sri Lanka journey",
     }).catch((err) => {
       debugLog("Custom route WhatsApp failed", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
         leadId: lead.id,
       });
     });
@@ -253,7 +253,7 @@ export async function createCustomRouteRequestAction(
   import("@/app/actions/agents").then(({ startBookingProcessorAction }) => {
     startBookingProcessorAction(lead.id).catch((err) => {
       debugLog("Booking processor agent failed to start", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
         leadId: lead.id,
       });
     });

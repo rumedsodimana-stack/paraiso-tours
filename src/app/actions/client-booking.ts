@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createLead, getAllMealPlans } from "@/lib/db";
+import { createLead, getAllMealPlans, extractErrorMessage } from "@/lib/db";
 import { getPackage } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import { debugLog } from "@/lib/debug";
@@ -226,7 +226,7 @@ export async function createClientBookingAction(
     });
   } catch (err) {
     debugLog("Booking request email failed", {
-      error: err instanceof Error ? err.message : String(err),
+      error: extractErrorMessage(err),
       leadId: lead.id,
     });
     await recordAuditEvent({
@@ -240,7 +240,7 @@ export async function createClientBookingAction(
         template: "booking_request_confirmation",
         recipient: lead.email,
         status: "failed",
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
       },
     });
   }
@@ -283,7 +283,7 @@ export async function createClientBookingAction(
       });
     } catch (err) {
       debugLog("Internal new-booking alert failed", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
         leadId: lead.id,
       });
     }
@@ -298,7 +298,7 @@ export async function createClientBookingAction(
       packageName: pkg.name,
     }).catch((err) => {
       debugLog("WhatsApp booking confirmation failed", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
         leadId: lead.id,
       });
     });

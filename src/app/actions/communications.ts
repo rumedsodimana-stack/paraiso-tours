@@ -8,6 +8,7 @@ import {
   getPackage,
   getPaymentByTourId,
   getTour,
+  extractErrorMessage,
 } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import {
@@ -104,7 +105,7 @@ export async function resendEmailAction(input: ResendEmailInput): Promise<Result
         return { error: "This template cannot be resent from here." };
     }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Unexpected error" };
+    return { error: extractErrorMessage(err) };
   }
 }
 
