@@ -38,6 +38,196 @@ function toNullable<T>(value: T | undefined): T | null {
   return value === undefined ? null : value;
 }
 
+/**
+ * Schema-tolerant insert/update/upsert.
+ *
+ * Production schemas drift behind the codebase all the time — columns
+ * get added in TypeScript before the corresponding ALTER TABLE is run
+ * in Supabase. When that happens PostgREST returns PGRST204 ("Could
+ * not find the 'X' column of 'Y' in the schema cache"), and the whole
+ * operation fails with no recovery.
+ *
+ * This wrapper detects PGRST204, parses the missing column name out
+ * of the error message, drops it from the payload, and retries. It
+ * loops until the operation succeeds, hits a different error, or
+ * exhausts the retry budget. Stripped columns are logged so the
+ * operator can see what's missing in production and run the right
+ * migration later — but the user-facing action (scheduling a tour,
+ * creating an invoice, etc.) succeeds in the meantime.
+ *
+ * Caveats:
+ * - If the missing column is NOT NULL with no default, the insert
+ *   will still fail with a different Postgres error (23502). That's
+ *   intentional — you can't fake a NOT NULL value.
+ * - The "stripped" list is best-effort; production logging via
+ *   `debugLog` makes it visible in Vercel logs.
+ */
+const SCHEMA_CACHE_MISS_CODES = new Set(["PGRST204", "PGRST205"]);
+const TOLERANT_WRITE_MAX_RETRIES = 12;
+
+function parsePgrst204Column(err: unknown): string | null {
+  if (!err || typeof err !== "object") return null;
+  const code = (err as { code?: unknown }).code;
+  if (typeof code !== "string" || !SCHEMA_CACHE_MISS_CODES.has(code)) return null;
+  const message = (err as { message?: unknown }).message;
+  if (typeof message !== "string") return null;
+  const m =
+    message.match(/Could not find the '([^']+)' column/) ??
+    message.match(/column '?([^' ]+)'? does not exist/i);
+  return m?.[1] ?? null;
+}
+
+type TolerantResult<T> = {
+  data: T | null;
+  error: unknown;
+  strippedColumns: string[];
+};
+
+async function withSchemaToleranceLog(
+  operation: string,
+  table: string,
+  stripped: string[]
+): Promise<void> {
+  if (stripped.length === 0) return;
+  // Lazy-load debugLog to avoid circular import at top of file.
+  const { debugLog } = await import("./debug");
+  debugLog(`Schema-tolerant ${operation} on ${table} dropped columns`, {
+    table,
+    operation,
+    stripped,
+  });
+}
+
+export async function tolerantInsertOne<T extends Record<string, unknown>>(
+  table: string,
+  row: T,
+  options?: { select?: string; ignoreDuplicates?: boolean }
+): Promise<TolerantResult<Record<string, unknown>>> {
+  const select = options?.select ?? "*";
+  let working: Record<string, unknown> = { ...row };
+  const stripped: string[] = [];
+
+  for (let attempt = 0; attempt < TOLERANT_WRITE_MAX_RETRIES; attempt++) {
+    let query = supabase!.from(table).insert(working).select(select);
+    const { data, error } = options?.ignoreDuplicates
+      ? await query.maybeSingle()
+      : await query.single();
+
+    if (!error) {
+      await withSchemaToleranceLog("insert", table, stripped);
+      return {
+        data: (data as Record<string, unknown> | null) ?? null,
+        error: null,
+        strippedColumns: stripped,
+      };
+    }
+
+    const missing = parsePgrst204Column(error);
+    if (missing && missing in working) {
+      stripped.push(missing);
+      delete working[missing];
+      continue;
+    }
+
+    await withSchemaToleranceLog("insert (failed)", table, stripped);
+    return { data: null, error, strippedColumns: stripped };
+  }
+
+  return {
+    data: null,
+    error: new Error(
+      `tolerantInsertOne(${table}) exceeded retry budget (${TOLERANT_WRITE_MAX_RETRIES})`
+    ),
+    strippedColumns: stripped,
+  };
+}
+
+export async function tolerantUpdateOne<T extends Record<string, unknown>>(
+  table: string,
+  patch: T,
+  match: { column: string; value: unknown },
+  options?: { select?: string }
+): Promise<TolerantResult<Record<string, unknown>>> {
+  const select = options?.select ?? "*";
+  let working: Record<string, unknown> = { ...patch };
+  const stripped: string[] = [];
+
+  for (let attempt = 0; attempt < TOLERANT_WRITE_MAX_RETRIES; attempt++) {
+    const { data, error } = await supabase!
+      .from(table)
+      .update(working)
+      .eq(match.column, match.value)
+      .select(select)
+      .maybeSingle();
+
+    if (!error) {
+      await withSchemaToleranceLog("update", table, stripped);
+      return {
+        data: (data as Record<string, unknown> | null) ?? null,
+        error: null,
+        strippedColumns: stripped,
+      };
+    }
+
+    const missing = parsePgrst204Column(error);
+    if (missing && missing in working) {
+      stripped.push(missing);
+      delete working[missing];
+      continue;
+    }
+
+    await withSchemaToleranceLog("update (failed)", table, stripped);
+    return { data: null, error, strippedColumns: stripped };
+  }
+
+  return {
+    data: null,
+    error: new Error(
+      `tolerantUpdateOne(${table}) exceeded retry budget (${TOLERANT_WRITE_MAX_RETRIES})`
+    ),
+    strippedColumns: stripped,
+  };
+}
+
+export async function tolerantUpsertOne<T extends Record<string, unknown>>(
+  table: string,
+  row: T,
+  options?: { onConflict?: string; ignoreDuplicates?: boolean }
+): Promise<TolerantResult<Record<string, unknown>>> {
+  let working: Record<string, unknown> = { ...row };
+  const stripped: string[] = [];
+
+  for (let attempt = 0; attempt < TOLERANT_WRITE_MAX_RETRIES; attempt++) {
+    const { error } = await supabase!.from(table).upsert(working, {
+      onConflict: options?.onConflict,
+      ignoreDuplicates: options?.ignoreDuplicates ?? false,
+    });
+
+    if (!error) {
+      await withSchemaToleranceLog("upsert", table, stripped);
+      return { data: null, error: null, strippedColumns: stripped };
+    }
+
+    const missing = parsePgrst204Column(error);
+    if (missing && missing in working) {
+      stripped.push(missing);
+      delete working[missing];
+      continue;
+    }
+
+    await withSchemaToleranceLog("upsert (failed)", table, stripped);
+    return { data: null, error, strippedColumns: stripped };
+  }
+
+  return {
+    data: null,
+    error: new Error(
+      `tolerantUpsertOne(${table}) exceeded retry budget (${TOLERANT_WRITE_MAX_RETRIES})`
+    ),
+    strippedColumns: stripped,
+  };
+}
+
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -387,18 +577,16 @@ function toHotelMealPlan(row: Record<string, unknown>): HotelMealPlan {
 function packageToRow(
   data: Omit<TourPackage, "id" | "createdAt"> & { id?: string; createdAt?: string }
 ): Record<string, unknown> {
-  // NOTE: `reference` is intentionally NOT written here. The production
-  // Supabase `packages` table doesn't have a `reference` column (the TS
-  // field was added optimistically but the migration was never run), and
-  // including it triggers PGRST204 ("Could not find the 'reference'
-  // column of 'packages' in the schema cache") on every package write —
-  // including ensureCustomRoutePlaceholderPackageId, which blocked all
-  // tour scheduling. Reads in toPackage gracefully fall back to undefined,
-  // and the 6 UI sites that show pkg.reference all guard with `?? pkg.id`
-  // or `&& (...)`. If a future migration adds the column, re-introduce
-  // `reference: data.reference ?? generatePackageReference(),` here.
+  // `reference` is included again now that all package writes go through
+  // the schema-tolerant helpers (tolerantInsertOne / tolerantUpsertOne).
+  // If the production schema is missing the `reference` column the
+  // tolerant write detects PGRST204, drops the column, and retries — so
+  // the row is still created (just without a human-readable reference).
+  // Once the catch-up migration is applied, new packages will get proper
+  // references like PKG-20260429-X7K2 again.
   return {
     id: data.id ?? generateId("pkg"),
+    reference: data.reference ?? generatePackageReference(),
     name: data.name,
     duration: data.duration,
     destination: data.destination,
@@ -488,15 +676,15 @@ export async function ensureCustomRoutePlaceholderPackageId(): Promise<string> {
     createdAt: now,
   });
 
-  // Upsert with `ignoreDuplicates` so two parallel scheduling actions
-  // racing on first creation both succeed.
-  const { error: insertError } = await supabase!
-    .from("packages")
-    .upsert(placeholderRow, {
-      onConflict: "id",
-      ignoreDuplicates: true,
-    });
-  if (insertError) throw insertError;
+  // Upsert via the schema-tolerant helper so any column that's missing
+  // in production gets dropped automatically rather than blocking the
+  // whole tour-scheduling pipeline. `ignoreDuplicates` keeps two
+  // parallel scheduling actions safe.
+  const result = await tolerantUpsertOne("packages", placeholderRow, {
+    onConflict: "id",
+    ignoreDuplicates: true,
+  });
+  if (result.error) throw result.error;
   return CUSTOM_ROUTE_PLACEHOLDER_PACKAGE_ID;
 }
 
@@ -568,13 +756,9 @@ export async function createLead(
     created_at: now,
     updated_at: now,
   };
-  const { data: inserted, error } = await supabase!
-    .from("leads")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toLead(inserted);
+  const result = await tolerantInsertOne("leads", row);
+  if (result.error || !result.data) throw result.error ?? new Error("createLead failed");
+  return toLead(result.data);
 }
 
 export async function updateLead(
@@ -632,14 +816,12 @@ export async function updateLead(
     update.archived_at = toNullable(data.archivedAt);
   }
 
-  const { data: updated, error } = await supabase!
-    .from("leads")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toLead(updated);
+  const result = await tolerantUpdateOne("leads", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toLead(result.data);
 }
 
 export async function deleteLead(id: string): Promise<boolean> {
@@ -689,13 +871,10 @@ export async function getPackagesForClient(): Promise<TourPackage[]> {
 export async function createPackage(
   data: Omit<TourPackage, "id" | "createdAt">
 ): Promise<TourPackage> {
-  const { data: inserted, error } = await supabase!
-    .from("packages")
-    .insert(packageToRow(data))
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toPackage(inserted);
+  const result = await tolerantInsertOne("packages", packageToRow(data));
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createPackage failed");
+  return toPackage(result.data);
 }
 
 export async function updatePackage(
@@ -735,14 +914,12 @@ export async function updatePackage(
     update.archived_at = toNullable(data.archivedAt);
   }
 
-  const { data: updated, error } = await supabase!
-    .from("packages")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toPackage(updated);
+  const result = await tolerantUpdateOne("packages", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toPackage(result.data);
 }
 
 export async function deletePackage(id: string): Promise<boolean> {
@@ -800,13 +977,10 @@ export async function createTour(data: Omit<Tour, "id">): Promise<Tour> {
     updated_at: now,
   };
 
-  const { data: inserted, error } = await supabase!
-    .from("tours")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toTour(inserted);
+  const result = await tolerantInsertOne("tours", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createTour failed");
+  return toTour(result.data);
 }
 
 export async function updateTour(
@@ -850,14 +1024,12 @@ export async function updateTour(
     update.availability_warnings = data.availabilityWarnings;
   }
 
-  const { data: updated, error } = await supabase!
-    .from("tours")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toTour(updated);
+  const result = await tolerantUpdateOne("tours", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toTour(result.data);
 }
 
 export async function deleteTour(id: string): Promise<boolean> {
@@ -1042,13 +1214,10 @@ export async function createInvoice(
     updated_at: now,
     paid_at: toNullable(data.paidAt),
   };
-  const { data: inserted, error } = await supabase!
-    .from("invoices")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toInvoice(inserted);
+  const result = await tolerantInsertOne("invoices", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createInvoice failed");
+  return toInvoice(result.data);
 }
 
 export async function updateInvoice(
@@ -1079,14 +1248,12 @@ export async function updateInvoice(
   if (data.notes !== undefined) update.notes = toNullable(data.notes);
   if (data.paidAt !== undefined) update.paid_at = toNullable(data.paidAt);
 
-  const { data: updated, error } = await supabase!
-    .from("invoices")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toInvoice(updated);
+  const result = await tolerantUpdateOne("invoices", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toInvoice(result.data);
 }
 
 export async function deleteInvoice(id: string): Promise<boolean> {
@@ -1344,13 +1511,10 @@ export async function createPayment(
     date: data.date,
     created_at: new Date().toISOString(),
   };
-  const { data: inserted, error } = await supabase!
-    .from("payments")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toPayment(inserted);
+  const result = await tolerantInsertOne("payments", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createPayment failed");
+  return toPayment(result.data);
 }
 
 export async function updatePayment(
@@ -1390,14 +1554,12 @@ export async function updatePayment(
   if (data.status !== undefined) update.status = data.status;
   if (data.date !== undefined) update.date = data.date;
 
-  const { data: updated, error } = await supabase!
-    .from("payments")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toPayment(updated);
+  const result = await tolerantUpdateOne("payments", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toPayment(result.data);
 }
 
 export async function deletePayment(id: string): Promise<boolean> {
@@ -1423,13 +1585,10 @@ export async function createTodo(
     completed: data.completed,
     created_at: new Date().toISOString(),
   };
-  const { data: inserted, error } = await supabase!
-    .from("todos")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toTodo(inserted);
+  const result = await tolerantInsertOne("todos", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createTodo failed");
+  return toTodo(result.data);
 }
 
 export async function updateTodo(
@@ -1440,14 +1599,12 @@ export async function updateTodo(
   if (data.title !== undefined) update.title = data.title;
   if (data.completed !== undefined) update.completed = data.completed;
 
-  const { data: updated, error } = await supabase!
-    .from("todos")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error || !updated) return null;
-  return toTodo(updated);
+  const result = await tolerantUpdateOne("todos", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toTodo(result.data);
 }
 
 export async function deleteTodo(id: string): Promise<boolean> {
@@ -1500,13 +1657,10 @@ export async function createAuditLog(
     metadata: data.metadata ?? {},
     created_at: new Date().toISOString(),
   };
-  const { data: inserted, error } = await supabase!
-    .from("audit_logs")
-    .insert(row)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toAuditLog(inserted);
+  const result = await tolerantInsertOne("audit_logs", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createAuditLog failed");
+  return toAuditLog(result.data);
 }
 
 export async function getAiKnowledgeDocuments(): Promise<AiKnowledgeDocument[]> {
