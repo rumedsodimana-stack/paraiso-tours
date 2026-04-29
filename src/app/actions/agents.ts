@@ -13,6 +13,7 @@ import {
 } from "@/lib/agents/db";
 import { recordAuditEvent } from "@/lib/audit";
 import { requireAdmin } from "@/lib/admin-session";
+import { extractErrorMessage } from "@/lib/db";
 
 function generateId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -44,7 +45,7 @@ export async function startBookingProcessorAction(leadId: string) {
     if (thread?.status !== "awaiting_approval") {
       await updateAgentThread(threadId, {
         status: "failed",
-        errorMessage: err instanceof Error ? err.message : String(err),
+        errorMessage: extractErrorMessage(err),
       });
     }
   }

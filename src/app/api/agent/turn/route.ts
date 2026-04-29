@@ -24,6 +24,7 @@
 
 import { requireAdmin } from "@/lib/admin-session";
 import { recordAuditEvent } from "@/lib/audit";
+import { extractErrorMessage } from "@/lib/db";
 import {
   streamAgentTurn,
   type StreamEvent,
@@ -114,7 +115,7 @@ export async function POST(req: Request): Promise<Response> {
           }
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = extractErrorMessage(err);
         controller.enqueue(
           sseFrame({ kind: "error", error: message } satisfies StreamEvent)
         );
