@@ -22,6 +22,8 @@ function EnvRow({ variable, description }: { variable: string; description: stri
 
 export function NotificationsSection() {
   const [waStatus, setWaStatus] = useState<ConnStatus>("checking");
+  const [emailStatus, setEmailStatus] = useState<ConnStatus>("checking");
+  const [emailFromAddress, setEmailFromAddress] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -29,15 +31,31 @@ export function NotificationsSection() {
       .then((r) => r.json())
       .then((d) => { if (active) setWaStatus(d.connected ? "ok" : "off"); })
       .catch(() => { if (active) setWaStatus("off"); });
+    fetch("/api/email/status")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!active) return;
+        setEmailStatus(d.connected ? "ok" : "off");
+        setEmailFromAddress(d.fromAddress ?? null);
+      })
+      .catch(() => { if (active) setEmailStatus("off"); });
     return () => { active = false; };
   }, []);
 
   function recheck() {
     setWaStatus("checking");
+    setEmailStatus("checking");
     fetch("/api/whatsapp/status")
       .then((r) => r.json())
       .then((d) => setWaStatus(d.connected ? "ok" : "off"))
       .catch(() => setWaStatus("off"));
+    fetch("/api/email/status")
+      .then((r) => r.json())
+      .then((d) => {
+        setEmailStatus(d.connected ? "ok" : "off");
+        setEmailFromAddress(d.fromAddress ?? null);
+      })
+      .catch(() => setEmailStatus("off"));
   }
 
   return (
@@ -50,6 +68,7 @@ export function NotificationsSection() {
             <p className="font-semibold text-[#11272b]">Email — Resend</p>
             <p className="text-xs text-[#5e7279]">Sends booking confirmations, invoices, and client notifications</p>
           </div>
+          <StatusBadge status={emailStatus} />
           <a
             href="https://resend.com"
             target="_blank"
@@ -60,10 +79,28 @@ export function NotificationsSection() {
           </a>
         </div>
         <div className="space-y-3 p-6">
+          {emailStatus === "ok" && emailFromAddress && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+              <span className="font-medium">Sending from:</span>{" "}
+              <code className="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-[11px]">{emailFromAddress}</code>
+            </div>
+          )}
+          {emailStatus === "ok" && !emailFromAddress && (
+            <div className="rounded-xl border border-[#e9d49a] bg-[#fdf4dd] px-4 py-3 text-xs text-[#7d5a13]">
+              <p className="font-medium">RESEND_API_KEY is set, but RESEND_FROM_EMAIL is not.</p>
+              <p className="mt-1">Mail will go out from <code className="font-mono">onboarding@resend.dev</code> (Resend&apos;s shared sandbox). Set <code className="font-mono">RESEND_FROM_EMAIL</code> after verifying your domain to send from your own address.</p>
+            </div>
+          )}
+          {emailStatus === "off" && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+              <p className="font-medium">No email provider configured.</p>
+              <p className="mt-1">Booking confirmations, supplier reservations, payment receipts, and admin alerts will be skipped until <code className="font-mono">RESEND_API_KEY</code> is set in Vercel.</p>
+            </div>
+          )}
           <p className="text-sm text-[#5e7279]">Set these environment variables in your Vercel project dashboard:</p>
           <div className="space-y-2">
             <EnvRow variable="RESEND_API_KEY" description="Your Resend API key — starts with re_" />
-            <EnvRow variable="RESEND_FROM_EMAIL" description='Verified sender email, e.g. "Paraíso Ceylon &lt;hello@yourcompany.com&gt;"' />
+            <EnvRow variable="RESEND_FROM_EMAIL" description='Verified sender email, e.g. "Paraíso Tours &lt;bookings@paraiso.tours&gt;"' />
           </div>
           <a
             href="https://vercel.com/dashboard"
