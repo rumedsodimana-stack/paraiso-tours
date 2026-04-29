@@ -700,7 +700,25 @@ export function ClientBookingForm({
     }
 
     debugClient("ClientBooking: submit", { packageId: pkg.id, pax, totalPrice });
-    const result = await createClientBookingAction(pkg.id, formData);
+
+    // Wrap in try/catch so a network failure / timeout / server-action
+    // throw doesn't leave the button stuck on "Submitting…" indefinitely.
+    // Without this, a flaky connection would freeze the form and the
+    // guest has no way to retry — they'd have to refresh and lose
+    // everything they typed.
+    let result: Awaited<ReturnType<typeof createClientBookingAction>>;
+    try {
+      result = await createClientBookingAction(pkg.id, formData);
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "We couldn't reach the booking service. Please check your connection and try again.";
+      setError(msg);
+      setLoading(false);
+      return;
+    }
+
     if (result?.error) {
       setError(result.error);
       setLoading(false);

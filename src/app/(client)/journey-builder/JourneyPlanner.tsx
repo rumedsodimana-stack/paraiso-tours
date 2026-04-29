@@ -707,20 +707,37 @@ export function JourneyPlanner({
     if (filledDays.length === 0) { setError("Pick a destination for at least one day."); return; }
     setSubmitting(true);
     const submitStops = getRouteStopsForSubmit();
-    const result = await createCustomRouteRequestAction({
-      name: guestNames[0], email, phone, travelDate, pax,
-      desiredNights: pricing.totalNights,
-      stayStyle: accommodationMode === "choose" ? "Guest-selected accommodation" : "Best available accommodation",
-      transportLabel: selectedTransport?.label ?? "No transport required",
-      mealLabel: selectedMeal?.label ?? "No meal plan",
-      mealRequest, accommodationMode, guidanceFee, guidanceLabel,
-      routeStops: submitStops,
-      estimatedTotal: pricing.total, estimatedCurrency: pricing.currency, totalDriveHours,
-      notes: [
-        guestNames.length > 1 ? `Guests: ${guestNames.filter(Boolean).join(", ")}` : "",
-        notes,
-      ].filter(Boolean).join("\n"),
-    });
+
+    // Wrap in try/catch so a network failure or thrown server action
+    // doesn't leave the submit button stuck on "Submitting…" — without
+    // this the guest has no recovery path short of reloading the page
+    // (and losing every selection they've made).
+    let result: Awaited<ReturnType<typeof createCustomRouteRequestAction>>;
+    try {
+      result = await createCustomRouteRequestAction({
+        name: guestNames[0], email, phone, travelDate, pax,
+        desiredNights: pricing.totalNights,
+        stayStyle: accommodationMode === "choose" ? "Guest-selected accommodation" : "Best available accommodation",
+        transportLabel: selectedTransport?.label ?? "No transport required",
+        mealLabel: selectedMeal?.label ?? "No meal plan",
+        mealRequest, accommodationMode, guidanceFee, guidanceLabel,
+        routeStops: submitStops,
+        estimatedTotal: pricing.total, estimatedCurrency: pricing.currency, totalDriveHours,
+        notes: [
+          guestNames.length > 1 ? `Guests: ${guestNames.filter(Boolean).join(", ")}` : "",
+          notes,
+        ].filter(Boolean).join("\n"),
+      });
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "We couldn't reach the booking service. Please check your connection and try again.";
+      setError(msg);
+      setSubmitting(false);
+      return;
+    }
+
     if (!result || result.error) { setError(result?.error ?? "Something went wrong. Please try again."); setSubmitting(false); return; }
     if (!result.reference) { setError("Booking saved but no reference returned. Please contact us."); setSubmitting(false); return; }
     clearDraft();
