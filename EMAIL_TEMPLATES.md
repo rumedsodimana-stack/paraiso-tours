@@ -88,7 +88,7 @@ Kind regards,
 
 Paraíso Ceylon Tours
 Crafted journeys across Sri Lanka
-hello@paraisoceylontours.com
+hello@paraiso.tours
 ```
 
 ---

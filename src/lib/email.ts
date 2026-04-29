@@ -342,6 +342,11 @@ export async function sendBookingRequestConfirmation(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `Booking received: ${packageName} – ${reference}`,
       html,
@@ -493,6 +498,11 @@ export async function sendTourConfirmationWithInvoice(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `Tour confirmed: ${packageName} – ${branding.companyName}`,
       html,
@@ -744,6 +754,11 @@ export async function sendSupplierReservationEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject,
       html,
@@ -836,6 +851,11 @@ export async function sendBookingStatusChangeEmail(
   try {
     const { error } = await withEmailRetry(() => resend!.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `${headingText} – ${escapeHtml(reference)}`,
       html,
@@ -988,6 +1008,11 @@ export async function sendQuotationEmail(
 
     const { error } = await withEmailRetry(() => resend!.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject,
       html,
@@ -1061,6 +1086,11 @@ export async function sendPaymentReceiptEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `Payment received – ${description} – ${branding.companyName}`,
       html,
@@ -1146,6 +1176,11 @@ export async function sendInvoiceEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `Invoice ${invoice.invoiceNumber} – ${branding.companyName}`,
       html,
@@ -1230,6 +1265,11 @@ export async function sendItineraryEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `Itinerary: ${packageName} – ${branding.companyName}`,
       html,
@@ -1304,6 +1344,11 @@ export async function sendPreTripReminderEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `Your tour starts soon – ${params.packageName}`,
       html,
@@ -1353,6 +1398,11 @@ export async function sendPostTripFollowUpEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `Thank you – ${params.packageName}`,
       html,
@@ -1405,6 +1455,11 @@ export async function sendBookingChangeEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `${title} – ${params.packageName}`,
       html,
@@ -1455,6 +1510,11 @@ export async function sendSupplierRemittanceEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `Payment remittance – ${params.amount.toLocaleString()} ${params.currency}${params.reference ? ` – ${params.reference}` : ""}`,
       html,
@@ -1499,6 +1559,11 @@ export async function sendSupplierScheduleUpdateEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: title,
       html,
@@ -1540,6 +1605,11 @@ export async function sendInternalAlertEmail(
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
+      // replyTo points at the configured company inbox so guest and
+      // supplier replies land somewhere real — not at the synthetic
+      // sending address (e.g. bookings@paraiso.tours) which Resend
+      // creates on the fly for outbound delivery only.
+      replyTo: branding.email,
       to: [email],
       subject: `[${params.severity?.toUpperCase() ?? "INFO"}] ${params.subject}`,
       html,
