@@ -33,6 +33,7 @@ import {
   sendTourConfirmationWithInvoice,
   sendSupplierReservationEmail,
   sendPaymentReceiptEmail,
+  isEmailConfigured,
 } from "@/lib/email";
 import { getAuditLogsForEntities, recordAuditEvent } from "@/lib/audit";
 import {
@@ -623,6 +624,38 @@ export async function scheduleTourFromLeadAction(
     // line should not delete the successfully-scheduled tour.
     rollback = null;
 
+    // Check email config once, up front. If RESEND_API_KEY is missing,
+    // every email function would individually return ok:false and log a
+    // per-template "*_email_failed" audit event. That fills /admin/comms
+    // with redundant noise. Instead: log ONE summary event, set a
+    // user-visible warning, and skip every email block below by gating
+    // on `emailConfigured`. The user sees a single clear warning and
+    // can fix it (set RESEND_API_KEY in Vercel) and re-schedule.
+    const emailConfigured = isEmailConfigured();
+    let emailConfigWarning: string | null = null;
+    if (!emailConfigured) {
+      emailConfigWarning =
+        "Emails were skipped: Resend (email provider) is not configured. " +
+        "Set RESEND_API_KEY in Vercel environment variables, then re-schedule to send confirmations and supplier reservations.";
+      await recordAuditEvent({
+        entityType: "tour",
+        entityId: tour.id,
+        action: "schedule_emails_skipped_unconfigured",
+        summary:
+          "All scheduling emails skipped — Resend (RESEND_API_KEY) is not configured.",
+        details: [
+          "Set RESEND_API_KEY in Vercel → Project Settings → Environment Variables.",
+          "After deploy, re-trigger scheduling (or click 'Resend supplier emails' / 'Resend guest confirmation') to send.",
+        ],
+        metadata: {
+          channel: "email",
+          template: "all",
+          status: "skipped",
+          reason: "provider_not_configured",
+        },
+      });
+    }
+
     // Best-effort audit events (recordAuditEvent already catches internally,
     // but wrap defensively in case of unexpected throws).
     try {
@@ -755,7 +788,7 @@ export async function scheduleTourFromLeadAction(
         );
       }
 
-      if (!tour.clientConfirmationSentAt && lead.email?.trim()) {
+      if (emailConfigured && !tour.clientConfirmationSentAt && lead.email?.trim()) {
         try {
           // Pre-render the itinerary so the confirmation email ships
           // both the invoice and the day-by-day plan as PDFs in one
@@ -909,7 +942,7 @@ export async function scheduleTourFromLeadAction(
         if (updatedTour) tour = updatedTour;
       }
 
-      if (scheduleSuppliers && !tour.supplierNotificationsSentAt) {
+      if (emailConfigured && scheduleSuppliers && !tour.supplierNotificationsSentAt) {
         for (const supplier of scheduleSuppliers.withEmail) {
           try {
             const emailResult = await sendSupplierReservationEmail({
@@ -1030,9 +1063,11 @@ export async function scheduleTourFromLeadAction(
     revalidatePath("/");
     return {
       id: tour.id,
-      warnings: invoiceWarning
-        ? [...availabilityWarnings, invoiceWarning]
-        : availabilityWarnings,
+      warnings: [
+        ...availabilityWarnings,
+        ...(invoiceWarning ? [invoiceWarning] : []),
+        ...(emailConfigWarning ? [emailConfigWarning] : []),
+      ],
       availabilityStatus,
     };
   } catch (err) {
