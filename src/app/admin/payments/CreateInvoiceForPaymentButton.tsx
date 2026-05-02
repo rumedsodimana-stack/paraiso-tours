@@ -15,14 +15,29 @@ export function CreateInvoiceForPaymentButton({ leadId }: CreateInvoiceForPaymen
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Wraps the action in try/catch so a network failure or server-action
+  // throw doesn't leave the button stuck on "Creating…" with no feedback.
+  // Also covers the previously-unhandled case where the action returns
+  // neither invoiceId nor error (shouldn't happen but defends against
+  // future refactors).
   const handleCreate = () => {
     setError(null);
     startTransition(async () => {
-      const result = await createInvoiceFromLead(leadId);
-      if (result?.invoiceId) {
-        router.refresh();
-      } else if (result?.error) {
-        setError(result.error);
+      try {
+        const result = await createInvoiceFromLead(leadId);
+        if (result?.invoiceId) {
+          router.refresh();
+        } else if (result?.error) {
+          setError(result.error);
+        } else {
+          setError("Invoice was not created. Please try again.");
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't reach the server. Please check your connection and try again."
+        );
       }
     });
   };
