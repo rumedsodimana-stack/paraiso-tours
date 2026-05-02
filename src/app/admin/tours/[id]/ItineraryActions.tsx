@@ -23,11 +23,24 @@ export function ItineraryActions({
     if (!confirm(`Email the itinerary PDF to ${email}?`)) return;
     setToast(null);
     startSendTransition(async () => {
-      const result = await sendItineraryToGuestAction(tourId);
-      if (result?.success) {
-        setToast({ type: "ok", msg: `Itinerary sent to ${email}` });
-      } else {
-        setToast({ type: "err", msg: result?.error ?? "Failed to send itinerary" });
+      try {
+        const result = await sendItineraryToGuestAction(tourId);
+        if (result?.success) {
+          setToast({ type: "ok", msg: `Itinerary sent to ${email}` });
+        } else {
+          setToast({ type: "err", msg: result?.error ?? "Failed to send itinerary" });
+        }
+      } catch (err) {
+        // Without this catch, a network blip leaves the button stuck on
+        // "Sending…" with no feedback. Wrap so admin always sees what
+        // happened.
+        setToast({
+          type: "err",
+          msg:
+            err instanceof Error
+              ? err.message
+              : "Couldn't reach the server. Please check your connection and try again.",
+        });
       }
     });
   };

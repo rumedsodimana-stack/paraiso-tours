@@ -34,14 +34,40 @@ export function InvoiceActions({
     window.print();
   };
 
+  // Status change wraps in try/catch and surfaces errors to the toast
+  // line. Without this, a failed update (e.g. RLS denial, schema cache
+  // miss) would just silently leave the dropdown showing the new value
+  // while the DB still held the old one — admin would think the change
+  // landed, and notice the inconsistency only on next reload.
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const status = e.target.value as Invoice["status"];
+    setToast(null);
     startTransition(async () => {
-      const result = await updateInvoiceStatus(invoice.id, status);
-      if (result?.success) router.refresh();
+      try {
+        const result = await updateInvoiceStatus(invoice.id, status);
+        if (result?.success) {
+          router.refresh();
+        } else if (result?.error) {
+          setToast({ type: "err", msg: result.error });
+        } else {
+          setToast({ type: "err", msg: "Status not updated. Please try again." });
+        }
+      } catch (err) {
+        setToast({
+          type: "err",
+          msg:
+            err instanceof Error
+              ? err.message
+              : "Couldn't reach the server. Please check your connection and try again.",
+        });
+      }
     });
   };
 
+  // Send-to-guest also wraps in try/catch — without it, a network
+  // failure or server-action throw leaves the button stuck on
+  // "Sending…" indefinitely. The toast lets admin see exactly what
+  // went wrong (e.g. "Email not configured (RESEND_API_KEY missing)").
   const handleSendToGuest = () => {
     if (!invoice.clientEmail?.trim()) {
       setToast({ type: "err", msg: "No client email on this invoice." });
@@ -50,12 +76,22 @@ export function InvoiceActions({
     if (!confirm(`Send invoice ${invoice.invoiceNumber} to ${invoice.clientEmail}?`)) return;
     setToast(null);
     startSendTransition(async () => {
-      const result = await sendInvoiceToGuestAction(invoice.id);
-      if (result?.success) {
-        setToast({ type: "ok", msg: `Invoice sent to ${invoice.clientEmail}` });
-        router.refresh();
-      } else {
-        setToast({ type: "err", msg: result?.error ?? "Failed to send invoice" });
+      try {
+        const result = await sendInvoiceToGuestAction(invoice.id);
+        if (result?.success) {
+          setToast({ type: "ok", msg: `Invoice sent to ${invoice.clientEmail}` });
+          router.refresh();
+        } else {
+          setToast({ type: "err", msg: result?.error ?? "Failed to send invoice" });
+        }
+      } catch (err) {
+        setToast({
+          type: "err",
+          msg:
+            err instanceof Error
+              ? err.message
+              : "Couldn't reach the server. Please check your connection and try again.",
+        });
       }
     });
   };

@@ -20,14 +20,28 @@ export function CompletedPaidButton({ tourId, tourStatus }: CompletedPaidButtonP
   const handleClick = () => {
     setError(null);
     startTransition(async () => {
-      const result = await markTourCompletedPaidAction(tourId);
-      if (result?.success) {
-        router.refresh();
-        if (result.paymentId) {
-          router.push(`/admin/payments?completed=1#${result.paymentId}`);
+      try {
+        const result = await markTourCompletedPaidAction(tourId);
+        if (result?.success) {
+          router.refresh();
+          if (result.paymentId) {
+            router.push(`/admin/payments?completed=1#${result.paymentId}`);
+          }
+        } else if (result?.error) {
+          setError(result.error);
+        } else {
+          setError("Could not mark as completed. Please try again.");
         }
-      } else if (result?.error) {
-        setError(result.error);
+      } catch (err) {
+        // Without this catch, a network failure or server-action throw
+        // leaves the button stuck on "Processing…" with no recovery
+        // path — and the tour status, payment record, and receipt email
+        // are all in indeterminate state until reload.
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't reach the server. Please check your connection and try again."
+        );
       }
     });
   };
