@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  Activity,
   Banknote,
   BookOpen,
   Bot,
@@ -228,6 +229,7 @@ export function Sidebar({
         {/* System — bottom */}
         <div className="mt-auto border-t border-[#e0e4dd] pt-3">
           <div className="space-y-0.5">
+            <NavLink href="/admin/health" label="System health" icon={Activity} pathname={pathname} />
             <NavLink href="/admin/settings" label="Settings" icon={Settings} pathname={pathname} />
             <NavLink href="/admin/user-guide" label="User Guide" icon={BookOpen} pathname={pathname} />
             <NavLink href="/" label="Client Portal" icon={UserCircle} pathname={pathname} />
