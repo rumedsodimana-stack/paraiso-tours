@@ -1041,6 +1041,28 @@ export async function sendQuotationEmail(
         ? `Your ${destination} tour quotation \u2014 ${reference}`
         : `Tour quotation \u2014 ${reference} \u2014 ${branding.companyName}`;
 
+    // Try to attach the branded quotation PDF so the recipient
+    // gets the polished printable doc inline. Render is best-effort —
+    // if it throws (missing field, weird Unicode, anything), the
+    // email still goes out with just the HTML body.
+    let attachments: { filename: string; content: string }[] | undefined;
+    try {
+      const { generateQuotationPdf } = await import("./quotation-pdf");
+      const { getQuotation } = await import("./db");
+      const quotationRecord = await getQuotation(quotationId);
+      if (quotationRecord) {
+        const pdfBuffer = await generateQuotationPdf(quotationRecord);
+        attachments = [
+          {
+            filename: `Quotation-${reference.replace(/[^a-zA-Z0-9_-]/g, "-")}.pdf`,
+            content: pdfBuffer.toString("base64"),
+          },
+        ];
+      }
+    } catch {
+      // Swallow — the email is still useful without the attachment.
+    }
+
     const { error } = await withEmailRetry(() => resend!.emails.send({
       from: getFromEmail(branding.companyName),
       // replyTo points at the configured company inbox so guest and
@@ -1051,6 +1073,7 @@ export async function sendQuotationEmail(
       to: [email],
       subject,
       html,
+      ...(attachments ? { attachments } : {}),
     }));
 
     if (error) return { ok: false, error };

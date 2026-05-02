@@ -3,6 +3,7 @@ import { getQuotation } from "@/lib/db";
 import Link from "next/link";
 import {
   ChevronLeft,
+  Download,
   Pencil,
   Building2,
   Mail,
@@ -60,6 +61,13 @@ export default async function QuotationDetailPage({
           </Link>
         </div>
         <div className="flex flex-wrap gap-2">
+          <a
+            href={`/api/admin/quotations/${id}/pdf`}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2 text-sm font-medium text-[#11272b] hover:bg-[#f4ecdd]"
+          >
+            <Download className="h-4 w-4" />
+            Download PDF
+          </a>
           {canEdit && (
             <Link
               href={`/admin/quotations/${id}/edit`}
