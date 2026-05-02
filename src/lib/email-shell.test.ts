@@ -6,6 +6,9 @@ const branding = {
   companyName: "Paraíso Ceylon Tours",
   tagline: "Sri Lanka travel shaped by people who live it",
   email: "hello@example.com",
+  address: "Colombo, Sri Lanka",
+  phone: "+94 11 234 5678",
+  logoUrl: "",
 };
 
 test("buildBrandedEmail: renders header with company name and tagline", () => {

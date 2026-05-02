@@ -53,6 +53,11 @@ async function getEmailBranding() {
     companyName: getDisplayCompanyName(settings),
     tagline: settings.company.tagline || "",
     email: settings.company.email || "hello@paraiso.tours",
+    // Extra contact lines + logo for the upgraded header/footer.
+    // Each is optional — falsy values render nothing.
+    address: settings.company.address || "",
+    phone: settings.company.phone || "",
+    logoUrl: settings.company.logoUrl || "",
   };
 }
 
@@ -183,6 +188,26 @@ export function buildBrandedEmail(
     ? `<div style="display:none;max-height:0;overflow:hidden;color:transparent;font-size:1px;line-height:1px;">${escapeHtml(opts.preheader)}</div>`
     : "";
 
+  // Header: optional logo on the left, company name + tagline next
+  // to it. Mirrors the PDF letterhead so guests see a consistent
+  // brand across email and attachments. Logos use a fixed 44px
+  // height; aspect ratio is preserved by the email client (no max
+  // width because we can't measure it server-side without a fetch,
+  // and the rendering client clips overflow gracefully).
+  const logoCell = branding.logoUrl
+    ? `<td style="vertical-align:middle;padding-right:14px;width:1%;white-space:nowrap;">
+         <img src="${branding.logoUrl}" alt="${escapeHtml(branding.companyName)}" height="44" style="display:block;height:44px;border:0;outline:none;text-decoration:none;max-height:44px;" />
+       </td>`
+    : "";
+
+  // Footer contact line: builds from any of address/phone/email that
+  // are configured. Spacer middots collapse cleanly if a piece is
+  // missing.
+  const contactBits = [branding.address, branding.phone, branding.email]
+    .filter(Boolean)
+    .map((s) => escapeHtml(s));
+  const contactLine = contactBits.length > 0 ? contactBits.join("  ·  ") : "";
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -195,11 +220,18 @@ ${preheader}
   <tr>
     <td align="center" style="padding:24px 12px;">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px -16px rgba(17,39,43,0.18);">
-        <!-- Header band -->
+        <!-- Header band — navy fill with gold accent kicker, logo optional -->
         <tr>
           <td style="background:#12343b;padding:22px 28px;">
-            <div style="font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#c9922f;font-weight:700;">${escapeHtml(branding.companyName)}</div>
-            <div style="margin-top:4px;font-size:12px;color:#e5dccd;">${escapeHtml(branding.tagline || "Sri Lanka travel, shaped around your route")}</div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                ${logoCell}
+                <td style="vertical-align:middle;">
+                  <div style="font-size:18px;line-height:1.2;color:#fffbf4;font-weight:700;letter-spacing:0.2px;">${escapeHtml(branding.companyName)}</div>
+                  <div style="margin-top:4px;font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:#c9922f;font-weight:700;">${escapeHtml(branding.tagline || "Sri Lanka travel, shaped around your route")}</div>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
         <!-- Body -->
@@ -212,15 +244,18 @@ ${preheader}
             ${sectionsHtml}
             ${ctaRow}
             ${opts.closing ? `<p style="margin:20px 0 4px 0;font-size:15px;color:#11272b;">${escapeHtml(opts.closing)}</p>` : ""}
-            <p style="margin:24px 0 0 0;font-size:13px;color:#5e7279;">${escapeHtml(getQuestionsLine(branding))}</p>
+            <p style="margin:24px 0 6px 0;font-size:13px;color:#5e7279;">${escapeHtml(getQuestionsLine(branding))}</p>
+            <!-- Italic gold sign-off, mirrors the PDF closing line -->
+            <p style="margin:18px 0 0 0;font-size:13px;font-style:italic;color:#c9922f;">— ${escapeHtml(branding.companyName)} · we're excited to host your journey.</p>
           </td>
         </tr>
         <!-- Footer -->
         <tr>
-          <td style="padding:20px 28px 28px 28px;border-top:1px solid #f0e4c8;">
-            <p style="margin:0;font-size:13px;color:#11272b;font-weight:700;">— ${escapeHtml(branding.companyName)}</p>
-            <p style="margin:2px 0 0 0;font-size:12px;color:#5e7279;">${escapeHtml(branding.tagline || branding.companyName)}</p>
-            <p style="margin:8px 0 0 0;font-size:11px;color:#8a9ba1;">${escapeHtml(branding.email)} · you received this because you interacted with ${escapeHtml(branding.companyName)}.</p>
+          <td style="padding:20px 28px 28px 28px;border-top:1px solid #f0e4c8;background:#fffbf4;">
+            <p style="margin:0;font-size:13px;color:#11272b;font-weight:700;">${escapeHtml(branding.companyName)}</p>
+            ${branding.tagline ? `<p style="margin:2px 0 0 0;font-size:12px;color:#5e7279;">${escapeHtml(branding.tagline)}</p>` : ""}
+            ${contactLine ? `<p style="margin:8px 0 0 0;font-size:11px;color:#8a9ba1;">${contactLine}</p>` : ""}
+            <p style="margin:6px 0 0 0;font-size:10px;color:#8a9ba1;">You received this because you interacted with ${escapeHtml(branding.companyName)}.</p>
           </td>
         </tr>
       </table>
