@@ -21,11 +21,21 @@ export function CreateInvoiceFromPaymentButton({ paymentId }: CreateInvoiceFromP
   const handleCreate = () => {
     setError(null);
     startTransition(async () => {
-      const result = await createInvoiceFromPayment(paymentId);
-      if (result?.invoiceId) {
-        router.refresh();
-      } else if (result?.error) {
-        setError(result.error);
+      try {
+        const result = await createInvoiceFromPayment(paymentId);
+        if (result?.invoiceId) {
+          router.refresh();
+        } else if (result?.error) {
+          setError(result.error);
+        } else {
+          setError("Invoice was not created. Please try again.");
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't reach the server. Please check your connection and try again."
+        );
       }
     });
   };

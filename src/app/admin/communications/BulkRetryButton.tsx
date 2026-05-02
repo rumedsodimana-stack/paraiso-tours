@@ -50,29 +50,38 @@ export function BulkRetryButton({ messages }: { messages: FailedMessage[] }) {
       return;
     setToast(null);
     startTransition(async () => {
-      const result = await retryFailedMessagesAction(
-        messages.map((m) => ({
-          id: m.id,
-          template: m.template,
-          invoiceId: m.invoiceId,
-          tourId: m.tourId,
-          leadId: m.leadId,
-          paymentId: m.paymentId,
-          supplierEmail: m.recipient,
-          supplierName: m.supplierName,
-        }))
-      );
-      if (result.error) {
-        setToast(result.error);
-        return;
+      try {
+        const result = await retryFailedMessagesAction(
+          messages.map((m) => ({
+            id: m.id,
+            template: m.template,
+            invoiceId: m.invoiceId,
+            tourId: m.tourId,
+            leadId: m.leadId,
+            paymentId: m.paymentId,
+            supplierEmail: m.recipient,
+            supplierName: m.supplierName,
+          }))
+        );
+        if (result.error) {
+          setToast(result.error);
+          return;
+        }
+        // Build a tight summary that mentions only the non-zero buckets.
+        const parts: string[] = [];
+        if (result.ok) parts.push(`${result.ok} sent`);
+        if (result.failed) parts.push(`${result.failed} failed`);
+        if (result.skipped) parts.push(`${result.skipped} skipped`);
+        setToast(parts.length > 0 ? parts.join(" · ") : "No work to do");
+        router.refresh();
+      } catch (err) {
+        // If the bulk-retry action itself throws (network or server
+        // crash), surface to the inline toast so admin sees something
+        // actionable instead of the button silently resetting.
+        setToast(
+          err instanceof Error ? err.message : "Network error. Try again."
+        );
       }
-      // Build a tight summary that mentions only the non-zero buckets.
-      const parts: string[] = [];
-      if (result.ok) parts.push(`${result.ok} sent`);
-      if (result.failed) parts.push(`${result.failed} failed`);
-      if (result.skipped) parts.push(`${result.skipped} skipped`);
-      setToast(parts.length > 0 ? parts.join(" · ") : "No work to do");
-      router.refresh();
     });
   };
 

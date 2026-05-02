@@ -24,20 +24,28 @@ export function DeleteHotelButton({
 
     setError("");
     startTransition(async () => {
-      const result = await deleteHotelAction(id);
-      if (result?.error) {
-        setError(result.error);
-        return;
+      try {
+        const result = await deleteHotelAction(id);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
+        // Surface "cleaned N packages" via querystring so the destination
+        // banner can show how many curated package option lists were auto-
+        // pruned during the archive — the user otherwise has no signal that
+        // their packages were touched.
+        const cleaned = result?.cleanedPackages ?? 0;
+        const qs =
+          cleaned > 0 ? `?archived=1&cleaned=${cleaned}` : "?archived=1";
+        router.push(`/admin/hotels${qs}`);
+        router.refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't reach the server. Please check your connection and try again."
+        );
       }
-      // Surface "cleaned N packages" via querystring so the destination
-      // banner can show how many curated package option lists were auto-
-      // pruned during the archive — the user otherwise has no signal that
-      // their packages were touched.
-      const cleaned = result?.cleanedPackages ?? 0;
-      const qs =
-        cleaned > 0 ? `?archived=1&cleaned=${cleaned}` : "?archived=1";
-      router.push(`/admin/hotels${qs}`);
-      router.refresh();
     });
   }
 

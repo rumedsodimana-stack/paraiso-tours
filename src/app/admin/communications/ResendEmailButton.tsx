@@ -58,24 +58,32 @@ export function ResendEmailButton({ message }: ResendProps) {
       return;
     setToast(null);
     startTransition(async () => {
-      const result = await resendEmailAction({
-        template: message.template,
-        invoiceId: message.invoiceId,
-        tourId: message.tourId,
-        leadId: message.leadId,
-        paymentId: message.paymentId,
-        // Supplier-targeted templates need the recipient as the lookup
-        // key (we match by email first, name second). Guest templates
-        // ignore this field.
-        supplierEmail:
-          message.template === "supplier_reservation" ||
-          message.template === "supplier_remittance"
-            ? message.recipient
-            : undefined,
-        supplierName: message.supplierName,
-      });
-      setToast(result?.success ? "Sent" : (result?.error ?? "Failed"));
-      if (result?.success) router.refresh();
+      try {
+        const result = await resendEmailAction({
+          template: message.template,
+          invoiceId: message.invoiceId,
+          tourId: message.tourId,
+          leadId: message.leadId,
+          paymentId: message.paymentId,
+          // Supplier-targeted templates need the recipient as the lookup
+          // key (we match by email first, name second). Guest templates
+          // ignore this field.
+          supplierEmail:
+            message.template === "supplier_reservation" ||
+            message.template === "supplier_remittance"
+              ? message.recipient
+              : undefined,
+          supplierName: message.supplierName,
+        });
+        setToast(result?.success ? "Sent" : (result?.error ?? "Failed"));
+        if (result?.success) router.refresh();
+      } catch (err) {
+        // Network drop or server-action throw — surface to toast so
+        // admin sees the cause instead of a silent button reset.
+        setToast(
+          err instanceof Error ? err.message : "Network error. Try again."
+        );
+      }
     });
   };
 

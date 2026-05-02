@@ -14,12 +14,18 @@ export function HitlBookingRowActions({ leadId }: { leadId: string }) {
     if (!confirm(`${label} this booking?`)) return;
     setToast(null);
     startTransition(async () => {
-      const result = await updateLeadStatusAction(leadId, status);
-      if (result?.success) {
-        setToast(`Marked ${status}`);
-        router.refresh();
-      } else {
-        setToast(result?.error ?? "Failed");
+      try {
+        const result = await updateLeadStatusAction(leadId, status);
+        if (result?.success) {
+          setToast(`Marked ${status}`);
+          router.refresh();
+        } else {
+          setToast(result?.error ?? "Failed");
+        }
+      } catch (err) {
+        setToast(
+          err instanceof Error ? err.message : "Network error. Try again."
+        );
       }
     });
   };

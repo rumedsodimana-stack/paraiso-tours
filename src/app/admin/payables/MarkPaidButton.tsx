@@ -27,12 +27,18 @@ export function MarkPaidButton({ paymentId }: { paymentId: string }) {
         onClick={() => {
           setError(null);
           startTransition(async () => {
-            const result = await markPaymentPaid(paymentId);
-            if (result.success) {
-              setDone(true);
-              router.refresh();
-            } else {
-              setError(result.error ?? "Failed");
+            try {
+              const result = await markPaymentPaid(paymentId);
+              if (result.success) {
+                setDone(true);
+                router.refresh();
+              } else {
+                setError(result.error ?? "Failed");
+              }
+            } catch (err) {
+              setError(
+                err instanceof Error ? err.message : "Network error. Try again."
+              );
             }
           });
         }}

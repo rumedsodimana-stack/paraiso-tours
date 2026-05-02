@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { markPayablePaidAction } from "@/app/actions/payables";
@@ -24,19 +24,38 @@ export function PaidButton({
 }: PaidButtonProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // Previously this button silently swallowed every failure: no error
+  // state, no toast, just a button that flickered to "Processing…" and
+  // back to "Paid". If the underlying action returned `{ error }` or
+  // threw mid-call, the admin had zero feedback — and the payable
+  // stayed in the unpaid list with no indication of why.
+  const [error, setError] = useState<string | null>(null);
 
   const handleClick = () => {
+    setError(null);
     startTransition(async () => {
-      const result = await markPayablePaidAction({
-        supplierId,
-        supplierName,
-        amount,
-        currency,
-        startDate,
-        endDate,
-      });
-      if (result?.success && result.paymentId) {
-        router.push(`/admin/payments?paid=1#${result.paymentId}`);
+      try {
+        const result = await markPayablePaidAction({
+          supplierId,
+          supplierName,
+          amount,
+          currency,
+          startDate,
+          endDate,
+        });
+        if (result?.success && result.paymentId) {
+          router.push(`/admin/payments?paid=1#${result.paymentId}`);
+        } else if (result?.error) {
+          setError(result.error);
+        } else {
+          setError("Could not mark as paid. Please try again.");
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't reach the server. Please check your connection and try again."
+        );
       }
     });
   };
@@ -62,6 +81,7 @@ export function PaidButton({
           {pending ? "Processing…" : "Paid"}
         </button>
       </div>
+      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
       <p className="mt-3 text-xs text-[#5e7279]">
         You can view the payment and print a voucher from the Payments page.
       </p>

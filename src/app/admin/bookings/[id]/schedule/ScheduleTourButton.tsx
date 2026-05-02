@@ -22,15 +22,28 @@ export function ScheduleTourButton({ leadId, hasTravelDate }: ScheduleTourButton
       return;
     }
     startTransition(async () => {
-      const result = await scheduleTourFromLeadAction(leadId, dateToUse || undefined);
-      if (result?.id) {
-        if (result.warnings?.length) {
-          window.location.href = `/admin/tours/${result.id}`;
-          return;
+      try {
+        const result = await scheduleTourFromLeadAction(leadId, dateToUse || undefined);
+        if (result?.id) {
+          if (result.warnings?.length) {
+            window.location.href = `/admin/tours/${result.id}`;
+            return;
+          }
+          window.location.href = "/admin/calendar?saved=1";
+        } else if (result?.error) {
+          setError(result.error);
+        } else {
+          setError("Schedule did not complete. Please try again.");
         }
-        window.location.href = "/admin/calendar?saved=1";
-      } else if (result?.error) {
-        setError(result.error);
+      } catch (err) {
+        // Without this, an action throw silently resets the button —
+        // admin sees no feedback and the booking stays unscheduled with
+        // no signal of why.
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't reach the server. Please check your connection and try again."
+        );
       }
     });
   };
