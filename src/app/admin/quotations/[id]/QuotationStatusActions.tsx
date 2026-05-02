@@ -33,20 +33,33 @@ export function QuotationStatusActions({ quotationId, status, travelDate, tourId
 
   const [emailWarning, setEmailWarning] = useState<string | null>(null);
 
+  // Wraps every quotation action in try/catch so a network failure or
+  // server-action throw doesn't leave the buttons stuck on "Pending…"
+  // forever. Without this, all 4 actions (Mark Sent, Accept, Reject,
+  // Confirm & Schedule) would freeze permanently on a single bad
+  // request — and the admin's only recovery would be a hard reload.
   function run(fn: () => Promise<{ success?: boolean; tourId?: string; error?: string; emailSent?: boolean; emailError?: string } | undefined>) {
     setError(null);
     setEmailWarning(null);
     startTransition(async () => {
-      const result = await fn();
-      if (result?.error) {
-        setError(result.error);
-      } else if (result?.tourId) {
-        router.push(`/admin/tours/${result.tourId}?scheduled=1`);
-      } else {
-        if (result?.emailError) {
-          setEmailWarning(`Quotation marked as sent, but the email could not be delivered: ${result.emailError}`);
+      try {
+        const result = await fn();
+        if (result?.error) {
+          setError(result.error);
+        } else if (result?.tourId) {
+          router.push(`/admin/tours/${result.tourId}?scheduled=1`);
+        } else {
+          if (result?.emailError) {
+            setEmailWarning(`Quotation marked as sent, but the email could not be delivered: ${result.emailError}`);
+          }
+          router.refresh();
         }
-        router.refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't reach the server. Please check your connection and try again."
+        );
       }
     });
   }

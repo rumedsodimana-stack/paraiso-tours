@@ -113,8 +113,21 @@ export function QuotationForm({ mode, initial, action }: QuotationFormProps) {
     });
 
     startTransition(async () => {
-      const result = await action(formData);
-      if (result?.error) setError(result.error);
+      try {
+        const result = await action(formData);
+        if (result?.error) setError(result.error);
+      } catch (err) {
+        // Without this catch, a network drop or server-action throw
+        // leaves the submit button stuck on "Saving…" forever and the
+        // admin loses the form they just typed. Surface the error
+        // text so they know whether to retry, copy what they have,
+        // or fix something else.
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't reach the server. Please check your connection and try again."
+        );
+      }
     });
   }
 
