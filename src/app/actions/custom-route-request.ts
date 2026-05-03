@@ -241,6 +241,8 @@ export async function createCustomRouteRequestAction(
       phone: lead.phone,
       reference: lead.reference ?? lead.id,
       packageName: "Custom Sri Lanka journey",
+      travelDate: lead.travelDate,
+      pax: lead.pax,
     }).catch(async (err) => {
       const errMsg = extractErrorMessage(err);
       debugLog("Custom route WhatsApp failed", {

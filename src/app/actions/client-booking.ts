@@ -355,6 +355,8 @@ export async function createClientBookingAction(
       phone: lead.phone,
       reference: lead.reference ?? lead.id,
       packageName: pkg.name,
+      travelDate: lead.travelDate,
+      pax: lead.pax,
     }).catch(async (err) => {
       const errMsg = extractErrorMessage(err);
       debugLog("WhatsApp booking confirmation failed", {
