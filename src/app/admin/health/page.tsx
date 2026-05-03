@@ -8,13 +8,20 @@ import {
   Database,
   Hotel as HotelIcon,
   Inbox,
+  Scale,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-session";
 import { isEmailConfigured } from "@/lib/email";
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
 import { supabase } from "@/lib/supabase";
-import { getHotels, getLeads, getAuditLogs } from "@/lib/db";
-import type { AuditLog } from "@/lib/types";
+import {
+  getHotels,
+  getLeads,
+  getAuditLogs,
+  getTours,
+  getPayments,
+} from "@/lib/db";
+import type { AuditLog, Payment, Tour } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +48,7 @@ export default async function HealthPage() {
     checkSuppliersWithoutEmail(),
     checkBookingsWithoutEmail(),
     checkRecentFailures(),
+    checkFinancialReconciliation(),
   ]);
 
   const results = checks.map((c, i) =>
@@ -48,7 +56,16 @@ export default async function HealthPage() {
       ? c.value
       : {
           icon: Activity,
-          name: ["Email", "WhatsApp", "Database", "Suppliers", "Bookings", "Recent failures"][i] ?? "Unknown",
+          name:
+            [
+              "Email",
+              "WhatsApp",
+              "Database",
+              "Suppliers",
+              "Bookings",
+              "Recent failures",
+              "Financial reconciliation",
+            ][i] ?? "Unknown",
           status: "unknown" as const,
           message: "Couldn't run this check.",
           hint:
@@ -359,4 +376,160 @@ async function checkRecentFailures(): Promise<CheckResult> {
     href: "/admin/communications?status=failed",
     hrefLabel: "Open Communications",
   };
+}
+
+/**
+ * Cross-check that scheduled tours have matching financial records:
+ *
+ * For every active (not cancelled) tour, we expect:
+ *  - Exactly one INCOMING payment (the guest's receivable) whose
+ *    amount + currency match the tour's totalValue + currency.
+ *  - At least one OUTGOING payment (supplier payable) when the
+ *    tour's package is non-zero — schedule pipeline writes one per
+ *    linked supplier.
+ *
+ * Drift surfaces as red (errors) or yellow (warnings) on the
+ * dashboard so the admin sees finance gaps without manually
+ * cross-referencing /admin/calendar against /admin/payments.
+ *
+ * Common causes of drift in production:
+ *  - Schedule pipeline failed at invoice/payment step but still
+ *    created the tour (defensive — should be rare since we patched
+ *    error handling, but legacy data may have it).
+ *  - Admin edited a tour's totalValue on the booking after
+ *    scheduling without re-running the pipeline.
+ *  - A payment record was deleted manually.
+ */
+async function checkFinancialReconciliation(): Promise<CheckResult> {
+  const [tours, payments] = await Promise.all([getTours(), getPayments()]);
+  const activeTours = tours.filter(
+    (t: Tour) => t.status !== "cancelled" && t.status !== "completed"
+  );
+
+  if (activeTours.length === 0) {
+    return {
+      icon: Scale,
+      name: "Financial reconciliation",
+      status: "ok",
+      message: "No active scheduled tours to reconcile.",
+    };
+  }
+
+  // Bucket payments by tour so each lookup is O(1).
+  const incomingByTour = new Map<string, Payment[]>();
+  const outgoingByTour = new Map<string, Payment[]>();
+  for (const p of payments) {
+    if (!p.tourId) continue;
+    const bucket =
+      p.type === "incoming" ? incomingByTour : outgoingByTour;
+    const list = bucket.get(p.tourId) ?? [];
+    list.push(p);
+    bucket.set(p.tourId, list);
+  }
+
+  // Collect drift findings. Each entry is a short label admin can
+  // act on; we cap at 5 in the rendered hint so the row stays
+  // scannable.
+  const missingReceivable: string[] = [];
+  const amountMismatch: string[] = [];
+  const missingPayables: string[] = [];
+
+  for (const tour of activeTours) {
+    const tourLabel = `${tour.clientName} · ${formatTourDate(tour.startDate)}`;
+    const incomings = incomingByTour.get(tour.id) ?? [];
+    const outgoings = outgoingByTour.get(tour.id) ?? [];
+
+    if (incomings.length === 0) {
+      missingReceivable.push(tourLabel);
+    } else {
+      // Sum incoming amounts for the tour. Multiple receivables
+      // (e.g. partial deposits + balance) are valid — what matters
+      // is total covers the tour value.
+      const totalIncoming = incomings.reduce(
+        (sum, p) => sum + (p.currency === tour.currency ? p.amount : 0),
+        0
+      );
+      // Allow ±1 currency unit of rounding to avoid false positives
+      // from JSONB numeric round-trips.
+      if (Math.abs(totalIncoming - tour.totalValue) > 1) {
+        amountMismatch.push(
+          `${tourLabel} (${totalIncoming.toLocaleString()} vs ${tour.totalValue.toLocaleString()} ${tour.currency})`
+        );
+      }
+    }
+
+    // Payables drift signals supplier payouts weren't recorded.
+    // Only flag for tours with a real package (custom-route
+    // placeholder + zero totalValue is intentional). The schedule
+    // pipeline writes one payable per linked supplier, so a tour
+    // with a packagename and a totalValue >0 should have at least
+    // one outgoing.
+    if (tour.totalValue > 0 && outgoings.length === 0) {
+      missingPayables.push(tourLabel);
+    }
+  }
+
+  const totalIssues =
+    missingReceivable.length + amountMismatch.length + missingPayables.length;
+
+  if (totalIssues === 0) {
+    return {
+      icon: Scale,
+      name: "Financial reconciliation",
+      status: "ok",
+      message: `All ${activeTours.length} active scheduled tour${
+        activeTours.length === 1 ? "" : "s"
+      } match receivable + payable records.`,
+    };
+  }
+
+  // Build a hint listing the most-actionable issues first. Cap at
+  // 5 entries to keep the row scannable; the link to /admin/payments
+  // covers the rest.
+  const hintLines: string[] = [];
+  if (missingReceivable.length > 0) {
+    hintLines.push(
+      `${missingReceivable.length} tour${missingReceivable.length === 1 ? "" : "s"} missing the guest receivable: ${missingReceivable.slice(0, 3).join("; ")}${missingReceivable.length > 3 ? "; …" : ""}`
+    );
+  }
+  if (amountMismatch.length > 0) {
+    hintLines.push(
+      `${amountMismatch.length} receivable amount${amountMismatch.length === 1 ? "" : "s"} don't match tour total: ${amountMismatch.slice(0, 2).join("; ")}${amountMismatch.length > 2 ? "; …" : ""}`
+    );
+  }
+  if (missingPayables.length > 0) {
+    hintLines.push(
+      `${missingPayables.length} tour${missingPayables.length === 1 ? "" : "s"} have no supplier payables: ${missingPayables.slice(0, 3).join("; ")}${missingPayables.length > 3 ? "; …" : ""}`
+    );
+  }
+
+  // Receivable / payable gaps are definite errors — they mean
+  // money's unaccounted for. Amount mismatches are warnings — they
+  // could be legitimate (deposit partial, currency conversion, etc.).
+  const hasErrors =
+    missingReceivable.length > 0 || missingPayables.length > 0;
+
+  return {
+    icon: Scale,
+    name: "Financial reconciliation",
+    status: hasErrors ? "err" : "warn",
+    message: `${totalIssues} discrepanc${totalIssues === 1 ? "y" : "ies"} across ${activeTours.length} active tour${
+      activeTours.length === 1 ? "" : "s"
+    }.`,
+    hint: hintLines.join(" · "),
+    href: "/admin/payments",
+    hrefLabel: "Open Payments",
+  };
+}
+
+function formatTourDate(iso: string | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso + "T12:00:00").toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+    });
+  } catch {
+    return iso;
+  }
 }
