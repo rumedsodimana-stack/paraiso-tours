@@ -65,9 +65,14 @@ async function safe<T>(
     const data = await fn();
     return ok(`${label} succeeded.`, data);
   } catch (err) {
-    return fail(
-      err instanceof Error ? `${label} failed: ${err.message}` : `${label} failed.`
-    );
+    // Use extractErrorMessage so plain-object Supabase errors
+    // (`{ message, code, details, hint }`, NOT Error instances) get
+    // unwrapped to readable text instead of "[object Object]".
+    // The agent surfaces this string in the chat — without
+    // unwrapping, the assistant sees "[object Object]" and can't
+    // explain to the admin what actually went wrong.
+    const { extractErrorMessage } = await import("./db");
+    return fail(`${label} failed: ${extractErrorMessage(err)}`);
   }
 }
 
@@ -359,11 +364,32 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
     handler: async (raw) => {
       const input = ScheduleTour.parse(raw);
       const { scheduleTourFromLeadAction } = await import("@/app/actions/tours");
-      return safe("Schedule tour", async () => {
+      try {
         const r = await scheduleTourFromLeadAction(input.leadId, input.startDate);
-        if (r.error || !r.id) throw new Error(r.error ?? "Scheduling failed");
-        return r;
-      });
+        if (r.error || !r.id) {
+          return fail(`Schedule tour failed: ${r.error ?? "unknown error"}`);
+        }
+        // The action returns { id, warnings, availabilityStatus }. The
+        // warnings array is critical for AI awareness — it tells the
+        // assistant when emails were skipped (Resend unconfigured),
+        // when the invoice deferred, or when availability needs
+        // attention. Without surfacing warnings to the chat, the AI
+        // would happily report "Tour scheduled successfully" while
+        // emails silently dropped.
+        const warnings = r.warnings ?? [];
+        const availabilityStatus = r.availabilityStatus ?? "ready";
+        const baseSummary = `Schedule tour succeeded (tour id ${r.id}).`;
+        const summary =
+          warnings.length > 0
+            ? `${baseSummary} ${warnings.length} warning${warnings.length === 1 ? "" : "s"}: ${warnings.join(" · ")}`
+            : availabilityStatus === "attention_needed"
+              ? `${baseSummary} Availability needs attention.`
+              : baseSummary;
+        return ok(summary, r);
+      } catch (err) {
+        const { extractErrorMessage } = await import("./db");
+        return fail(`Schedule tour failed: ${extractErrorMessage(err)}`);
+      }
     },
   },
   {
