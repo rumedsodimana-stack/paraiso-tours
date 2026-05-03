@@ -24,8 +24,8 @@ export function ReportRunner({
   const [to, setTo] = useState(today);
   const [supplierId, setSupplierId] = useState(suppliers?.[0]?.id ?? "");
 
-  const build = () => {
-    const params = new URLSearchParams({ kind });
+  const build = (format: "csv" | "pdf" = "csv") => {
+    const params = new URLSearchParams({ kind, format });
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     if (kind === "supplier_statement" && supplierId) params.set("supplierId", supplierId);
@@ -73,16 +73,30 @@ export function ReportRunner({
           </label>
         )}
       </div>
-      <a
-        href={build()}
-        aria-disabled={disabled}
-        className={`inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] ${
-          disabled ? "pointer-events-none opacity-50" : ""
-        }`}
-      >
-        <Download className="h-4 w-4" />
-        {label}
-      </a>
+      <div className="flex flex-wrap items-center gap-2">
+        <a
+          href={build("pdf")}
+          aria-disabled={disabled}
+          className={`inline-flex items-center gap-2 rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] ${
+            disabled ? "pointer-events-none opacity-50" : ""
+          }`}
+          title="Branded PDF — print-ready, includes summary stats and totals"
+        >
+          <Download className="h-4 w-4" />
+          {label.replace(/\(\.csv\)/, "(.pdf)")}
+        </a>
+        <a
+          href={build("csv")}
+          aria-disabled={disabled}
+          className={`inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2.5 text-sm font-medium text-[#11272b] transition hover:bg-[#f4ecdd] ${
+            disabled ? "pointer-events-none opacity-50" : ""
+          }`}
+          title="CSV — for spreadsheet / accounting software import"
+        >
+          <Download className="h-4 w-4" />
+          CSV
+        </a>
+      </div>
     </div>
   );
 }
