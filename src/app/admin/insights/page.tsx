@@ -33,9 +33,20 @@ export default async function InsightsPage() {
     getPackages(),
   ]);
 
-  const revenueTrend = getRevenueTrend(tours, 6);
-  const { rows: supplierSpend, totalOutbound, currency: spendCurrency } =
-    getSupplierSpend(payments, hotels);
+  // Currency-aware: each helper now returns its own dominant currency
+  // (or honours a passed-in one) and lists any currencies it had to
+  // exclude so we can disclose them rather than silently dropping them.
+  const {
+    points: revenueTrend,
+    currency: revenueCurrency,
+    excludedCurrencies: revenueExcluded,
+  } = getRevenueTrend(tours, 6);
+  const {
+    rows: supplierSpend,
+    totalOutbound,
+    currency: spendCurrency,
+    excludedCurrencies: spendExcluded,
+  } = getSupplierSpend(payments, hotels);
   const topSuppliers = supplierSpend.slice(0, 5);
   const top3Concentration = supplierSpend
     .slice(0, 3)
@@ -179,9 +190,12 @@ export default async function InsightsPage() {
 
       {/* Revenue trend */}
       <section className="paraiso-card rounded-2xl p-5">
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <TrendingUp className="h-5 w-5 text-[#12343b]" />
           <h2 className="text-lg font-semibold text-[#11272b]">Revenue trend</h2>
+          <span className="rounded-full bg-[#f4ecdd] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#5e7279]">
+            {revenueCurrency}
+          </span>
           {trendDelta != null && (
             <span
               className={`ml-auto rounded-full px-3 py-1 text-xs font-semibold ${
@@ -195,6 +209,12 @@ export default async function InsightsPage() {
             </span>
           )}
         </div>
+        {revenueExcluded.length > 0 && (
+          <p className="mb-3 rounded-lg border border-[#f4ecdd] bg-[#fffbf4] px-3 py-2 text-xs text-[#5e7279]">
+            Showing {revenueCurrency} only. Tours in{" "}
+            {revenueExcluded.join(", ")} aren't included in this trend.
+          </p>
+        )}
         <div className="grid grid-cols-6 gap-2 h-40">
           {revenueTrend.map((p) => {
             const pct = (p.revenue / maxTrend) * 100;
@@ -226,17 +246,26 @@ export default async function InsightsPage() {
 
       {/* Supplier concentration */}
       <section className="paraiso-card rounded-2xl p-5">
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <Users className="h-5 w-5 text-[#12343b]" />
           <h2 className="text-lg font-semibold text-[#11272b]">
             Top suppliers by spend
           </h2>
+          <span className="rounded-full bg-[#f4ecdd] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#5e7279]">
+            {spendCurrency}
+          </span>
           {totalOutbound > 0 && (
             <span className="ml-auto rounded-full bg-[#f4ecdd] px-3 py-1 text-xs font-semibold text-[#5e7279]">
               Top 3 = {(top3Concentration * 100).toFixed(0)}% of all outbound
             </span>
           )}
         </div>
+        {spendExcluded.length > 0 && (
+          <p className="mb-3 rounded-lg border border-[#f4ecdd] bg-[#fffbf4] px-3 py-2 text-xs text-[#5e7279]">
+            Showing {spendCurrency} only. Supplier payments in{" "}
+            {spendExcluded.join(", ")} aren't included in this view.
+          </p>
+        )}
         {topSuppliers.length === 0 ? (
           <p className="text-sm text-[#5e7279]">
             No supplier spend recorded yet.
