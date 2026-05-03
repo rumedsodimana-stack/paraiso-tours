@@ -13,23 +13,41 @@ export function EmployeeForm({
 }) {
   const [error, setError] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setSaved(false);
+    setSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    const result = await action(formData);
-    if (result?.error) {
-      setError(result.error);
-      return;
-    }
-    if (result?.success && result?.id && !employee) {
-      window.location.href = `/admin/employees/${result.id}/edit?saved=1`;
-      return;
-    }
-    if (employee && result && !result.error) {
-      setSaved(true);
+    // try/catch unfreezes the submit button on a thrown action so the
+    // admin can edit + retry without losing the form state. Without
+    // this, a network blip would leave the button stuck on "Saving…"
+    // and the only recovery would be a hard reload (losing
+    // everything they typed).
+    try {
+      const result = await action(formData);
+      if (result?.error) {
+        setError(result.error);
+        setSubmitting(false);
+        return;
+      }
+      if (result?.success && result?.id && !employee) {
+        window.location.href = `/admin/employees/${result.id}/edit?saved=1`;
+        return;
+      }
+      if (employee && result && !result.error) {
+        setSaved(true);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Couldn't reach the server. Please check your connection and try again."
+      );
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -246,9 +264,14 @@ export function EmployeeForm({
       <div className="flex justify-end">
         <button
           type="submit"
-          className="rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f]"
+          disabled={submitting}
+          className="rounded-xl bg-[#12343b] px-6 py-2.5 text-sm font-medium text-[#f6ead6] transition hover:bg-[#1a474f] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {employee ? "Save Changes" : "Add Employee"}
+          {submitting
+            ? "Saving…"
+            : employee
+              ? "Save Changes"
+              : "Add Employee"}
         </button>
       </div>
     </form>

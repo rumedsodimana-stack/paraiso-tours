@@ -26,13 +26,27 @@ export function EmployeeCard({ emp }: { emp: Employee }) {
       return;
     }
     setDeleting(true);
-    const result = await deleteEmployeeAction(emp.id);
-    setDeleting(false);
-    setConfirmDelete(false);
-    if (result?.error) {
-      alert(result.error);
-    } else {
-      router.refresh();
+    // try/catch so a network failure / server-action throw doesn't
+    // leave the button stuck on "deleting" forever. Errors surface
+    // as a polite alert instead of jarring native alert text alone —
+    // and the action's own try/catch already returns `{ error }`
+    // for plain-object Supabase errors thanks to extractErrorMessage.
+    try {
+      const result = await deleteEmployeeAction(emp.id);
+      if (result?.error) {
+        alert(`Couldn't archive: ${result.error}`);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? `Couldn't archive: ${err.message}`
+          : "Couldn't reach the server. Please check your connection and try again."
+      );
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
     }
   }
 
