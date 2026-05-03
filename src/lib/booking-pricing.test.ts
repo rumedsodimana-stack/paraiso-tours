@@ -217,3 +217,127 @@ test("capacity-based option pricing uses rooms and vehicles instead of raw pax",
     420
   );
 });
+
+// ── Edge-case tests: defensive number guards ──────────────────────────
+//
+// The pricing pipeline feeds invoices, payables, reports, and the
+// /admin/health reconciliation check. A single corrupt input (NaN
+// price, zero pax, negative typo) used to silently propagate as a
+// NaN total. These tests pin the safeNum/safeCount guards in place.
+
+test("calcOptionPrice: NaN price collapses to 0 (no NaN propagation)", () => {
+  assert.equal(
+    calcOptionPrice(
+      {
+        id: "x",
+        label: "Bad",
+        price: Number.NaN,
+        priceType: "per_person",
+      },
+      2,
+      3
+    ),
+    0
+  );
+});
+
+test("calcOptionPrice: negative price collapses to 0", () => {
+  assert.equal(
+    calcOptionPrice(
+      {
+        id: "x",
+        label: "Typo",
+        price: -50,
+        priceType: "per_night",
+      },
+      2,
+      3
+    ),
+    0
+  );
+});
+
+test("calcOptionPrice: NaN pax falls back to 1 (no NaN total)", () => {
+  assert.equal(
+    calcOptionPrice(
+      {
+        id: "x",
+        label: "Hotel",
+        price: 100,
+        priceType: "per_person",
+      },
+      Number.NaN,
+      3
+    ),
+    100
+  );
+});
+
+test("calcOptionCost: missing costPrice falls back through opt.price safely", () => {
+  // costPrice undefined → fall back to price; price is also NaN →
+  // collapse to 0. Confirms the chain doesn't return NaN.
+  assert.equal(
+    calcOptionCost(
+      {
+        id: "x",
+        label: "Both bad",
+        price: Number.NaN,
+        priceType: "per_person",
+      },
+      2,
+      3
+    ),
+    0
+  );
+});
+
+test("calculateBookingSelectionsTotal: NaN pax in input doesn't poison total", () => {
+  const result = calculateBookingSelectionsTotal({
+    pkg,
+    pax: Number.NaN,
+    selectedAccommodationOptionId: "acc_1",
+    selectedTransportOptionId: "tr_1",
+    selectedMealOptionId: "m_bb",
+  });
+  // Should NOT be NaN — guards floor pax to 1.
+  assert.equal(Number.isFinite(result.totalPrice), true);
+});
+
+test("calculateBookingSelectionsTotal: package with NaN base price still returns finite total", () => {
+  const corruptPkg: TourPackage = { ...pkg, price: Number.NaN };
+  const result = calculateBookingSelectionsTotal({
+    pkg: corruptPkg,
+    pax: 2,
+    selectedAccommodationOptionId: "acc_1",
+    selectedTransportOptionId: "tr_1",
+    selectedMealOptionId: "m_bb",
+  });
+  // Base portion drops to 0; option totals still pile in.
+  assert.equal(Number.isFinite(result.totalPrice), true);
+  assert.ok(result.totalPrice >= 0);
+});
+
+test("getLeadBookingFinancials: never returns NaN even with corrupt lead/package", () => {
+  const corruptLead: Lead = {
+    id: "lead_corrupt",
+    reference: "PCT-bad",
+    name: "Test",
+    email: "test@example.com",
+    phone: "",
+    source: "Manual",
+    status: "new",
+    pax: Number.NaN as unknown as number,
+    totalPrice: Number.NaN,
+    packageId: "pkg_test",
+    packageSnapshot: undefined,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const corruptPkg: TourPackage = { ...pkg, price: Number.NaN };
+  const suppliers: HotelSupplier[] = [];
+  const out = getLeadBookingFinancials(corruptLead, corruptPkg, suppliers);
+  // The headline number must always be finite — finance dashboards
+  // and reconciliation checks downstream depend on it.
+  assert.equal(Number.isFinite(out.totalPrice), true);
+  assert.equal(Number.isFinite(out.adjustmentAmount), true);
+});

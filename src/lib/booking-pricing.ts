@@ -8,13 +8,38 @@ import type {
   TourPackage,
 } from "./types";
 
+/**
+ * Coerce any value to a non-negative finite number. Same guard used
+ * in package-price.ts — if the input is NaN, Infinity, undefined, a
+ * string, or negative, return the fallback (defaults to 0). Keeps
+ * NaN out of any total. Reproduced here rather than imported because
+ * package-price.ts also uses an internal copy and we want the
+ * pricing module to remain self-contained.
+ */
+function safeNum(v: unknown, fallback = 0): number {
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return fallback;
+  return v;
+}
+
+function safeCount(v: unknown): number {
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 1) return 1;
+  return Math.floor(v);
+}
+
 function roundCurrency(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+  // Sanitise the input first — Math.round(NaN + EPSILON) is NaN.
+  // Without this, a single corrupt option could produce a NaN total
+  // that gets stored on the lead row and quietly poisons every
+  // downstream report.
+  const safe = safeNum(value);
+  return Math.round((safe + Number.EPSILON) * 100) / 100;
 }
 
 export function parsePackageNights(duration: string): number {
   const match = duration.match(/(\d+)\s*[Nn]ight/);
-  return match ? parseInt(match[1], 10) : 0;
+  if (!match) return 0;
+  const n = parseInt(match[1], 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 function getAccommodationOptionsForNight(
@@ -95,14 +120,19 @@ export function calculateBookingSelectionsTotal(input: {
     selectedMealPlanByNight,
     hotelMealPlans = [],
   } = input;
-  const pax = Math.max(1, input.pax || 1);
+  // Use safeCount so a NaN/null/negative pax doesn't propagate. (The
+  // old Math.max(1, x || 1) guard was correct for falsy values but
+  // Math.max(1, NaN) returns NaN.)
+  const pax = safeCount(input.pax);
   const nights = parsePackageNights(pkg.duration) || 1;
   const normalizedByNight = normalizeSelectedAccommodationByNight(
     input.selectedAccommodationByNight
   );
   const errors: string[] = [];
 
-  let total = pkg.price * pax;
+  // pkg.price could be 0 (free package), missing (legacy data), or
+  // corrupt. safeNum collapses any non-finite/negative value to 0.
+  let total = safeNum(pkg.price) * pax;
 
   const transportOptions = pkg.transportOptions ?? [];
   // Use per-night mealPlanOptions when pkg.mealOptions is empty (new per-night packages)
@@ -134,11 +164,14 @@ export function calculateBookingSelectionsTotal(input: {
 
       // Add the night's hotel meal plan (if any). It's priced per person
       // per night, so one night's charge = pricePerPerson * pax.
+      // safeNum guards against meal plans with missing/NaN prices —
+      // a hotel-attached plan with a typo'd 0-price won't NaN the
+      // booking, just adds 0 to the total.
       const mpId = selectedMealPlanByNight?.[String(slot.nightIndex)];
       if (mpId) {
         const mp = hotelPlanById.get(mpId);
         if (mp && mp.hotelId === selected.supplierId) {
-          total += mp.pricePerPerson * pax;
+          total += safeNum(mp.pricePerPerson) * pax;
         }
       }
     }
@@ -156,7 +189,7 @@ export function calculateBookingSelectionsTotal(input: {
       if (mpId) {
         const mp = hotelPlanById.get(mpId);
         if (mp && mp.hotelId === selected.supplierId) {
-          total += mp.pricePerPerson * pax * nights;
+          total += safeNum(mp.pricePerPerson) * pax * nights;
         }
       }
     }
@@ -207,7 +240,9 @@ export function getLeadBookingFinancials(
   const breakdown = selectionsMatchPackage
     ? getBookingBreakdownBySupplier(lead, pkg, suppliers)
     : null;
-  const fallbackTotal = pkg.price * Math.max(1, lead.pax ?? 1);
+  // safeNum + safeCount: even if pkg.price is missing or pax is
+  // corrupt, fallbackTotal is a valid finite number — never NaN.
+  const fallbackTotal = safeNum(pkg.price) * safeCount(lead.pax);
   const canUseStoredTotal =
     selectionsMatchPackage ||
     (!!lead.packageSnapshot && lead.packageSnapshot.packageId === pkg.id) ||

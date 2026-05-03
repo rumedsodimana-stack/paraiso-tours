@@ -2,7 +2,35 @@ import type { TourPackage, PackageOption } from "./types";
 
 function parseNights(duration: string): number {
   const m = duration.match(/(\d+)\s*[Nn]ight/);
-  return m ? parseInt(m[1], 10) : 0;
+  if (!m) return 0;
+  const n = parseInt(m[1], 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Coerce any value to a non-negative finite number. Used as a guard
+ * around every price/quantity input to the cost calculations so a
+ * corrupt option (NaN, undefined, negative typo, "10 USD" string) can
+ * never propagate as a NaN total — at worst it shows as 0, which is
+ * loud + visible rather than silently wrong.
+ *
+ * Negative values clamp to 0 because a negative line-item charge is
+ * always a data bug — discounts are tracked separately on quotations
+ * via `discountAmount`, never via negative line items.
+ */
+function safeNum(v: unknown, fallback = 0): number {
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return fallback;
+  return v;
+}
+
+/**
+ * Coerce a count (pax, nights, capacity) to a positive integer ≥ 1.
+ * Math.max(1, NaN) returns NaN, so the explicit Number.isFinite check
+ * is required — any NaN/negative/zero/non-numeric falls back to 1.
+ */
+function safeCount(v: unknown): number {
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 1) return 1;
+  return Math.floor(v);
 }
 
 export function calcOptionPrice(
@@ -10,36 +38,37 @@ export function calcOptionPrice(
   pax: number,
   nights: number
 ): number {
-  const normalizedPax = Math.max(1, pax);
-  const normalizedNights = Math.max(1, nights);
-  const capacity = Math.max(1, opt.capacity ?? 1);
+  const normalizedPax = safeCount(pax);
+  const normalizedNights = safeCount(nights);
+  const capacity = safeCount(opt.capacity);
+  const price = safeNum(opt.price);
 
   switch (opt.priceType) {
     case "per_person":
     case "per_person_total":
-      return opt.price * normalizedPax;
+      return price * normalizedPax;
     case "per_night":
-      return opt.price * normalizedNights;
+      return price * normalizedNights;
     case "per_person_per_night":
-      return opt.price * normalizedPax * normalizedNights;
+      return price * normalizedPax * normalizedNights;
     case "per_day":
-      return opt.price * Math.max(1, normalizedNights + 1);
+      return price * Math.max(1, normalizedNights + 1);
     case "per_person_per_day":
-      return opt.price * normalizedPax * Math.max(1, normalizedNights + 1);
+      return price * normalizedPax * Math.max(1, normalizedNights + 1);
     case "per_room_per_night":
       return (
-        opt.price * Math.ceil(normalizedPax / capacity) * normalizedNights
+        price * Math.ceil(normalizedPax / capacity) * normalizedNights
       );
     case "per_vehicle_per_day":
       return (
-        opt.price *
+        price *
         Math.ceil(normalizedPax / capacity) *
         Math.max(1, normalizedNights + 1)
       );
     case "total":
-      return opt.price;
+      return price;
     default:
-      return opt.price;
+      return price;
   }
 }
 
@@ -48,10 +77,14 @@ export function calcOptionCost(
   pax: number,
   nights: number
 ): number {
+  // costPrice may be undefined (option not yet linked to a supplier
+  // cost) — fall back to opt.price, then through safeNum so NaN /
+  // negative values never propagate as totals.
+  const cost = safeNum(opt.costPrice, safeNum(opt.price));
   return calcOptionPrice(
     {
       ...opt,
-      price: opt.costPrice ?? opt.price,
+      price: cost,
     },
     pax,
     nights
@@ -87,12 +120,20 @@ export function getFlatMealPlanOptions(pkg: TourPackage): PackageOption[] {
 }
 
 export function getFromPrice(pkg: TourPackage, pax = 1): number {
+  const safePax = safeCount(pax);
   const nights = parseNights(pkg.duration);
-  let total = pkg.price * pax;
+  // Sanitise pkg.price too — a package with a corrupt price field
+  // would otherwise show "From NaN USD" on the catalog page.
+  let total = safeNum(pkg.price) * safePax;
 
   const min = (opts?: PackageOption[]) => {
     if (!opts?.length) return 0;
-    return Math.min(...opts.map((o) => calcOptionPrice(o, pax, nights)));
+    const prices = opts.map((o) => calcOptionPrice(o, safePax, nights));
+    // Filter the safety floor (calcOptionPrice already guards) so
+    // Math.min never sees Infinity from an empty array — caller
+    // already returns 0 for empty, but defensive in case future
+    // change widens the input.
+    return prices.length ? Math.min(...prices) : 0;
   };
 
   // Accommodation: per-night or legacy package-level
@@ -100,7 +141,11 @@ export function getFromPrice(pkg: TourPackage, pax = 1): number {
   if (hasPerNight) {
     for (let i = 0; i < nights; i++) {
       const opts = getAccommodationOptionsForNight(pkg, i);
-      if (opts.length) total += Math.min(...opts.map((o) => calcOptionPrice(o, pax, 1)));
+      if (opts.length) {
+        total += Math.min(
+          ...opts.map((o) => calcOptionPrice(o, safePax, 1))
+        );
+      }
     }
   } else {
     total += min(pkg.accommodationOptions);
@@ -110,5 +155,5 @@ export function getFromPrice(pkg: TourPackage, pax = 1): number {
   // Meal plans: per-night or legacy package-level
   total += min(getFlatMealPlanOptions(pkg));
 
-  return total;
+  return safeNum(total);
 }
