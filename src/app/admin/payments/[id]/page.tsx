@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, Download, FileText } from "lucide-react";
 import { getPayment, getInvoice, getInvoiceByLeadId, getInvoices } from "@/lib/db";
 import { getAppSettings, getDisplayCompanyName } from "@/lib/app-config";
 import { getAuditLogsForEntities } from "@/lib/audit";
@@ -73,9 +73,21 @@ export default async function PaymentDetailPage({
           <h1 className="text-xl font-semibold text-[#11272b]">
             Transaction
           </h1>
-          {payment.type === "incoming" && payment.status === "pending" && (
-            <MarkPaymentReceivedButton paymentId={payment.id} />
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {payment.type === "outgoing" && (
+              <a
+                href={`/api/admin/payments/${payment.id}/voucher`}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-4 py-2 text-sm font-medium text-[#11272b] hover:bg-[#f4ecdd]"
+                title="Download a branded payment voucher PDF for this remittance"
+              >
+                <Download className="h-4 w-4" />
+                Download voucher
+              </a>
+            )}
+            {payment.type === "incoming" && payment.status === "pending" && (
+              <MarkPaymentReceivedButton paymentId={payment.id} />
+            )}
+          </div>
         </div>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>

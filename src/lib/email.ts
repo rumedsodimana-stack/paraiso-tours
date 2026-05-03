@@ -1539,6 +1539,11 @@ export interface SupplierRemittanceParams {
   reference?: string;
   date?: string;
   description?: string;
+  /** When provided, the matching outgoing payment is loaded and the
+   *  branded voucher PDF is attached to the email. Pass through from
+   *  sendSupplierRemittanceAction so suppliers receive a printable
+   *  voucher alongside the email body. */
+  paymentId?: string;
 }
 
 export async function sendSupplierRemittanceEmail(
@@ -1551,31 +1556,80 @@ export async function sendSupplierRemittanceEmail(
   const dateFmt = params.date
     ? new Date(params.date).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" })
     : new Date().toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" });
-  const html = `
-<!DOCTYPE html><html><body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0d9488;">Payment remittance advice</h2>
-  <p>Dear ${escapeHtml(params.supplierName)},</p>
-  <p>This notice confirms a payment from ${escapeHtml(branding.companyName)}.</p>
-  <table style="width:100%; border-collapse:collapse; margin:20px 0; background:#f8fafc; border-radius:8px; overflow:hidden;">
-    <tr><td style="padding:12px 16px; font-weight:600; color:#475569;">Amount</td><td style="padding:12px 16px; font-weight:600; color:#059669;">${params.amount.toLocaleString()} ${params.currency}</td></tr>
-    <tr><td style="padding:12px 16px; font-weight:600; color:#475569;">Payment date</td><td style="padding:12px 16px;">${dateFmt}</td></tr>
-    ${params.description ? `<tr><td style="padding:12px 16px; font-weight:600; color:#475569;">Description</td><td style="padding:12px 16px;">${escapeHtml(params.description)}</td></tr>` : ""}
-    ${params.reference ? `<tr><td style="padding:12px 16px; font-weight:600; color:#475569;">Reference</td><td style="padding:12px 16px;">${escapeHtml(params.reference)}</td></tr>` : ""}
-  </table>
-  <p>If you have any questions please reply to this email.</p>
-  ${getSignatureHtml(branding)}
-</body></html>`.trim();
+
+  // Branded shell — same header/footer/sign-off as every other email
+  // template. Replaces the old hand-rolled HTML which used the
+  // pre-rebrand teal palette (#0d9488).
+  const html = buildBrandedEmail(
+    {
+      eyebrow: "Payment remittance",
+      title: `Payment of ${params.amount.toLocaleString()} ${params.currency} sent`,
+      greeting: `Dear ${params.supplierName},`,
+      intro: `This notice confirms a payment from ${branding.companyName}. A printable voucher is attached as a PDF for your records.`,
+      sections: [
+        {
+          label: "Remittance details",
+          variant: "card",
+          rows: [
+            {
+              label: "Amount",
+              value: `<b style="color:#11272b;">${params.amount.toLocaleString()} ${params.currency}</b>`,
+              emphasis: true,
+            },
+            { label: "Payment date", value: dateFmt },
+            ...(params.description
+              ? [{ label: "Description", value: escapeHtml(params.description) }]
+              : []),
+            ...(params.reference
+              ? [{ label: "Reference", value: escapeHtml(params.reference) }]
+              : []),
+          ],
+        },
+      ],
+      closing:
+        "If you have any questions about this payment please reply to this email.",
+    },
+    branding
+  );
+
+  // Best-effort attach the branded voucher PDF. Render is wrapped so
+  // a missing payment / weird Unicode / image fetch failure doesn't
+  // block the email — supplier still gets the HTML body.
+  let attachments: { filename: string; content: string }[] | undefined;
+  if (params.paymentId) {
+    try {
+      const { generatePaymentVoucherPdf } = await import("./voucher-pdf");
+      const { getPayment, getHotel } = await import("./db");
+      const payment = await getPayment(params.paymentId);
+      if (payment && payment.type === "outgoing") {
+        const supplier = payment.supplierId
+          ? await getHotel(payment.supplierId)
+          : null;
+        const pdfBuffer = await generatePaymentVoucherPdf({ payment, supplier });
+        const ref = (payment.reference || payment.id).replace(
+          /[^a-zA-Z0-9_-]/g,
+          "-"
+        );
+        attachments = [
+          {
+            filename: `Payment-Voucher-${ref}.pdf`,
+            content: pdfBuffer.toString("base64"),
+          },
+        ];
+      }
+    } catch {
+      // Fall through to email-without-attachment.
+    }
+  }
+
   try {
     const { error } = await withEmailRetry(() => resend.emails.send({
       from: getFromEmail(branding.companyName),
-      // replyTo points at the configured company inbox so guest and
-      // supplier replies land somewhere real — not at the synthetic
-      // sending address (e.g. bookings@paraiso.tours) which Resend
-      // creates on the fly for outbound delivery only.
       replyTo: branding.email,
       to: [email],
       subject: `Payment remittance – ${params.amount.toLocaleString()} ${params.currency}${params.reference ? ` – ${params.reference}` : ""}`,
       html,
+      ...(attachments ? { attachments } : {}),
     }));
     if (error) return { ok: false, error };
     return { ok: true };

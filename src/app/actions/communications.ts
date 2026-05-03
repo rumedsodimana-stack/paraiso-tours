@@ -656,6 +656,8 @@ export async function sendSupplierRemittanceAction(
     reference: payment.reference,
     date: payment.date,
     description: payment.description,
+    // Pass through so the voucher PDF gets attached to the email.
+    paymentId: payment.id,
   });
 
   await recordAuditEvent({
