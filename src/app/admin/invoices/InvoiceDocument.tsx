@@ -13,13 +13,22 @@ function statusLabel(s: InvoiceStatus): string {
   }
 }
 
+/**
+ * Status pill colors. Match the PDF status-pill palette exactly so
+ * a screenshotted invoice reads the same as the downloaded one.
+ */
 function statusBadgeClass(s: InvoiceStatus): string {
   switch (s) {
-    case "pending_payment": return "bg-amber-100 text-amber-800 print:bg-amber-100";
-    case "paid": return "bg-emerald-100 text-emerald-800 print:bg-emerald-100";
-    case "overdue": return "bg-rose-100 text-rose-800 print:bg-rose-100";
-    case "cancelled": return "bg-stone-100 text-stone-600 print:bg-stone-100";
-    default: return "bg-stone-100 text-stone-600";
+    case "pending_payment":
+      return "bg-amber-100 text-amber-800 print:bg-amber-100";
+    case "paid":
+      return "bg-emerald-100 text-emerald-800 print:bg-emerald-100";
+    case "overdue":
+      return "bg-rose-100 text-rose-800 print:bg-rose-100";
+    case "cancelled":
+      return "bg-stone-100 text-stone-600 print:bg-stone-100";
+    default:
+      return "bg-stone-100 text-stone-600";
   }
 }
 
@@ -50,145 +59,164 @@ export function InvoiceDocument({ invoice, letterhead }: InvoiceDocumentProps) {
     : null;
 
   return (
-    <div className="max-w-[210mm] mx-auto bg-white text-stone-900 print:max-w-none print:shadow-none">
-      <InvoiceLetterhead {...letterhead} />
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] mb-8">
+    <div
+      className="mx-auto max-w-[210mm] bg-white text-[#11272b] print:max-w-none print:shadow-none"
+      style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
+    >
+      <InvoiceLetterhead {...letterhead} kicker="Invoice" />
+
+      {/* Title row: invoice number + status pill, with issued/paid meta */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-stone-500">
-            Invoice
-          </p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900">
+          <h2 className="text-3xl font-bold tracking-tight text-[#11272b]">
             {invoice.invoiceNumber}
           </h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-stone-600">
-            This invoice covers the confirmed travel booking and selected package
-            services recorded in your itinerary.
+          <p className="mt-2 text-sm text-[#5e7279]">
+            <span>Issued {issuedDate}</span>
+            {invoice.travelDate && (
+              <>
+                <span className="mx-2 text-[#c9922f]">·</span>
+                <span>Travel {invoice.travelDate}</span>
+              </>
+            )}
+            {invoice.reference && (
+              <>
+                <span className="mx-2 text-[#c9922f]">·</span>
+                <span>Ref {invoice.reference}</span>
+              </>
+            )}
           </p>
         </div>
-        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 print:border-stone-300 print:bg-stone-50">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
-                Status
-              </p>
-              <span
-                className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(invoice.status)}`}
-              >
-                {statusLabel(invoice.status)}
-              </span>
-            </div>
-            <div className="text-right text-sm text-stone-600">
-              <p>Issued: {issuedDate}</p>
-              {paidDate ? <p className="mt-1">Paid: {paidDate}</p> : null}
-            </div>
-          </div>
-          <div className="mt-5 border-t border-stone-200 pt-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
-              Amount due
-            </p>
-            <p className="mt-2 text-3xl font-semibold text-stone-900">
-              {invoice.totalAmount.toLocaleString()} {invoice.currency}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2 mb-8">
-        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 print:border-stone-300 print:bg-stone-50">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-            Bill to
-          </h3>
-          <p className="mt-3 font-medium text-stone-900">{invoice.clientName}</p>
-          <p className="mt-1 text-sm text-stone-600">{invoice.clientEmail}</p>
-          {invoice.clientPhone && (
-            <p className="mt-1 text-sm text-stone-600">{invoice.clientPhone}</p>
+        <div className="flex flex-col items-end gap-2">
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${statusBadgeClass(invoice.status)}`}
+          >
+            {statusLabel(invoice.status)}
+          </span>
+          {paidDate && (
+            <p className="text-xs text-[#5e7279]">Paid {paidDate}</p>
           )}
         </div>
-        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 print:border-stone-300 print:bg-stone-50">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+      </div>
+
+      {/* Bill to + Booking details cards */}
+      <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-5 print:border-[#e0e4dd]">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9922f]">
+            Bill to
+          </h3>
+          <p className="mt-3 font-semibold text-[#11272b]">
+            {invoice.clientName}
+          </p>
+          <p className="mt-1 text-sm text-[#5e7279]">{invoice.clientEmail}</p>
+          {invoice.clientPhone && (
+            <p className="mt-1 text-sm text-[#5e7279]">{invoice.clientPhone}</p>
+          )}
+        </div>
+        <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-5 print:border-[#e0e4dd]">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9922f]">
             Booking details
           </h3>
-          <p className="mt-3 font-medium text-stone-900">{invoice.packageName}</p>
-          <div className="mt-2 space-y-1 text-sm text-stone-600">
-            {invoice.reference ? <p>Reference: {invoice.reference}</p> : null}
-            {invoice.travelDate ? <p>Travel date: {invoice.travelDate}</p> : null}
-            {invoice.pax != null ? <p>Travellers: {invoice.pax}</p> : null}
+          <p className="mt-3 font-semibold text-[#11272b]">
+            {invoice.packageName}
+          </p>
+          <div className="mt-1 space-y-0.5 text-sm text-[#5e7279]">
+            {invoice.travelDate && <p>Travel: {invoice.travelDate}</p>}
+            {invoice.pax != null && (
+              <p>
+                {invoice.pax} {invoice.pax === 1 ? "traveller" : "travellers"}
+              </p>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-stone-200 print:border-stone-300">
+      {/* Line items table — gold accent header, zebra rows */}
+      <div className="overflow-hidden rounded-2xl border border-[#e0e4dd] print:border-[#e0e4dd]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-stone-200 bg-stone-50 print:bg-stone-100">
-              <th className="px-4 py-3 text-left font-semibold text-stone-700">Description</th>
-              <th className="px-4 py-3 text-right font-semibold text-stone-700">Amount</th>
+            <tr className="border-b-2 border-[#c9922f] bg-[#fffbf4] print:bg-[#fffbf4]">
+              <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9922f]">
+                Description
+              </th>
+              <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9922f]">
+                Amount
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-stone-100">
-              <td className="px-4 py-3 text-stone-700">Base package</td>
-              <td className="px-4 py-3 text-right">
+            <tr className="border-b border-[#f4ecdd] odd:bg-[#fffbf4] print:odd:bg-[#fffbf4]">
+              <td className="px-4 py-3 text-[#11272b]">Base package</td>
+              <td className="px-4 py-3 text-right font-medium text-[#11272b]">
                 {invoice.baseAmount.toLocaleString()} {invoice.currency}
               </td>
             </tr>
             {invoice.lineItems.map((item, i) => (
-              <tr key={i} className="border-b border-stone-100">
-                <td className="px-4 py-3 text-stone-700">{item.description}</td>
-                <td className="px-4 py-3 text-right">
+              <tr
+                key={i}
+                className="border-b border-[#f4ecdd] odd:bg-[#fffbf4] print:odd:bg-[#fffbf4]"
+              >
+                <td className="px-4 py-3 text-[#11272b]">{item.description}</td>
+                <td className="px-4 py-3 text-right font-medium text-[#11272b]">
                   {item.amount.toLocaleString()} {invoice.currency}
                 </td>
               </tr>
             ))}
-            <tr className="bg-teal-50/50 print:bg-teal-50">
-              <td className="px-4 py-3 font-semibold text-stone-900">Total</td>
-              <td className="px-4 py-3 text-right font-semibold text-stone-900">
-                {invoice.totalAmount.toLocaleString()} {invoice.currency}
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-[1fr_0.8fr]">
-        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 print:border-stone-300 print:bg-stone-50">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-            Payment notes
+      {/* Total band — gold-tinted, large teal amount, matches PDF */}
+      <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#f6ead6] px-5 py-4 print:bg-[#f6ead6]">
+        <span className="text-sm font-bold text-[#11272b]">Total due</span>
+        <span className="text-2xl font-bold tracking-tight text-[#12343b]">
+          {invoice.totalAmount.toLocaleString()} {invoice.currency}
+        </span>
+      </div>
+
+      {/* Payment notes + booking summary */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_0.7fr]">
+        <div className="rounded-2xl border border-[#e0e4dd] bg-[#fffbf4] p-5 print:border-[#e0e4dd]">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9922f]">
+            Payment terms
           </h3>
-          <div className="mt-3 space-y-3 text-sm text-stone-600">
-            <p>
-              <span className="font-medium text-stone-700">Payment terms:</span>{" "}
-              Payment due within 14 days of invoice date.
-            </p>
-            {invoice.notes ? (
-              <p>
-                <span className="font-medium text-stone-700">Notes:</span>{" "}
-                {invoice.notes}
-              </p>
-            ) : (
-              <p>Please contact our team if you need a revised invoice or payment guidance.</p>
-            )}
-          </div>
+          <p className="mt-3 text-sm text-[#11272b]">
+            Payment due within 14 days of invoice date. Bank transfer details
+            on request.
+          </p>
+          {invoice.notes && (
+            <div className="mt-4 border-t border-[#f4ecdd] pt-4">
+              <h4 className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9922f]">
+                Notes
+              </h4>
+              <p className="mt-2 text-sm text-[#5e7279]">{invoice.notes}</p>
+            </div>
+          )}
         </div>
-        <div className="rounded-2xl border border-stone-200 bg-[#12343b] p-5 text-[#f6ead6] print:border-stone-300 print:bg-white print:text-stone-900">
-          <p className="text-xs uppercase tracking-[0.22em] text-[#dcb87b] print:text-stone-500">
+        <div className="rounded-2xl bg-[#12343b] p-5 text-[#f6ead6] print:bg-[#12343b]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9922f]">
             Summary
           </p>
-          <p className="mt-3 text-sm">
+          <p className="mt-3 text-sm text-[#f6ead6]/85">
             Invoice {invoice.invoiceNumber} for {invoice.clientName}
           </p>
-          <p className="mt-2 text-2xl font-semibold">
+          <p className="mt-2 text-2xl font-bold">
             {invoice.totalAmount.toLocaleString()} {invoice.currency}
           </p>
-          <p className="mt-4 text-sm text-[#e4d8c1] print:text-stone-600">
-            Thank you for choosing us to arrange your Sri Lanka journey.
+          <p className="mt-4 text-xs italic text-[#c9922f]">
+            Thank you for choosing us — we&apos;re excited to host your journey.
           </p>
         </div>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-stone-200 space-y-2 text-sm text-stone-500">
+      {/* Footer */}
+      <div className="mt-8 border-t border-[#e0e4dd] pt-4 text-xs text-[#5e7279]">
         <p>
-          Generated on {issuedDate}. Please quote invoice number {invoice.invoiceNumber} when making payment or contacting support.
+          Generated on {issuedDate}. Please quote invoice number{" "}
+          <span className="font-semibold text-[#11272b]">
+            {invoice.invoiceNumber}
+          </span>{" "}
+          when making payment or contacting support.
         </p>
       </div>
     </div>

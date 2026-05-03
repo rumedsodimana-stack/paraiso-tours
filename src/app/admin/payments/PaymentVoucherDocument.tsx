@@ -24,10 +24,13 @@ interface PaymentVoucherDocumentProps {
 
 export function PaymentVoucherDocument({ payment, letterhead }: PaymentVoucherDocumentProps) {
   return (
-    <div className="max-w-[210mm] mx-auto bg-white text-stone-900 print:max-w-none print:shadow-none">
-      <InvoiceLetterhead {...letterhead} />
+    <div
+      className="mx-auto max-w-[210mm] bg-white text-[#11272b] print:max-w-none print:shadow-none"
+      style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
+    >
+      <InvoiceLetterhead {...letterhead} kicker="Payment Voucher" />
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-stone-900">PAYMENT VOUCHER</h2>
+        <h2 className="text-lg font-semibold text-[#11272b]">PAYMENT VOUCHER</h2>
         <p className="mt-1 text-sm text-stone-600">Ref: {payment.id}</p>
         <p className="text-sm text-stone-500">
           Date: {new Date(payment.date).toLocaleDateString("en-GB", {
