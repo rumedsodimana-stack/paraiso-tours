@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createLead, extractErrorMessage } from "@/lib/db";
+import { createLead, extractErrorMessage, getLeads } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 import { debugLog } from "@/lib/debug";
 import { sendBookingRequestConfirmation } from "@/lib/email";
@@ -9,6 +9,11 @@ import {
   isWhatsAppConfigured,
   sendWhatsAppBookingConfirmation,
 } from "@/lib/whatsapp";
+import {
+  customRouteRequestSchema,
+  zodErrorMessage,
+} from "@/lib/validation";
+import { checkPublicBookingRateLimit } from "@/lib/booking-rate-limit";
 
 export interface CustomRouteRequestStopInput {
   destinationId: string;
@@ -109,18 +114,31 @@ function formatCustomRouteNotes(input: CustomRouteRequestInput) {
 export async function createCustomRouteRequestAction(
   input: CustomRouteRequestInput
 ) {
-  const name = input.name?.trim();
-  const email = input.email?.trim();
-  const phone = input.phone?.trim();
-  const travelDate = input.travelDate?.trim();
-  const notes = formatCustomRouteNotes(input);
-
-  if (!name || !email) {
-    return { error: "Name and email are required." };
+  // Strict input validation up front. Caps every string + array at
+  // sane lengths so a hostile / buggy client can't push a 10MB
+  // payload into the DB or 10000 route stops into a single lead.
+  const parsed = customRouteRequestSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: zodErrorMessage(parsed.error) };
   }
 
-  if (!Array.isArray(input.routeStops) || input.routeStops.length === 0) {
-    return { error: "Add at least one destination before sending the request." };
+  const name = parsed.data.name.trim();
+  const email = parsed.data.email.trim();
+  const phone = parsed.data.phone?.trim();
+  const travelDate = parsed.data.travelDate?.trim();
+  const notes = formatCustomRouteNotes(input);
+
+  // Per-email rate limit. Without this, a bot could submit
+  // thousands of fake bookings — exhausting Resend daily limits,
+  // bloating the DB, and burying real bookings in admin's inbox.
+  // The check counts recent leads from the same email; >5 in 1
+  // hour rejects the submission with a clear retry message.
+  const rateLimit = await checkPublicBookingRateLimit({
+    email,
+    getLeads,
+  });
+  if (!rateLimit.ok) {
+    return { error: rateLimit.message };
   }
 
   const routeLabel = input.routeStops.map((stop) => stop.destinationName).join(" -> ");

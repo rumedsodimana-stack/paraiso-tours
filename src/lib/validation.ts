@@ -89,3 +89,45 @@ export function formDataToObject(
 export function zodErrorMessage(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Validation failed";
 }
+
+// --- Custom-route booking (public-facing journey-builder) ---
+//
+// Same input-cap discipline as clientBookingSchema. Without these
+// caps, a hostile client could push a 10MB notes blob into the DB
+// or 10000 route stops into a single payload.
+export const customRouteRequestSchema = z.object({
+  name: z.string().min(1, "Name is required").max(200),
+  email: z.string().email("Valid email is required").max(320),
+  phone: z.string().max(50).optional(),
+  travelDate: z.string().max(40).optional(),
+  pax: z.number().int().min(1).max(50),
+  desiredNights: z.number().int().min(0).max(60),
+  stayStyle: z.string().max(200),
+  transportLabel: z.string().max(200),
+  mealLabel: z.string().max(200).optional(),
+  mealRequest: z.string().max(2000).optional(),
+  accommodationMode: z.enum(["auto", "choose"]).optional(),
+  guidanceFee: z.number().finite().min(0).max(100000).optional(),
+  guidanceLabel: z.string().max(200).optional(),
+  routeStops: z
+    .array(
+      z.object({
+        destinationId: z.string().max(200),
+        destinationName: z.string().max(200),
+        nights: z.number().int().min(0).max(60),
+        hotelName: z.string().max(200).optional(),
+        hotelId: z.string().max(200).optional(),
+        hotelRate: z.number().finite().min(0).max(1000000).optional(),
+        hotelCurrency: z.string().max(10).optional(),
+        activities: z.array(z.string().max(500)).max(50),
+        legDistanceKm: z.number().finite().min(0).max(50000).optional(),
+        legDriveHours: z.number().finite().min(0).max(500).optional(),
+      })
+    )
+    .min(1, "Add at least one destination")
+    .max(60, "Too many stops"),
+  estimatedTotal: z.number().finite().min(0).max(10000000),
+  estimatedCurrency: z.string().min(1).max(10),
+  totalDriveHours: z.number().finite().min(0).max(2000),
+  notes: z.string().max(5000).optional(),
+});

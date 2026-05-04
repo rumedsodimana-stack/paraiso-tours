@@ -1,8 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createLead, getAllMealPlans, extractErrorMessage } from "@/lib/db";
+import {
+  createLead,
+  getAllMealPlans,
+  extractErrorMessage,
+  getLeads,
+} from "@/lib/db";
 import { getPackage } from "@/lib/db";
+import { checkPublicBookingRateLimit } from "@/lib/booking-rate-limit";
 import { recordAuditEvent } from "@/lib/audit";
 import { debugLog } from "@/lib/debug";
 import { sendBookingRequestConfirmation } from "@/lib/email";
@@ -83,6 +89,20 @@ export async function createClientBookingAction(
     selectedMealPlanByNight,
     totalPrice: clientReportedTotalPrice,
   } = parsed.data;
+
+  // Per-email rate limit. Without this, a bot could submit
+  // thousands of fake bookings — exhausting the Resend daily
+  // limit, bloating the leads table, and burying real bookings
+  // in admin's inbox. Rejects with a polite "try again in an
+  // hour" message when the same email has submitted >5 leads in
+  // the last hour. See lib/booking-rate-limit.ts for the contract.
+  const rateLimit = await checkPublicBookingRateLimit({
+    email,
+    getLeads,
+  });
+  if (!rateLimit.ok) {
+    return { error: rateLimit.message };
+  }
 
   const pkg = await getPackage(packageId);
   if (!pkg) {
