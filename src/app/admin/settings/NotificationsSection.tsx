@@ -128,7 +128,8 @@ export function NotificationsSection() {
           <div className="space-y-2">
             <EnvRow variable="WHATSAPP_ACCESS_TOKEN" description="Meta Graph API access token from your WhatsApp Business App" />
             <EnvRow variable="WHATSAPP_PHONE_NUMBER_ID" description="Phone number ID from Meta Developer Console (not the actual phone number)" />
-            <EnvRow variable="WHATSAPP_WEBHOOK_VERIFY_TOKEN" description="Any secret string you choose — used to verify webhook calls from Meta" />
+            <EnvRow variable="WHATSAPP_WEBHOOK_VERIFY_TOKEN" description="Any secret string you choose — used by Meta during webhook handshake" />
+            <EnvRow variable="WHATSAPP_APP_SECRET" description="App secret from Meta Developer Console — used to verify the X-Hub-Signature-256 on every inbound webhook so attackers can't inject fake guest messages" />
           </div>
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <a

@@ -22,11 +22,52 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { recordAuditEvent } from "@/lib/audit";
 import { getLeads } from "@/lib/db";
 import { debugLog } from "@/lib/debug";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN?.trim();
+const APP_SECRET = process.env.WHATSAPP_APP_SECRET?.trim();
+
+/**
+ * Verify the X-Hub-Signature-256 header that Meta attaches to every
+ * webhook POST. Without this check, anyone who knows the webhook
+ * URL could inject fake guest messages and audit rows. Meta signs
+ * the raw request body with HMAC-SHA256 keyed by the WhatsApp app
+ * secret (configurable as `WHATSAPP_APP_SECRET` in Vercel env).
+ *
+ * Behaviour:
+ *  - If APP_SECRET is unset (development / first-time setup):
+ *    skip verification but log a warning. Production should always
+ *    set it.
+ *  - If APP_SECRET is set but the header is missing or doesn't
+ *    match: return false. Caller responds with 401.
+ *
+ * Uses timingSafeEqual to defend against timing attacks on the
+ * comparison.
+ */
+function verifyMetaSignature(
+  rawBody: string,
+  headerValue: string | null
+): boolean {
+  if (!APP_SECRET) {
+    debugLog(
+      "WhatsApp webhook signature check skipped — WHATSAPP_APP_SECRET unset"
+    );
+    return true;
+  }
+  if (!headerValue) return false;
+  // Header format: "sha256=<hex>"
+  const match = headerValue.match(/^sha256=([0-9a-f]+)$/i);
+  if (!match) return false;
+  const provided = Buffer.from(match[1], "hex");
+  const expected = createHmac("sha256", APP_SECRET)
+    .update(rawBody)
+    .digest();
+  if (provided.length !== expected.length) return false;
+  return timingSafeEqual(provided, expected);
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -86,7 +127,24 @@ function bodyFromMessage(msg: IncomingMessage): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Read the raw body (not request.json()) so we can compute the
+    // HMAC over the exact bytes Meta signed. JSON.parse would lose
+    // whitespace/ordering and break the comparison.
+    const rawBody = await request.text();
+    const signatureOk = verifyMetaSignature(
+      rawBody,
+      request.headers.get("x-hub-signature-256")
+    );
+    if (!signatureOk) {
+      // Don't 200 Meta-like — return 401 so a real attacker can tell
+      // we're rejecting them. Meta retries on non-2xx, but a real
+      // signed request would never see this branch.
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 401 }
+      );
+    }
+    const body = JSON.parse(rawBody);
 
     if (body.object !== "whatsapp_business_account") {
       return NextResponse.json({ ok: true });
