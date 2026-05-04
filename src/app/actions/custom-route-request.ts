@@ -254,41 +254,77 @@ export async function createCustomRouteRequestAction(
   }
 
   if (isWhatsAppConfigured() && lead.phone?.trim()) {
-    sendWhatsAppBookingConfirmation({
-      clientName: lead.name,
-      phone: lead.phone,
-      reference: lead.reference ?? lead.id,
-      packageName: "Custom Sri Lanka journey",
-      travelDate: lead.travelDate,
-      pax: lead.pax,
-    }).catch(async (err) => {
-      const errMsg = extractErrorMessage(err);
-      debugLog("Custom route WhatsApp failed", {
-        error: errMsg,
-        leadId: lead.id,
-      });
-      // Surface to /admin/communications so a broken WhatsApp
-      // pipeline doesn't silently swallow custom-journey
-      // confirmations.
+    // Records the outcome in /admin/communications so the admin
+    // sees EVERY WhatsApp confirmation in the inbox — sent
+    // successfully, failed softly (helper returned ok:false), or
+    // threw outright. The previous .catch-only pattern silently
+    // dropped successful confirmations from the inbox.
+    (async () => {
       try {
-        await recordAuditEvent({
-          entityType: "lead",
-          entityId: lead.id,
-          action: "whatsapp_booking_confirmation_failed",
-          summary: `WhatsApp confirmation failed for ${lead.name}: ${errMsg}`,
-          actor: "Client Route Builder",
-          metadata: {
-            channel: "whatsapp",
-            recipient: lead.phone,
-            template: "booking_confirmation",
-            status: "failed",
-            error: errMsg,
-          },
+        const r = await sendWhatsAppBookingConfirmation({
+          clientName: lead.name,
+          phone: lead.phone,
+          reference: lead.reference ?? lead.id,
+          packageName: "Custom Sri Lanka journey",
+          travelDate: lead.travelDate,
+          pax: lead.pax,
         });
-      } catch {
-        // Best-effort — don't bubble.
+        if (r.ok) {
+          await recordAuditEvent({
+            entityType: "lead",
+            entityId: lead.id,
+            action: "whatsapp_booking_confirmation_sent",
+            summary: `WhatsApp confirmation sent to ${lead.name} (${lead.phone})`,
+            actor: "Client Route Builder",
+            metadata: {
+              channel: "whatsapp",
+              recipient: lead.phone,
+              template: "booking_confirmation",
+              status: "sent",
+            },
+          });
+        } else {
+          await recordAuditEvent({
+            entityType: "lead",
+            entityId: lead.id,
+            action: "whatsapp_booking_confirmation_failed",
+            summary: `WhatsApp confirmation failed for ${lead.name}: ${r.error ?? "unknown"}`,
+            actor: "Client Route Builder",
+            metadata: {
+              channel: "whatsapp",
+              recipient: lead.phone,
+              template: "booking_confirmation",
+              status: "failed",
+              error: r.error ?? "unknown",
+            },
+          });
+        }
+      } catch (err) {
+        const errMsg = extractErrorMessage(err);
+        debugLog("Custom route WhatsApp threw", {
+          error: errMsg,
+          leadId: lead.id,
+        });
+        try {
+          await recordAuditEvent({
+            entityType: "lead",
+            entityId: lead.id,
+            action: "whatsapp_booking_confirmation_failed",
+            summary: `WhatsApp confirmation threw for ${lead.name}: ${errMsg}`,
+            actor: "Client Route Builder",
+            metadata: {
+              channel: "whatsapp",
+              recipient: lead.phone,
+              template: "booking_confirmation",
+              status: "failed",
+              error: errMsg,
+            },
+          });
+        } catch {
+          // Best-effort — done our best.
+        }
       }
-    });
+    })();
   }
 
   // Auto-trigger booking processor agent. If startup fails (e.g. AI

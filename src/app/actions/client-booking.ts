@@ -366,42 +366,77 @@ export async function createClientBookingAction(
   })();
 
   // Send WhatsApp confirmation if configured and client provided phone.
-  // Failures get logged to /admin/communications so the admin sees when
-  // WhatsApp is broken instead of guessing. (Sending happens in
-  // background but the failure path awaits the audit write.)
+  // Records the outcome in /admin/communications so the admin sees
+  // EVERY WhatsApp message in the inbox — sent successfully, failed
+  // softly (helper returned ok:false), or threw outright. Without
+  // both branches the success path was silently invisible.
   if (isWhatsAppConfigured() && lead.phone?.trim()) {
-    sendWhatsAppBookingConfirmation({
-      clientName: lead.name,
-      phone: lead.phone,
-      reference: lead.reference ?? lead.id,
-      packageName: pkg.name,
-      travelDate: lead.travelDate,
-      pax: lead.pax,
-    }).catch(async (err) => {
-      const errMsg = extractErrorMessage(err);
-      debugLog("WhatsApp booking confirmation failed", {
-        error: errMsg,
-        leadId: lead.id,
-      });
+    (async () => {
       try {
-        await recordAuditEvent({
-          entityType: "lead",
-          entityId: lead.id,
-          action: "whatsapp_booking_confirmation_failed",
-          summary: `WhatsApp confirmation failed for ${lead.name}: ${errMsg}`,
-          actor: "Client Portal",
-          metadata: {
-            channel: "whatsapp",
-            recipient: lead.phone,
-            template: "booking_confirmation",
-            status: "failed",
-            error: errMsg,
-          },
+        const r = await sendWhatsAppBookingConfirmation({
+          clientName: lead.name,
+          phone: lead.phone,
+          reference: lead.reference ?? lead.id,
+          packageName: pkg.name,
+          travelDate: lead.travelDate,
+          pax: lead.pax,
         });
-      } catch {
-        // Don't bubble — at this point we've done our best.
+        if (r.ok) {
+          await recordAuditEvent({
+            entityType: "lead",
+            entityId: lead.id,
+            action: "whatsapp_booking_confirmation_sent",
+            summary: `WhatsApp confirmation sent to ${lead.name} (${lead.phone})`,
+            actor: "Client Portal",
+            metadata: {
+              channel: "whatsapp",
+              recipient: lead.phone,
+              template: "booking_confirmation",
+              status: "sent",
+            },
+          });
+        } else {
+          await recordAuditEvent({
+            entityType: "lead",
+            entityId: lead.id,
+            action: "whatsapp_booking_confirmation_failed",
+            summary: `WhatsApp confirmation failed for ${lead.name}: ${r.error ?? "unknown"}`,
+            actor: "Client Portal",
+            metadata: {
+              channel: "whatsapp",
+              recipient: lead.phone,
+              template: "booking_confirmation",
+              status: "failed",
+              error: r.error ?? "unknown",
+            },
+          });
+        }
+      } catch (err) {
+        const errMsg = extractErrorMessage(err);
+        debugLog("WhatsApp booking confirmation threw", {
+          error: errMsg,
+          leadId: lead.id,
+        });
+        try {
+          await recordAuditEvent({
+            entityType: "lead",
+            entityId: lead.id,
+            action: "whatsapp_booking_confirmation_failed",
+            summary: `WhatsApp confirmation threw for ${lead.name}: ${errMsg}`,
+            actor: "Client Portal",
+            metadata: {
+              channel: "whatsapp",
+              recipient: lead.phone,
+              template: "booking_confirmation",
+              status: "failed",
+              error: errMsg,
+            },
+          });
+        } catch {
+          // Done our best.
+        }
       }
-    });
+    })();
   }
 
   return { success: true, leadId: lead.id, reference: lead.reference ?? undefined };

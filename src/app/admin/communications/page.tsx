@@ -53,6 +53,11 @@ interface MessageRow {
   invoiceId?: string;
   paymentId?: string;
   supplierName?: string;
+  /** Guest name resolved from the linked lead/tour at render time.
+   *  Surfaced as a top-level table column so admin can scan
+   *  /admin/communications by guest name (matching how
+   *  /admin/bookings indexes), not by tour package or template. */
+  guestName?: string;
 }
 
 // Audit `action` strings that represent an outbound email event. Kept
@@ -118,10 +123,12 @@ const EMAIL_ACTIONS = new Set([
   // ends with `_skipped` so the existing status-detection logic
   // (`endsWith("_skipped")`) classifies it correctly.
   "email_provider_unconfigured_skipped",
-  // WhatsApp delivery failures from the public booking flow. Same
-  // visibility argument as admin_new_booking_alert_failed — without
-  // this row the admin can't tell whether WhatsApp is broken or
-  // just unconfigured.
+  // WhatsApp confirmation outcomes from the public booking flow.
+  // The "_sent" event is required so successful WhatsApp messages
+  // appear in the inbox — the previous .catch-only pattern was
+  // silently dropping them. The "_failed" companion lets admin
+  // tell whether WhatsApp is broken or just unconfigured.
+  "whatsapp_booking_confirmation_sent",
   "whatsapp_booking_confirmation_failed",
   // Inbound WhatsApp messages from guests. The webhook tries to
   // match the sender phone to an existing lead; matched messages
@@ -314,11 +321,26 @@ export default async function CommunicationsPage({
     messages = messages.filter((m) => new Date(m.createdAt).getTime() >= cutoff);
   }
 
-  // Attach lead context (for resend buttons we need a leadId)
+  // Attach lead context — needed for the resend buttons (leadId) and
+  // for the new Guest column (resolves the guest name from lead first,
+  // tour second, so admin can scan the inbox by guest the same way
+  // they do in /admin/bookings).
   messages = messages.map((row) => {
     if (!row.leadId && row.tourId) {
       const t = tourById.get(row.tourId);
       if (t) row.leadId = t.leadId;
+    }
+    // Resolve the guest name. Lead is the canonical source (set the
+    // moment the booking is created); tour.clientName is a denormalized
+    // copy used as a fallback when the lead lookup misses (e.g. archived
+    // lead, supplier-channel rows whose entityType isn't lead).
+    if (row.leadId) {
+      const lead = leadById.get(row.leadId);
+      if (lead?.name) row.guestName = lead.name;
+    }
+    if (!row.guestName && row.tourId) {
+      const tour = tourById.get(row.tourId);
+      if (tour?.clientName) row.guestName = tour.clientName;
     }
     return row;
   });
@@ -343,7 +365,11 @@ export default async function CommunicationsPage({
       (m) =>
         m.recipient.toLowerCase().includes(query) ||
         m.summary.toLowerCase().includes(query) ||
-        (m.supplierName ?? "").toLowerCase().includes(query)
+        (m.supplierName ?? "").toLowerCase().includes(query) ||
+        // Guest-name matching — admins search by guest name (matching
+        // /admin/bookings) more often than by recipient email, so the
+        // search box must hit this field.
+        (m.guestName ?? "").toLowerCase().includes(query)
     );
   }
 
@@ -418,6 +444,7 @@ export default async function CommunicationsPage({
             <thead>
               <tr className="border-b border-[#e0e4dd] bg-[#f4ecdd] text-left text-xs uppercase tracking-[0.1em] text-[#8a9ba1]">
                 <th className="px-4 py-3 font-semibold">When</th>
+                <th className="px-4 py-3 font-semibold">Guest</th>
                 <th className="px-4 py-3 font-semibold">Template</th>
                 <th className="px-4 py-3 font-semibold">Recipient</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
@@ -439,6 +466,24 @@ export default async function CommunicationsPage({
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
+                    </td>
+                    <td className="px-4 py-3 text-[#11272b]">
+                      {m.guestName ? (
+                        m.leadId ? (
+                          <Link
+                            href={`/admin/bookings/${m.leadId}`}
+                            className="font-medium text-[#11272b] hover:text-[#12343b] hover:underline"
+                          >
+                            {m.guestName}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-[#11272b]">
+                            {m.guestName}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-[#8a9ba1]">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-[#11272b]">{m.templateLabel}</td>
                     <td className="px-4 py-3 text-[#5e7279]">
