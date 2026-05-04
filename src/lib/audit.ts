@@ -1,4 +1,5 @@
 import { createAuditLog, getAuditLogs } from "./db";
+import { getCurrentActor } from "./audit-context";
 import type { AuditEntityType, AuditLog } from "./types";
 
 export async function recordAuditEvent(input: {
@@ -11,12 +12,20 @@ export async function recordAuditEvent(input: {
   metadata?: Record<string, unknown>;
 }): Promise<AuditLog | null> {
   try {
+    // Actor priority:
+    // 1. Explicit `input.actor` (set by callers like the public booking
+    //    flow that records "Client Portal" or "Client Route Builder")
+    // 2. AsyncLocalStorage context (set by AI agent tool wrappers via
+    //    runAsActor("AI Assistant") so nested admin-action audit
+    //    events get tagged correctly without changing every call site)
+    // 3. "Admin" default for direct admin server-action calls
+    const actor = input.actor ?? getCurrentActor() ?? "Admin";
     return await createAuditLog({
       entityType: input.entityType,
       entityId: input.entityId,
       action: input.action,
       summary: input.summary,
-      actor: input.actor ?? "Admin",
+      actor,
       details: input.details,
       metadata: input.metadata,
     });

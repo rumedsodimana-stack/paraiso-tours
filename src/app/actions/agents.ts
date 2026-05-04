@@ -34,9 +34,17 @@ export async function startBookingProcessorAction(leadId: string) {
 
   try {
     const graph = compileBookingProcessor();
-    await graph.invoke(
-      { threadId, leadId },
-      { configurable: { thread_id: threadId } }
+    // Wrap in the audit-actor context so any audit events recorded
+    // by the graph's nodes (review, draft, send) get tagged with
+    // "Booking Processor" instead of defaulting to "Admin". Lets
+    // admin see exactly what the auto-triage agent did vs what
+    // they did themselves.
+    const { runAsActor } = await import("@/lib/audit-context");
+    await runAsActor("Booking Processor", () =>
+      graph.invoke(
+        { threadId, leadId },
+        { configurable: { thread_id: threadId } }
+      )
     );
   } catch (err) {
     // interrupt() throws — this is expected when the graph pauses for human approval
@@ -65,9 +73,14 @@ export async function approveAgentTaskAction(
 
   try {
     const graph = compileBookingProcessor();
-    await graph.invoke(
-      new Command({ resume: { approved: true, notes: edits?.notes || "", editedEmailBody: edits?.emailBody } }),
-      { configurable: { thread_id: threadId } },
+    // Same audit-actor wrap as the initial run — post-approval
+    // continuation also tags its events as "Booking Processor".
+    const { runAsActor } = await import("@/lib/audit-context");
+    await runAsActor("Booking Processor", () =>
+      graph.invoke(
+        new Command({ resume: { approved: true, notes: edits?.notes || "", editedEmailBody: edits?.emailBody } }),
+        { configurable: { thread_id: threadId } },
+      )
     );
   } catch {
     // Graph completed or another interrupt

@@ -384,7 +384,17 @@ async function executeToolUse(
     };
   }
 
-  const result = await tool.handler(parsed.data);
+  // Run the handler inside an audit-actor context so any
+  // recordAuditEvent calls inside the wrapped server action
+  // (e.g. scheduleTourFromLeadAction → "tour_scheduled") get
+  // tagged with the AI Assistant actor instead of defaulting to
+  // "Admin". Without this, admin can't tell autonomously-executed
+  // events apart from their own actions in /admin/communications.
+  const { runAsActor } = await import("./audit-context");
+  const result = await runAsActor(
+    "AI Assistant",
+    async () => tool.handler(parsed.data)
+  );
 
   // Audit every executed tool — same trail the JSON-mode path writes to,
   // so admin/settings audit log stays unified across both runtimes.

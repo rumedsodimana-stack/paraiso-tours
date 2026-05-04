@@ -58,6 +58,12 @@ interface MessageRow {
    *  /admin/communications by guest name (matching how
    *  /admin/bookings indexes), not by tour package or template. */
   guestName?: string;
+  /** Who or what triggered the audit row: "Admin", "AI Assistant",
+   *  "Booking Processor", "Client Portal", "Client Route Builder",
+   *  or "Guest" (for inbound WhatsApp). Surfaces in the table so
+   *  admin can tell at a glance which events were autonomous AI
+   *  actions vs their own. */
+  actor: string;
 }
 
 // Audit `action` strings that represent an outbound email event. Kept
@@ -262,6 +268,7 @@ function toMessageRow(log: AuditLog): MessageRow | null {
     entityType: log.entityType,
     entityId: log.entityId,
     supplierName: typeof meta.supplierName === "string" ? meta.supplierName : undefined,
+    actor: log.actor || "Admin",
   };
   if (log.entityType === "tour") {
     row.tourId = log.entityId;
@@ -445,6 +452,7 @@ export default async function CommunicationsPage({
               <tr className="border-b border-[#e0e4dd] bg-[#f4ecdd] text-left text-xs uppercase tracking-[0.1em] text-[#8a9ba1]">
                 <th className="px-4 py-3 font-semibold">When</th>
                 <th className="px-4 py-3 font-semibold">Guest</th>
+                <th className="px-4 py-3 font-semibold">By</th>
                 <th className="px-4 py-3 font-semibold">Template</th>
                 <th className="px-4 py-3 font-semibold">Recipient</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
@@ -484,6 +492,29 @@ export default async function CommunicationsPage({
                       ) : (
                         <span className="text-[#8a9ba1]">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {/* Actor pill: AI work → purple, Booking Processor → indigo, Admin → grey, Client Portal → teal, Guest → sky */}
+                      {(() => {
+                        const a = m.actor;
+                        const cls =
+                          a === "AI Assistant"
+                            ? "bg-purple-100 text-purple-800"
+                            : a === "Booking Processor"
+                              ? "bg-indigo-100 text-indigo-800"
+                              : a === "Guest"
+                                ? "bg-sky-100 text-sky-800"
+                                : a === "Client Portal" || a === "Client Route Builder"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-[#f4ecdd] text-[#5e7279]";
+                        return (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cls}`}
+                          >
+                            {a}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-[#11272b]">{m.templateLabel}</td>
                     <td className="px-4 py-3 text-[#5e7279]">
