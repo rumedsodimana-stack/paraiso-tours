@@ -16,7 +16,7 @@ import { BulkRetryButton } from "./BulkRetryButton";
 
 export const dynamic = "force-dynamic";
 
-type MessageStatus = "sent" | "failed" | "skipped";
+type MessageStatus = "sent" | "failed" | "skipped" | "received";
 type MessageTemplate =
   | "tour_confirmation_with_invoice"
   | "supplier_reservation"
@@ -123,6 +123,14 @@ const EMAIL_ACTIONS = new Set([
   // this row the admin can't tell whether WhatsApp is broken or
   // just unconfigured.
   "whatsapp_booking_confirmation_failed",
+  // Inbound WhatsApp messages from guests. The webhook tries to
+  // match the sender phone to an existing lead; matched messages
+  // attach to that lead (entityType: "lead"), unmatched messages
+  // attach to a sentinel system entity. Action ends with `_received`
+  // so the new "received" MessageStatus chip lights up sky-blue
+  // distinctly from outbound "sent" (green).
+  "whatsapp_message_received",
+  "whatsapp_message_received_unmatched",
 ]);
 
 function templateFromMetadata(meta: Record<string, unknown> | undefined): MessageTemplate {
@@ -212,15 +220,28 @@ function rangeCutoffMs(range: DateRange): number | null {
 function toMessageRow(log: AuditLog): MessageRow | null {
   if (!EMAIL_ACTIONS.has(log.action)) return null;
   const meta = log.metadata ?? {};
+  // Status is derived from the audit action's suffix:
+  //   *_failed   → failed (red)
+  //   *_skipped  → skipped (yellow)
+  //   *_received → received (sky-blue, inbound from guest)
+  //   anything else → sent (green, outbound from us)
   const status: MessageStatus = log.action.endsWith("_failed")
     ? "failed"
     : log.action.endsWith("_skipped")
       ? "skipped"
-      : "sent";
+      : log.action.endsWith("_received")
+        ? "received"
+        : "sent";
+  // For inbound WhatsApp the "recipient" is us — surface the sender
+  // phone (metadata.from) instead so admin can scan who reached out.
+  // Falls back to metadata.recipient for outbound rows that already
+  // store the recipient there.
   const recipient =
-    typeof meta.recipient === "string" && meta.recipient.trim()
-      ? meta.recipient.trim()
-      : "—";
+    typeof meta.from === "string" && meta.from.trim()
+      ? meta.from.trim()
+      : typeof meta.recipient === "string" && meta.recipient.trim()
+        ? meta.recipient.trim()
+        : "—";
   const template = templateFromMetadata(meta);
   const row: MessageRow = {
     id: log.id,
@@ -433,6 +454,11 @@ export default async function CommunicationsPage({
                         <span className="inline-flex items-center gap-1 rounded-full bg-[#dce8dc] px-2.5 py-1 text-xs font-semibold text-[#375a3f]">
                           <CheckCircle2 className="h-3 w-3" />
                           Sent
+                        </span>
+                      ) : m.status === "received" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-800">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Received
                         </span>
                       ) : m.status === "failed" ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-[#eed9cf] px-2.5 py-1 text-xs font-semibold text-[#7c3a24]">
