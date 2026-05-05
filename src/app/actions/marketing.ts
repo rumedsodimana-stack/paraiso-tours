@@ -368,10 +368,18 @@ export async function publishSocialPostDraftAction(
       };
     }
 
+    // Image URL precedence: explicit override (from publish-time
+    // prompt, kept for backwards-compat) → persisted draft URL
+    // (uploaded earlier via uploadMarketingImageAction).
+    const imageUrl =
+      options?.imageUrl?.trim() ||
+      draft.imageUrl?.trim() ||
+      undefined;
+
     const result = await publishToSocialPlatform({
       draft,
       token,
-      imageUrl: options?.imageUrl?.trim() || undefined,
+      imageUrl,
     });
 
     if (result.ok) {
@@ -428,6 +436,116 @@ export async function publishSocialPostDraftAction(
       },
     });
     return { error: result.error ?? "Publish failed" };
+  } catch (err) {
+    return { error: extractErrorMessage(err) };
+  }
+}
+
+/**
+ * Upload a marketing image to Supabase Storage and persist the
+ * public URL on the draft. Returns the public URL so the caller
+ * can render an inline preview.
+ *
+ * The bucket `marketing-images` is created in the migration with
+ * public read access so Meta's Graph API can fetch the URL during
+ * Instagram media-publish — Instagram's API requires a publicly-
+ * accessible URL (signed URLs don't work).
+ *
+ * Validation:
+ *   - draftId must exist
+ *   - file must be an image/* MIME type
+ *   - file must be ≤ 8 MB (Instagram caps at 8 MB JPEG, 4 MB PNG)
+ */
+export async function uploadMarketingImageAction(
+  draftId: string,
+  formData: FormData
+): Promise<{ url?: string; error?: string }> {
+  await requireAdmin();
+  try {
+    const draft = await getSocialPostDraft(draftId);
+    if (!draft) return { error: "Draft not found" };
+
+    const file = formData.get("image");
+    if (!(file instanceof File)) {
+      return { error: "No file uploaded" };
+    }
+    if (!file.type.startsWith("image/")) {
+      return {
+        error: `Expected an image; got ${file.type || "unknown type"}`,
+      };
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      return {
+        error: `Image is ${(file.size / 1024 / 1024).toFixed(1)} MB — max is 8 MB (Instagram's cap).`,
+      };
+    }
+
+    const { supabase: supabaseClient } = await import("@/lib/supabase");
+    if (!supabaseClient) {
+      return {
+        error:
+          "Supabase isn't configured — image upload requires a Supabase project with a marketing-images storage bucket.",
+      };
+    }
+
+    // Object key: drafts/<draftId>/<random>-<sanitised-filename>.
+    // Random prefix prevents conflicts when admin re-uploads after
+    // editing; old objects stay until manually cleaned (we don't
+    // garbage-collect orphans in v1).
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const safeExt = /^[a-z0-9]+$/.test(ext) ? ext : "bin";
+    const random = Math.random().toString(36).slice(2, 10);
+    const path = `drafts/${draftId}/${random}.${safeExt}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const { error: uploadErr } = await supabaseClient.storage
+      .from("marketing-images")
+      .upload(path, arrayBuffer, {
+        contentType: file.type,
+        cacheControl: "3600",
+        upsert: false,
+      });
+    if (uploadErr) {
+      return {
+        error: `Upload failed: ${uploadErr.message}. Confirm the marketing-images bucket exists in Supabase Storage.`,
+      };
+    }
+
+    const { data: publicUrl } = supabaseClient.storage
+      .from("marketing-images")
+      .getPublicUrl(path);
+    const url = publicUrl?.publicUrl;
+    if (!url) {
+      return {
+        error:
+          "Upload succeeded but no public URL was returned — bucket may not be marked public.",
+      };
+    }
+
+    // Persist the URL on the draft so subsequent publish attempts
+    // don't need a re-upload. Audit trail records the change.
+    const updated = await updateSocialPostDraft(draftId, { imageUrl: url });
+    if (!updated) {
+      return {
+        error:
+          "Upload succeeded but draft update failed — the file is hosted but not linked. Re-upload to retry.",
+      };
+    }
+    await recordAuditEvent({
+      entityType: "social_post",
+      entityId: draftId,
+      action: "image_uploaded",
+      summary: `Marketing image uploaded for ${draft.platform} draft`,
+      details: [`Platform: ${draft.platform}`, `URL: ${url}`],
+      metadata: {
+        channel: "marketing",
+        platform: draft.platform,
+        template: "social_post_draft",
+      },
+    });
+
+    revalidatePath("/admin/marketing");
+    return { url };
   } catch (err) {
     return { error: extractErrorMessage(err) };
   }

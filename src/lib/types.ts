@@ -577,6 +577,12 @@ export interface SocialPostDraft {
    *  copy (e.g. "wide shot of Sigiriya rock at golden hour"). v1
    *  doesn't generate images — admin supplies them. */
   imageDirection?: string;
+  /** Public URL of the image hosted in the marketing-images bucket.
+   *  Required for Instagram publish (IG API fetches it server-side
+   *  during media-publish). Optional for FB / LinkedIn (post as
+   *  photo if set, plain text otherwise). X doesn't use this field —
+   *  uploading media via X's API is a separate flow. */
+  imageUrl?: string;
   targetKind: SocialPostTargetKind;
   /** ID of the package / destination / tour referenced. Null for
    *  generic posts. */

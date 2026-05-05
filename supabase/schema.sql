@@ -483,3 +483,10 @@ CREATE TABLE IF NOT EXISTS social_oauth_tokens (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Marketing image hosting (Instagram requires a public URL — text-only
+-- IG posts don't exist in the Graph API). Drafts that get IG-published
+-- store the public URL here; the bucket has public read so the
+-- Instagram Container API can fetch the image during media-publish.
+ALTER TABLE social_post_drafts
+  ADD COLUMN IF NOT EXISTS image_url TEXT;

@@ -17,6 +17,7 @@ import {
   updateSocialPostDraftAction,
 } from "@/app/actions/marketing";
 import type { SocialPostDraft } from "@/lib/types";
+import { ImageUploadField } from "./ImageUploadField";
 
 const PLATFORM_BADGES: Record<
   string,
@@ -101,23 +102,18 @@ export function DraftCard({
 
   /**
    * Publish via OAuth — calls the platform's API directly.
-   * Instagram requires a public image URL; we prompt for it. The
-   * server action handles the rest (token decrypt, dispatch,
-   * status flip, audit log).
+   * Instagram requires an image; we use the URL persisted on the
+   * draft (uploaded via ImageUploadField). The server action
+   * handles the rest (token decrypt, dispatch, status flip,
+   * audit log).
    */
   const handlePublish = () => {
     setError(null);
-    let imageUrl: string | undefined;
-    if (draft.platform === "instagram") {
-      const url = window.prompt(
-        "Instagram requires a public image URL (Cloudinary, S3, your CDN). Paste it here:",
-        ""
+    if (draft.platform === "instagram" && !draft.imageUrl) {
+      setError(
+        "Instagram needs an image. Upload one above before publishing."
       );
-      if (!url || !url.trim()) {
-        setError("Cancelled — Instagram needs an image URL.");
-        return;
-      }
-      imageUrl = url.trim();
+      return;
     }
     if (
       !confirm(
@@ -127,9 +123,7 @@ export function DraftCard({
       return;
     startTransition(async () => {
       try {
-        const r = await publishSocialPostDraftAction(draft.id, {
-          imageUrl,
-        });
+        const r = await publishSocialPostDraftAction(draft.id);
         if (r.error) {
           setError(r.error);
           return;
@@ -197,6 +191,17 @@ export function DraftCard({
         <p className="rounded-lg bg-[#f4ecdd] px-3 py-2 text-xs italic text-[#5e7279]">
           📷 {draft.imageDirection}
         </p>
+      )}
+
+      {/* Image upload — required for Instagram (IG API rejects
+          text-only posts), optional but encouraged for FB / LinkedIn,
+          unused for X (which has its own media-upload flow). */}
+      {draft.platform !== "x" && draft.status !== "posted" && (
+        <ImageUploadField
+          draftId={draft.id}
+          currentUrl={draft.imageUrl}
+          required={draft.platform === "instagram"}
+        />
       )}
 
       <div className="flex flex-wrap items-center gap-2">
