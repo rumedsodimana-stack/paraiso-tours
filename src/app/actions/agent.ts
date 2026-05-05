@@ -384,7 +384,17 @@ export async function executeProposalAction(
     };
   }
 
-  const result = await tool.handler(parsed.data);
+  // Wrap the tool handler in the audit-actor context so any nested
+  // recordAuditEvent calls (from the server actions the tool wraps —
+  // schedule_tour_from_lead, send_invoice_email, etc.) get tagged as
+  // "AI Assistant" instead of defaulting to "Admin". This is the
+  // JSON-mode counterpart to the wrap in agent-runtime.ts:executeToolUse;
+  // without it, audit events from this code path would mis-attribute
+  // autonomous AI actions to the admin.
+  const { runAsActor } = await import("@/lib/audit-context");
+  const result = await runAsActor("AI Assistant", () =>
+    tool.handler(parsed.data)
+  );
 
   await recordAuditEvent({
     entityType: "system",
@@ -393,6 +403,7 @@ export async function executeProposalAction(
     summary: result.ok
       ? `Agent executed ${tool.name}: ${result.summary}`
       : `Agent execution failed for ${tool.name}: ${result.error ?? result.summary}`,
+    actor: "AI Assistant",
     details: input.proposalId ? [`Proposal: ${input.proposalId}`] : undefined,
     metadata: {
       channel: "agent_ui",

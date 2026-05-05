@@ -398,6 +398,9 @@ async function executeToolUse(
 
   // Audit every executed tool — same trail the JSON-mode path writes to,
   // so admin/settings audit log stays unified across both runtimes.
+  // Explicit actor: "AI Assistant" matches the actor wrap above for
+  // the inner server-action audit events, so the per-tool audit row
+  // is also correctly attributed in /admin/communications.
   await recordAuditEvent({
     entityType: "system",
     entityId: "agent",
@@ -405,6 +408,7 @@ async function executeToolUse(
     summary: result.ok
       ? `Agent (native) executed ${tool.name}: ${result.summary}`
       : `Agent (native) execution failed for ${tool.name}: ${result.error ?? result.summary}`,
+    actor: "AI Assistant",
     metadata: {
       channel: "agent_ui",
       feature: "agent_native",
