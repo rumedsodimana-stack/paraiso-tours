@@ -9,6 +9,7 @@ import {
   Hotel as HotelIcon,
   Inbox,
   Scale,
+  Sparkles,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-session";
 import { isEmailConfigured } from "@/lib/email";
@@ -21,7 +22,8 @@ import {
   getTours,
   getPayments,
 } from "@/lib/db";
-import type { AuditLog, Payment, Tour } from "@/lib/types";
+import { listConnectedSocialPlatforms, loadSocialToken } from "@/lib/social-token-store";
+import type { AuditLog, Payment, Tour, SocialConnectedPlatform } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +51,7 @@ export default async function HealthPage() {
     checkBookingsWithoutEmail(),
     checkRecentFailures(),
     checkFinancialReconciliation(),
+    checkSocialOAuthConnections(),
   ]);
 
   const results = checks.map((c, i) =>
@@ -65,6 +68,7 @@ export default async function HealthPage() {
               "Bookings",
               "Recent failures",
               "Financial reconciliation",
+              "Social platform connections",
             ][i] ?? "Unknown",
           status: "unknown" as const,
           message: "Couldn't run this check.",
@@ -519,6 +523,90 @@ async function checkFinancialReconciliation(): Promise<CheckResult> {
     hint: hintLines.join(" · "),
     href: "/admin/payments",
     hrefLabel: "Open Payments",
+  };
+}
+
+/**
+ * Social OAuth health: surface connected platforms + flag tokens
+ * within 7 days of expiring so admin reconnects before publishing
+ * silently fails. Runs server-side and only inspects metadata
+ * (expiresAt) — no token bytes leave the server.
+ */
+async function checkSocialOAuthConnections(): Promise<CheckResult> {
+  const connected = await listConnectedSocialPlatforms();
+  if (connected.length === 0) {
+    return {
+      icon: Sparkles,
+      name: "Social platform connections",
+      status: "warn",
+      message: "No social platforms connected for direct posting.",
+      hint:
+        "Marketing drafts can still be copy-pasted manually. To enable direct publishing, connect Meta / X / LinkedIn under Settings → Marketing.",
+      href: "/admin/settings?section=marketing",
+      hrefLabel: "Open Marketing settings",
+    };
+  }
+
+  // Pull expiry from each connected platform's stored token. We
+  // load each token (decrypted) but only read expiresAt — the
+  // access token itself never leaves this function.
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const expiringSoon: { platform: SocialConnectedPlatform; daysLeft: number }[] = [];
+  const expired: SocialConnectedPlatform[] = [];
+
+  for (const platform of connected) {
+    try {
+      const token = await loadSocialToken(platform);
+      if (!token?.expiresAt) continue; // null = never expires (Meta long-lived)
+      const expiresAtMs = new Date(token.expiresAt).getTime();
+      if (Number.isNaN(expiresAtMs)) continue;
+      const remainingMs = expiresAtMs - now;
+      if (remainingMs <= 0) {
+        expired.push(platform);
+      } else if (remainingMs < sevenDaysMs) {
+        expiringSoon.push({
+          platform,
+          daysLeft: Math.ceil(remainingMs / (24 * 60 * 60 * 1000)),
+        });
+      }
+    } catch {
+      // Token fetch failed — surface as expiringSoon so admin reconnects.
+      expiringSoon.push({ platform, daysLeft: 0 });
+    }
+  }
+
+  if (expired.length > 0) {
+    return {
+      icon: Sparkles,
+      name: "Social platform connections",
+      status: "err",
+      message: `Token expired for: ${expired.join(", ")}.`,
+      hint: `Reconnect under Settings → Marketing — Publish will fail until you do. ${connected.length - expired.length} platform${connected.length - expired.length === 1 ? "" : "s"} still healthy.`,
+      href: "/admin/settings?section=marketing",
+      hrefLabel: "Reconnect now",
+    };
+  }
+  if (expiringSoon.length > 0) {
+    const labels = expiringSoon
+      .map((e) => `${e.platform} (${e.daysLeft}d)`)
+      .join(", ");
+    return {
+      icon: Sparkles,
+      name: "Social platform connections",
+      status: "warn",
+      message: `Token expiring soon: ${labels}.`,
+      hint:
+        "Reconnect now to avoid mid-campaign failure. LinkedIn tokens expire every 60 days; X tokens vary by API tier.",
+      href: "/admin/settings?section=marketing",
+      hrefLabel: "Reconnect",
+    };
+  }
+  return {
+    icon: Sparkles,
+    name: "Social platform connections",
+    status: "ok",
+    message: `${connected.length} platform${connected.length === 1 ? "" : "s"} connected and healthy: ${connected.join(", ")}.`,
   };
 }
 
