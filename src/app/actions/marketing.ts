@@ -360,8 +360,14 @@ export async function publishSocialPostDraftAction(
       return { error: `Unsupported draft platform: ${draft.platform}` };
     }
 
-    const { loadSocialToken } = await import("@/lib/social-token-store");
-    const token = await loadSocialToken(tokenPlatform);
+    // ensureFreshToken auto-refreshes X + LinkedIn tokens that are
+    // within 5 min of expiry, swapping the stored refresh_token for
+    // a new access_token before the publish attempt. Meta page
+    // tokens don't expire so the function returns them as-is.
+    // Refresh failures fall back to the stale token so the platform
+    // itself surfaces the real error rather than us pre-empting it.
+    const { ensureFreshToken } = await import("@/lib/social-token-refresh");
+    const token = await ensureFreshToken(tokenPlatform);
     if (!token) {
       return {
         error: `${draft.platform} is not connected. Open Settings → Marketing and click Connect on the matching platform.`,
