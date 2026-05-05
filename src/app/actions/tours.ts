@@ -16,6 +16,7 @@ import {
   deleteTodo,
   createPayment,
   getPaymentByTourId,
+  getPayments,
   updatePayment,
   deletePayment,
   getInvoiceByLeadId,
@@ -167,6 +168,7 @@ export async function updateTourStatusAction(id: string, status: TourStatus) {
   const existingTour = await getTour(id);
   if (!existingTour) return { error: "Tour not found" };
 
+  const previousStatus = existingTour.status;
   const updated = await updateTour(id, { status });
   if (!updated) return { error: "Tour not found" };
 
@@ -178,13 +180,183 @@ export async function updateTourStatusAction(id: string, status: TourStatus) {
     details: [
       `Client: ${updated.clientName}`,
       `Package: ${updated.packageName}`,
-      `Previous status: ${existingTour.status}`,
+      `Previous status: ${previousStatus}`,
     ],
   });
 
+  // Cascade to financial records when the new status is cancelled.
+  // Without this cascade, /admin/receivable + /admin/payables would
+  // continue to show "money owed" rows for a tour that doesn't
+  // exist anymore — and the financial-reconciliation health check
+  // would (correctly) flag the drift. Cascading at action time keeps
+  // the books consistent.
+  //
+  // Each cascade is best-effort — a failure to update the invoice
+  // doesn't roll back the tour status flip. Admin sees any partial
+  // result via /admin/communications cascade audit events.
+  if (status === "cancelled" && previousStatus !== "cancelled") {
+    await cascadeTourCancellation(updated.id, updated.leadId);
+  }
+
+  // Cascade when transitioning to completed: flip any pending
+  // incoming payment for this tour to "completed" so the
+  // receivable list clears automatically. Outgoing payables are
+  // NOT auto-completed — admin must mark those individually since
+  // suppliers may not have been paid yet.
+  if (status === "completed" && previousStatus !== "completed") {
+    await cascadeTourCompletion(updated.id);
+  }
+
   revalidatePath("/admin/calendar");
+  revalidatePath("/admin/receivable");
+  revalidatePath("/admin/payables");
+  revalidatePath("/admin/invoices");
+  revalidatePath("/admin/payments");
   revalidatePath("/");
   return { success: true };
+}
+
+/**
+ * Best-effort cascade: when admin marks a tour cancelled, mark its
+ * linked invoice + receivable + supplier payables as cancelled too.
+ * Each step is wrapped in try/catch so a single failure (e.g. RLS
+ * denial on one payment) doesn't prevent the others. Every action
+ * recorded as a separate audit event so admin sees exactly what
+ * happened in /admin/communications.
+ */
+async function cascadeTourCancellation(
+  tourId: string,
+  leadId: string
+): Promise<void> {
+  // 1. Linked invoice → cancelled (if it exists and isn't already
+  //    cancelled). Preserves the audit trail rather than deleting.
+  try {
+    const invoice = await getInvoiceByLeadId(leadId);
+    if (invoice && invoice.status !== "cancelled") {
+      await updateInvoice(invoice.id, { status: "cancelled" });
+      await recordAuditEvent({
+        entityType: "invoice",
+        entityId: invoice.id,
+        action: "cancelled_via_tour_cancellation",
+        summary: `Invoice ${invoice.invoiceNumber} cancelled because tour was cancelled`,
+        details: [`Tour: ${tourId}`],
+      });
+    }
+  } catch (err) {
+    debugLog("Cascade: invoice cancellation failed", {
+      error: extractErrorMessage(err),
+      tourId,
+      leadId,
+    });
+  }
+
+  // 2. Incoming payment (receivable) → cancelled. Same preserve-the-row
+  //    logic as the invoice. Admin can still see "this booking had a
+  //    payment that got cancelled" in the audit log.
+  try {
+    const payment = await getPaymentByTourId(tourId);
+    if (
+      payment &&
+      payment.type === "incoming" &&
+      payment.status !== "cancelled"
+    ) {
+      await updatePayment(payment.id, { status: "cancelled" });
+      await recordAuditEvent({
+        entityType: "payment",
+        entityId: payment.id,
+        action: "cancelled_via_tour_cancellation",
+        summary: `Incoming payment cancelled because tour was cancelled`,
+        details: [
+          `Tour: ${tourId}`,
+          `Amount: ${payment.amount} ${payment.currency}`,
+          payment.status === "completed"
+            ? "Was already paid by guest — admin should issue a refund manually"
+            : "Was pending — no refund needed",
+        ],
+      });
+    }
+  } catch (err) {
+    debugLog("Cascade: incoming payment cancellation failed", {
+      error: extractErrorMessage(err),
+      tourId,
+    });
+  }
+
+  // 3. Outgoing payables (supplier rows) → cancelled, BUT only the
+  //    pending ones. If admin already paid a supplier, we don't
+  //    silently un-pay them — supplier-side cancellation policy is
+  //    a separate manual decision.
+  try {
+    const allPayments = await getPayments();
+    const supplierPending = allPayments.filter(
+      (p) =>
+        p.type === "outgoing" &&
+        p.tourId === tourId &&
+        p.status !== "completed" &&
+        p.status !== "cancelled"
+    );
+    for (const p of supplierPending) {
+      try {
+        await updatePayment(p.id, { status: "cancelled" });
+        await recordAuditEvent({
+          entityType: "payment",
+          entityId: p.id,
+          action: "cancelled_via_tour_cancellation",
+          summary: `Supplier payable to ${p.supplierName ?? "supplier"} cancelled (tour was cancelled)`,
+          details: [
+            `Tour: ${tourId}`,
+            `Amount: ${p.amount} ${p.currency}`,
+            "Was pending — admin can override and pay anyway if there's a non-refundable contract",
+          ],
+        });
+      } catch (innerErr) {
+        debugLog("Cascade: single supplier payable cancellation failed", {
+          error: extractErrorMessage(innerErr),
+          paymentId: p.id,
+        });
+      }
+    }
+  } catch (err) {
+    debugLog("Cascade: supplier payables cancellation failed", {
+      error: extractErrorMessage(err),
+      tourId,
+    });
+  }
+}
+
+/**
+ * Best-effort cascade: when admin marks a tour completed, flip any
+ * pending incoming payment for this tour to "completed" so the
+ * receivable list clears automatically. Outgoing supplier payables
+ * are NOT auto-completed — admin must mark those individually
+ * because the supplier may not have been paid yet.
+ */
+async function cascadeTourCompletion(tourId: string): Promise<void> {
+  try {
+    const payment = await getPaymentByTourId(tourId);
+    if (
+      payment &&
+      payment.type === "incoming" &&
+      payment.status === "pending"
+    ) {
+      await updatePayment(payment.id, { status: "completed" });
+      await recordAuditEvent({
+        entityType: "payment",
+        entityId: payment.id,
+        action: "completed_via_tour_completion",
+        summary: `Incoming payment marked completed (tour was completed)`,
+        details: [
+          `Tour: ${tourId}`,
+          `Amount: ${payment.amount} ${payment.currency}`,
+        ],
+      });
+    }
+  } catch (err) {
+    debugLog("Cascade: incoming payment completion failed", {
+      error: extractErrorMessage(err),
+      tourId,
+    });
+  }
 }
 
 export async function deleteTourAction(id: string) {
