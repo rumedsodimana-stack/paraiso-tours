@@ -290,6 +290,9 @@ export default async function CommunicationsPage({
     template?: string;
     q?: string;
     range?: string;
+    /** Actor filter: "all" (default), "ai" (AI Assistant + Booking
+     *  Processor), "admin", or "guest" (inbound WhatsApp). */
+    actor?: string;
   }>;
 }) {
   const sp = (await searchParams) ?? {};
@@ -305,6 +308,10 @@ export default async function CommunicationsPage({
   const query = (sp.q ?? "").trim().toLowerCase();
   const range = parseRange(sp.range);
   const cutoff = rangeCutoffMs(range);
+  const actorFilter =
+    sp.actor === "ai" || sp.actor === "admin" || sp.actor === "guest"
+      ? sp.actor
+      : "all";
 
   // Pull a wide window so the date filter has data to chew on. The
   // file-store implementation already orders by createdAt DESC.
@@ -366,6 +373,28 @@ export default async function CommunicationsPage({
   }
   if (templateFilter !== "all") {
     messages = messages.filter((m) => m.template === templateFilter);
+  }
+  if (actorFilter !== "all") {
+    // "ai" matches both AI runtimes (chat + booking-processor) since
+    // both are autonomous LLM activity from the admin's perspective.
+    // "admin" matches the default actor + Client Portal/Route Builder
+    // since those are admin-initiated workflows. "guest" matches
+    // inbound WhatsApp messages (actor: "Guest").
+    messages = messages.filter((m) => {
+      const a = m.actor.toLowerCase();
+      if (actorFilter === "ai") {
+        return a === "ai assistant" || a === "booking processor";
+      }
+      if (actorFilter === "guest") {
+        return a === "guest";
+      }
+      // admin bucket
+      return (
+        a === "admin" ||
+        a === "client portal" ||
+        a === "client route builder"
+      );
+    });
   }
   if (query) {
     messages = messages.filter(
@@ -435,6 +464,7 @@ export default async function CommunicationsPage({
         template={templateFilter}
         query={sp.q ?? ""}
         range={range}
+        actor={actorFilter}
       />
 
       <div className="paraiso-card overflow-hidden rounded-2xl">

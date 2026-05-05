@@ -42,16 +42,29 @@ const RANGE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "all", label: "All time" },
 ];
 
+// Actor filter — lets admin scope the inbox to one source. "ai"
+// matches both "AI Assistant" and "Booking Processor" since both are
+// autonomous LLM activity from the admin's perspective. The exact
+// breakdown is still visible in each row's "By" pill.
+const ACTOR_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "all", label: "All sources" },
+  { value: "ai", label: "AI" },
+  { value: "admin", label: "Admin" },
+  { value: "guest", label: "Guests" },
+];
+
 export function CommunicationsFilters({
   status,
   template,
   query,
   range,
+  actor,
 }: {
   status: string;
   template: string;
   query: string;
   range: string;
+  actor: string;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -114,6 +127,32 @@ export function CommunicationsFilters({
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
               range === opt.value
                 ? "bg-[#7a5a17] text-[#f6ead6]"
+                : "text-[#5e7279] hover:bg-[#f4ecdd] hover:text-[#11272b]"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Actor pill group — same shape as the status group. Distinct
+          fill colour (purple) so admin sees at a glance that this row
+          of pills filters by *who*, not by *outcome*. */}
+      <div
+        role="tablist"
+        aria-label="Filter by source"
+        className="flex items-center gap-1 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] p-1"
+      >
+        {ACTOR_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            role="tab"
+            type="button"
+            aria-selected={actor === opt.value}
+            onClick={() => push({ actor: opt.value })}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+              actor === opt.value
+                ? "bg-[#5e3aa3] text-[#f6ead6]"
                 : "text-[#5e7279] hover:bg-[#f4ecdd] hover:text-[#11272b]"
             }`}
           >
