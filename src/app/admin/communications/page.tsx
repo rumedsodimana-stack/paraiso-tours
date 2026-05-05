@@ -383,12 +383,19 @@ export default async function CommunicationsPage({
     messages = messages.filter((m) => {
       const a = m.actor.toLowerCase();
       if (actorFilter === "ai") {
-        return a === "ai assistant" || a === "booking processor";
+        // Three AI surfaces: the chat assistant, the auto-triage
+        // booking processor, and the marketing-drafts generator.
+        // All three are autonomous LLM activity from admin's POV.
+        return (
+          a === "ai assistant" ||
+          a === "booking processor" ||
+          a === "marketing agent"
+        );
       }
       if (actorFilter === "guest") {
         return a === "guest";
       }
-      // admin bucket
+      // admin bucket — admin clicks + admin-initiated public flows
       return (
         a === "admin" ||
         a === "client portal" ||
