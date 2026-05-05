@@ -21,6 +21,7 @@ import type {
   PlannerActivityRecord,
   HotelMealPlan,
   Quotation,
+  SocialPostDraft,
 } from "./types";
 import { mockPackages } from "./mock-data";
 import { debugError } from "./debug";
@@ -1743,5 +1744,115 @@ export async function deleteQuotation(id: string): Promise<boolean> {
   const filtered = quotations.filter((q) => q.id !== id);
   if (filtered.length === quotations.length) return false;
   await writeJson("quotations.json", filtered);
+  return true;
+}
+
+// ── Social post drafts ────────────────────────────────────────────
+//
+// Same wrapper pattern as the rest of db.ts: prefer Supabase when
+// configured, fall back to a JSON file for local dev. The JSON
+// fallback isn't required for production but keeps local development
+// flowing without a Supabase connection.
+
+export async function getSocialPostDrafts(filter?: {
+  status?: SocialPostDraft["status"];
+  platform?: SocialPostDraft["platform"];
+  limit?: number;
+}): Promise<SocialPostDraft[]> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getSocialPostDrafts(filter);
+    } catch {
+      // fall through
+    }
+  }
+  const all = await readJson<SocialPostDraft[]>("social-post-drafts.json", []);
+  let rows = all;
+  if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
+  if (filter?.platform) rows = rows.filter((r) => r.platform === filter.platform);
+  rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  if (filter?.limit) rows = rows.slice(0, filter.limit);
+  return rows;
+}
+
+export async function getSocialPostDraft(
+  id: string
+): Promise<SocialPostDraft | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.getSocialPostDraft(id);
+    } catch {
+      // fall through
+    }
+  }
+  const all = await readJson<SocialPostDraft[]>("social-post-drafts.json", []);
+  return all.find((r) => r.id === id) ?? null;
+}
+
+export async function createSocialPostDraft(
+  data: Omit<SocialPostDraft, "id" | "createdAt" | "updatedAt">
+): Promise<SocialPostDraft> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.createSocialPostDraft(data);
+    } catch (err) {
+      reportWriteFailure("createSocialPostDraft", err);
+    }
+  }
+  const now = new Date().toISOString();
+  const row: SocialPostDraft = {
+    id: `post_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    ...data,
+    tags: data.tags ?? [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  const all = await readJson<SocialPostDraft[]>("social-post-drafts.json", []);
+  all.unshift(row);
+  await writeJson("social-post-drafts.json", all);
+  return row;
+}
+
+export async function updateSocialPostDraft(
+  id: string,
+  data: Partial<Omit<SocialPostDraft, "id" | "createdAt">>
+): Promise<SocialPostDraft | null> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.updateSocialPostDraft(id, data);
+    } catch (err) {
+      reportWriteFailure("updateSocialPostDraft", err);
+    }
+  }
+  const all = await readJson<SocialPostDraft[]>("social-post-drafts.json", []);
+  const idx = all.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  const updated: SocialPostDraft = {
+    ...all[idx],
+    ...data,
+    updatedAt: new Date().toISOString(),
+  };
+  all[idx] = updated;
+  await writeJson("social-post-drafts.json", all);
+  return updated;
+}
+
+export async function deleteSocialPostDraft(id: string): Promise<boolean> {
+  if (USE_SUPABASE) {
+    try {
+      const mod = await getSupabaseDb();
+      return await mod.deleteSocialPostDraft(id);
+    } catch {
+      // fall through
+    }
+  }
+  const all = await readJson<SocialPostDraft[]>("social-post-drafts.json", []);
+  const filtered = all.filter((r) => r.id !== id);
+  if (filtered.length === all.length) return false;
+  await writeJson("social-post-drafts.json", filtered);
   return true;
 }

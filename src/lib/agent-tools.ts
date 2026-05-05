@@ -2295,6 +2295,126 @@ export const AGENT_TOOLS: ToolDescriptor[] = [
       return ok(`Step ${input.id} → ${input.status}`, input);
     },
   },
+
+  // ── Marketing assistant tools ──────────────────────────────────
+  //
+  // Lets the admin assistant chat surface generate social-post
+  // drafts on demand (e.g. "draft three Instagram posts about the
+  // Sigiriya tour"). The drafts are persisted via the same
+  // generateSocialPostDraftsAction that powers /admin/marketing.
+
+  {
+    name: "generate_social_posts",
+    category: "create",
+    summary:
+      "Generate social media post drafts (Instagram, Facebook, X, LinkedIn) for a package, destination, completed tour, or general brand.",
+    inputSchema: z
+      .object({
+        platforms: z
+          .array(z.enum(["instagram", "facebook", "x", "linkedin"]))
+          .min(1)
+          .max(4)
+          .describe("Which platforms to draft for."),
+        targetKind: z
+          .enum(["package", "destination", "tour", "generic"])
+          .describe(
+            "What the post is about. 'generic' = brand/seasonal, no targetId required."
+          ),
+        targetId: z
+          .string()
+          .max(200)
+          .optional()
+          .describe("ID of the package / destination / tour referenced."),
+        brief: z
+          .string()
+          .max(1000)
+          .optional()
+          .describe(
+            "Optional admin steer e.g. 'focus on solo travelers' or 'highlight cultural depth'."
+          ),
+        countPerPlatform: z
+          .number()
+          .int()
+          .min(1)
+          .max(5)
+          .default(2)
+          .describe("How many drafts per platform. 1-5; default 2."),
+      })
+      .describe("Generate social post drafts."),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          platforms: z
+            .array(z.enum(["instagram", "facebook", "x", "linkedin"]))
+            .min(1)
+            .max(4),
+          targetKind: z.enum(["package", "destination", "tour", "generic"]),
+          targetId: z.string().max(200).optional(),
+          brief: z.string().max(1000).optional(),
+          countPerPlatform: z.number().int().min(1).max(5).default(2),
+        })
+        .parse(raw);
+      return safe("Generate social posts", async () => {
+        const { generateSocialPostDraftsAction } = await import(
+          "@/app/actions/marketing"
+        );
+        const r = await generateSocialPostDraftsAction(input);
+        if (r.error || !r.drafts) {
+          throw new Error(r.error ?? "No drafts returned");
+        }
+        return {
+          count: r.drafts.length,
+          drafts: r.drafts.map((d) => ({
+            id: d.id,
+            platform: d.platform,
+            preview: d.copy.slice(0, 160),
+            tags: d.tags,
+          })),
+          warnings: r.warnings,
+        };
+      });
+    },
+  },
+  {
+    name: "list_social_post_drafts",
+    category: "read",
+    summary: "List recent social post drafts, optionally filtered by status or platform.",
+    inputSchema: z.object({
+      status: z
+        .enum(["draft", "approved", "posted", "archived"])
+        .optional()
+        .describe("Filter to one status."),
+      platform: z
+        .enum(["instagram", "facebook", "x", "linkedin"])
+        .optional()
+        .describe("Filter to one platform."),
+      limit: z.number().int().min(1).max(100).optional(),
+    }),
+    handler: async (raw) => {
+      const input = z
+        .object({
+          status: z
+            .enum(["draft", "approved", "posted", "archived"])
+            .optional(),
+          platform: z
+            .enum(["instagram", "facebook", "x", "linkedin"])
+            .optional(),
+          limit: z.number().int().min(1).max(100).optional(),
+        })
+        .parse(raw);
+      const { getSocialPostDrafts } = await import("./db");
+      const rows = await getSocialPostDrafts(input);
+      return ok(`${rows.length} draft${rows.length === 1 ? "" : "s"} found`, {
+        drafts: rows.map((d) => ({
+          id: d.id,
+          platform: d.platform,
+          status: d.status,
+          preview: d.copy.slice(0, 160),
+          createdAt: d.createdAt,
+        })),
+      });
+    },
+  },
 ];
 
 // ── Lookup helpers ──────────────────────────────────────────────────────

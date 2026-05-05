@@ -112,6 +112,7 @@ const FINANCE_ITEMS: NavItem[] = [
 
 const INTELLIGENCE: NavItem[] = [
   { href: "/admin/ai", label: "AI Workspace", icon: Bot },
+  { href: "/admin/marketing", label: "Marketing", icon: Sparkles },
 ];
 
 const financePaths = [

@@ -508,7 +508,61 @@ export type AuditEntityType =
   | "activity"
   | "meal_plan"
   | "system"
-  | "agent";
+  | "agent"
+  | "social_post";
+
+// ── Social media marketing ─────────────────────────────────────
+//
+// The marketing agent generates social-post drafts that admin
+// reviews, edits, and copy-pastes into each platform's app. v1
+// is copy-paste only (no OAuth / direct posting) so admin keeps
+// editorial control and the system stays free of third-party
+// platform API approvals.
+
+export type SocialPlatform = "instagram" | "facebook" | "x" | "linkedin";
+
+export type SocialPostStatus =
+  | "draft" // freshly generated, awaiting admin review
+  | "approved" // admin reviewed + edited; ready to post
+  | "posted" // admin marked it as posted to the platform
+  | "archived"; // shelved without posting (rejected idea, stale)
+
+/**
+ * What the post is about. The marketing agent uses this so the copy
+ * stays grounded — instead of inventing details, it references real
+ * packages / destinations / completed tours from the catalog.
+ */
+export type SocialPostTargetKind =
+  | "package" // a specific tour package
+  | "destination" // a destination region (e.g. Sigiriya)
+  | "tour" // a real completed tour (testimonial-style)
+  | "generic"; // brand / seasonal / general
+
+export interface SocialPostDraft {
+  id: string;
+  platform: SocialPlatform;
+  /** The actual post copy. Includes line breaks + hashtags. */
+  copy: string;
+  /** A short note describing the kind of image to pair with the
+   *  copy (e.g. "wide shot of Sigiriya rock at golden hour"). v1
+   *  doesn't generate images — admin supplies them. */
+  imageDirection?: string;
+  targetKind: SocialPostTargetKind;
+  /** ID of the package / destination / tour referenced. Null for
+   *  generic posts. */
+  targetId?: string;
+  /** Hashtags as a flat string array (without leading # — UI adds it). */
+  tags: string[];
+  status: SocialPostStatus;
+  /** Free-form text identifier of who/what generated this draft.
+   *  Defaults to "Marketing Agent" but admin-edited drafts may show
+   *  "Admin" once they save changes. */
+  generatedBy: string;
+  /** ISO timestamp set when status flipped to "posted". */
+  postedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface AuditLog {
   id: string;

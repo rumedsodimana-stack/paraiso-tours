@@ -1,6 +1,6 @@
 export interface AgentThread {
   id: string;
-  agentType: "booking_processor" | "admin_assistant";
+  agentType: "booking_processor" | "admin_assistant" | "marketing_assistant";
   triggerEntityType?: string;
   triggerEntityId?: string;
   status: "running" | "awaiting_approval" | "approved" | "rejected" | "completed" | "failed";

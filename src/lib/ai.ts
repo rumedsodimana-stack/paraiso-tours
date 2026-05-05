@@ -63,7 +63,8 @@ export type AiFeature =
   | "booking_processor"
   | "admin_assistant"
   | "agent_clarifier"
-  | "agent_decide";
+  | "agent_decide"
+  | "marketing_assistant";
 
 export interface AiTextRequest {
   feature: AiFeature;

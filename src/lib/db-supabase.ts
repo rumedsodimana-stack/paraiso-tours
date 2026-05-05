@@ -23,6 +23,7 @@ import type {
   HotelMealPlan,
   Quotation,
   QuotationLineItem,
+  SocialPostDraft,
 } from "./types";
 
 function generateId(prefix: string): string {
@@ -2253,5 +2254,122 @@ export async function updateQuotation(
 export async function deleteQuotation(id: string): Promise<boolean> {
   if (!supabase) return false;
   const { error } = await supabase.from("quotations").delete().eq("id", id);
+  return !error;
+}
+
+// ── Social post drafts ────────────────────────────────────────────
+
+function toSocialPostDraft(row: Record<string, unknown>): SocialPostDraft {
+  return {
+    id: String(row.id),
+    platform: row.platform as SocialPostDraft["platform"],
+    copy: String(row.copy ?? ""),
+    imageDirection:
+      (row.image_direction as string | null) ?? undefined,
+    targetKind:
+      (row.target_kind as SocialPostDraft["targetKind"]) ?? "generic",
+    targetId: (row.target_id as string | null) ?? undefined,
+    tags: asArray<string>(row.tags),
+    status:
+      (row.status as SocialPostDraft["status"]) ?? "draft",
+    generatedBy: String(row.generated_by ?? "Marketing Agent"),
+    postedAt: (row.posted_at as string | null) ?? undefined,
+    createdAt: String(row.created_at ?? new Date().toISOString()),
+    updatedAt: String(row.updated_at ?? new Date().toISOString()),
+  };
+}
+
+export async function getSocialPostDrafts(filter?: {
+  status?: SocialPostDraft["status"];
+  platform?: SocialPostDraft["platform"];
+  limit?: number;
+}): Promise<SocialPostDraft[]> {
+  if (!supabase) return [];
+  let query = supabase
+    .from("social_post_drafts")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (filter?.status) query = query.eq("status", filter.status);
+  if (filter?.platform) query = query.eq("platform", filter.platform);
+  if (filter?.limit) query = query.limit(filter.limit);
+  const { data, error } = await query;
+  if (error || !data) return [];
+  return data.map(toSocialPostDraft);
+}
+
+export async function getSocialPostDraft(
+  id: string
+): Promise<SocialPostDraft | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("social_post_drafts")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toSocialPostDraft(data);
+}
+
+export async function createSocialPostDraft(
+  data: Omit<SocialPostDraft, "id" | "createdAt" | "updatedAt">
+): Promise<SocialPostDraft> {
+  const now = new Date().toISOString();
+  const row = {
+    id: generateId("post"),
+    platform: data.platform,
+    copy: data.copy,
+    image_direction: toNullable(data.imageDirection),
+    target_kind: data.targetKind,
+    target_id: toNullable(data.targetId),
+    tags: data.tags ?? [],
+    status: data.status,
+    generated_by: data.generatedBy,
+    posted_at: toNullable(data.postedAt),
+    created_at: now,
+    updated_at: now,
+  };
+  const result = await tolerantInsertOne("social_post_drafts", row);
+  if (result.error || !result.data)
+    throw result.error ?? new Error("createSocialPostDraft failed");
+  return toSocialPostDraft(result.data);
+}
+
+export async function updateSocialPostDraft(
+  id: string,
+  data: Partial<Omit<SocialPostDraft, "id" | "createdAt">>
+): Promise<SocialPostDraft | null> {
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.platform !== undefined) update.platform = data.platform;
+  if (data.copy !== undefined) update.copy = data.copy;
+  if (data.imageDirection !== undefined) {
+    update.image_direction = toNullable(data.imageDirection);
+  }
+  if (data.targetKind !== undefined) update.target_kind = data.targetKind;
+  if (data.targetId !== undefined) {
+    update.target_id = toNullable(data.targetId);
+  }
+  if (data.tags !== undefined) update.tags = data.tags;
+  if (data.status !== undefined) update.status = data.status;
+  if (data.generatedBy !== undefined) update.generated_by = data.generatedBy;
+  if (data.postedAt !== undefined) {
+    update.posted_at = toNullable(data.postedAt);
+  }
+
+  const result = await tolerantUpdateOne("social_post_drafts", update, {
+    column: "id",
+    value: id,
+  });
+  if (result.error || !result.data) return null;
+  return toSocialPostDraft(result.data);
+}
+
+export async function deleteSocialPostDraft(id: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("social_post_drafts")
+    .delete()
+    .eq("id", id);
   return !error;
 }
