@@ -468,3 +468,18 @@ CREATE INDEX IF NOT EXISTS idx_social_post_drafts_status
   ON social_post_drafts(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_social_post_drafts_platform
   ON social_post_drafts(platform, status);
+
+-- Social OAuth tokens: one row per connected platform (meta | x |
+-- linkedin). Tokens are AES-256-GCM encrypted at rest using a key
+-- derived from APP_SETTINGS_SECRET — the columns hold base64
+-- ciphertext, never plaintext. Metadata holds non-secret per-platform
+-- ids (Meta page id, IG business account id, LinkedIn org URN).
+CREATE TABLE IF NOT EXISTS social_oauth_tokens (
+  platform TEXT PRIMARY KEY,
+  access_token_ct TEXT NOT NULL,
+  refresh_token_ct TEXT,
+  expires_at TIMESTAMPTZ,
+  metadata JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

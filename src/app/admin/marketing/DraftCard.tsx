@@ -9,9 +9,11 @@ import {
   Send,
   Trash2,
   Archive,
+  Zap,
 } from "lucide-react";
 import {
   deleteSocialPostDraftAction,
+  publishSocialPostDraftAction,
   updateSocialPostDraftAction,
 } from "@/app/actions/marketing";
 import type { SocialPostDraft } from "@/lib/types";
@@ -90,6 +92,51 @@ export function DraftCard({
           return;
         }
         setEditing(false);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Network error");
+      }
+    });
+  };
+
+  /**
+   * Publish via OAuth — calls the platform's API directly.
+   * Instagram requires a public image URL; we prompt for it. The
+   * server action handles the rest (token decrypt, dispatch,
+   * status flip, audit log).
+   */
+  const handlePublish = () => {
+    setError(null);
+    let imageUrl: string | undefined;
+    if (draft.platform === "instagram") {
+      const url = window.prompt(
+        "Instagram requires a public image URL (Cloudinary, S3, your CDN). Paste it here:",
+        ""
+      );
+      if (!url || !url.trim()) {
+        setError("Cancelled — Instagram needs an image URL.");
+        return;
+      }
+      imageUrl = url.trim();
+    }
+    if (
+      !confirm(
+        `Publish this ${draft.platform} post live? This will appear on your ${draft.platform} feed immediately.`
+      )
+    )
+      return;
+    startTransition(async () => {
+      try {
+        const r = await publishSocialPostDraftAction(draft.id, {
+          imageUrl,
+        });
+        if (r.error) {
+          setError(r.error);
+          return;
+        }
+        if (r.postUrl) {
+          window.open(r.postUrl, "_blank", "noopener");
+        }
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Network error");
@@ -219,15 +266,28 @@ export function DraftCard({
         )}
         {(draft.status === "draft" || draft.status === "approved") &&
           !editing && (
-            <button
-              type="button"
-              onClick={() => updateStatus("posted")}
-              disabled={pending}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[#dce8dc] bg-[#dce8dc] px-3 py-1.5 text-xs font-medium text-[#375a3f] hover:bg-[#c8d8c8] disabled:opacity-50"
-            >
-              <Send className="h-3.5 w-3.5" />
-              Mark posted
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handlePublish}
+                disabled={pending}
+                title="Post directly to the platform via OAuth"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#5e3aa3] px-3 py-1.5 text-xs font-bold text-[#f6ead6] transition hover:bg-[#4a2e83] disabled:opacity-50"
+              >
+                <Zap className="h-3.5 w-3.5" />
+                Publish
+              </button>
+              <button
+                type="button"
+                onClick={() => updateStatus("posted")}
+                disabled={pending}
+                title="Manually mark as posted (after copy-pasting yourself)"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#dce8dc] bg-[#dce8dc] px-3 py-1.5 text-xs font-medium text-[#375a3f] hover:bg-[#c8d8c8] disabled:opacity-50"
+              >
+                <Send className="h-3.5 w-3.5" />
+                Mark posted
+              </button>
+            </>
           )}
         {draft.status !== "archived" && draft.status !== "posted" && !editing && (
           <button

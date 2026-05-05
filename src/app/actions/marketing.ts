@@ -322,6 +322,143 @@ export async function updateSocialPostDraftAction(
   }
 }
 
+/**
+ * Publish a draft to its target social platform via OAuth-backed
+ * direct-posting pipeline. Loads the connected token from the
+ * encrypted store, dispatches to the right per-platform publisher,
+ * and on success flips the draft to `posted` with the platform's
+ * post id stored in the audit metadata.
+ *
+ * Failures stay surface in three places:
+ *   - the action result.error (toast / inline UI)
+ *   - the audit row (visible in /admin/communications)
+ *   - the draft itself (status stays `approved` so admin can retry)
+ *
+ * Image hosting: Instagram requires a public image URL. The optional
+ * `imageUrl` parameter is plumbed through to the publishers; admin
+ * is responsible for hosting the image somewhere public-readable
+ * (Cloudinary / S3 / their CDN) before calling.
+ */
+export async function publishSocialPostDraftAction(
+  id: string,
+  options?: { imageUrl?: string }
+): Promise<{
+  success?: boolean;
+  postId?: string;
+  postUrl?: string;
+  error?: string;
+}> {
+  await requireAdmin();
+  try {
+    const draft = await getSocialPostDraft(id);
+    if (!draft) return { error: "Draft not found" };
+
+    const { tokenPlatformFor, publishToSocialPlatform } = await import(
+      "@/lib/social-publishers"
+    );
+    const tokenPlatform = tokenPlatformFor(draft.platform);
+    if (!tokenPlatform) {
+      return { error: `Unsupported draft platform: ${draft.platform}` };
+    }
+
+    const { loadSocialToken } = await import("@/lib/social-token-store");
+    const token = await loadSocialToken(tokenPlatform);
+    if (!token) {
+      return {
+        error: `${draft.platform} is not connected. Open Settings → Marketing and click Connect on the matching platform.`,
+      };
+    }
+
+    const result = await publishToSocialPlatform({
+      draft,
+      token,
+      imageUrl: options?.imageUrl?.trim() || undefined,
+    });
+
+    if (result.ok) {
+      // Flip the draft to posted + stamp postedAt. Use a direct
+      // updateSocialPostDraft so the platform post-id is preserved
+      // in the audit metadata even if the regular update action's
+      // status-transition audit row drops it.
+      await updateSocialPostDraft(id, {
+        status: "posted",
+        postedAt: new Date().toISOString(),
+      });
+      await recordAuditEvent({
+        entityType: "social_post",
+        entityId: id,
+        action: "published",
+        summary: `Published ${draft.platform} post${
+          result.postUrl ? ` — ${result.postUrl}` : ""
+        }`,
+        details: [
+          `Platform: ${draft.platform}`,
+          ...(result.postId ? [`Platform post id: ${result.postId}`] : []),
+          ...(result.postUrl ? [`URL: ${result.postUrl}`] : []),
+        ],
+        metadata: {
+          channel: "marketing",
+          platform: draft.platform,
+          template: "social_post_draft",
+          status: "sent",
+          ...(result.postId ? { platformPostId: result.postId } : {}),
+          ...(result.postUrl ? { platformPostUrl: result.postUrl } : {}),
+        },
+      });
+      revalidatePath("/admin/marketing");
+      return {
+        success: true,
+        postId: result.postId,
+        postUrl: result.postUrl,
+      };
+    }
+
+    // Failure path — leave draft status alone so admin can edit + retry.
+    await recordAuditEvent({
+      entityType: "social_post",
+      entityId: id,
+      action: "publish_failed",
+      summary: `Publish to ${draft.platform} failed: ${result.error ?? "unknown"}`,
+      details: [`Platform: ${draft.platform}`, `Error: ${result.error ?? "unknown"}`],
+      metadata: {
+        channel: "marketing",
+        platform: draft.platform,
+        template: "social_post_draft",
+        status: "failed",
+        error: result.error ?? "unknown",
+      },
+    });
+    return { error: result.error ?? "Publish failed" };
+  } catch (err) {
+    return { error: extractErrorMessage(err) };
+  }
+}
+
+/**
+ * Disconnect a social platform — wipes the encrypted token row.
+ * Used by the "Disconnect" button on the Marketing settings panel.
+ */
+export async function disconnectSocialPlatformAction(
+  platform: "meta" | "x" | "linkedin"
+): Promise<{ success?: boolean; error?: string }> {
+  await requireAdmin();
+  try {
+    const { deleteSocialToken } = await import("@/lib/social-token-store");
+    await deleteSocialToken(platform);
+    await recordAuditEvent({
+      entityType: "system",
+      entityId: `social_oauth_${platform}`,
+      action: "social_disconnected",
+      summary: `${platform === "meta" ? "Meta (Facebook + Instagram)" : platform === "x" ? "X (Twitter)" : "LinkedIn"} disconnected from marketing publishing`,
+      metadata: { channel: "marketing", platform },
+    });
+    revalidatePath("/admin/settings");
+    return { success: true };
+  } catch (err) {
+    return { error: extractErrorMessage(err) };
+  }
+}
+
 export async function deleteSocialPostDraftAction(
   id: string
 ): Promise<{ success?: boolean; error?: string }> {

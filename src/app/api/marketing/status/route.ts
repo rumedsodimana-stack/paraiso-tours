@@ -1,52 +1,46 @@
 import { NextResponse } from "next/server";
+import { listConnectedSocialPlatforms } from "@/lib/social-token-store";
+import { getOAuthConfig } from "@/lib/social-oauth-config";
 
 /**
- * Read-only status check for the social platform OAuth credentials
- * required by the future auto-publishing pipeline. Used by the
- * /admin/settings → Marketing section to render live "Connected /
- * Not configured" pills per platform.
+ * Read-only status check for the marketing publish pipeline.
  *
- * Returns booleans only — never leaks the actual credential values.
+ * Returns two things per platform:
+ *   - `envConfigured` — the OAuth client id + secret env vars
+ *     are set (admin can attempt to connect).
+ *   - `connected` — a token has been saved through the OAuth flow
+ *     (admin can publish drafts directly).
  *
- * Note on v1 scope: the marketing agent currently emits drafts that
- * admin copy-pastes manually. Filling in these env vars does NOT
- * automatically enable direct posting — that pipeline is a future
- * project. The env vars are documented + status-checked here so
- * admin can prepare the credentials ahead of time.
+ * Returns booleans only — never leaks credential values or tokens.
  */
 export async function GET() {
-  // Meta covers Instagram + Facebook with one set of OAuth creds
-  // (Meta App + Page Access Token + Instagram Business Account ID).
-  const metaConfigured =
-    !!process.env.META_APP_ID?.trim() &&
-    !!process.env.META_APP_SECRET?.trim() &&
-    !!process.env.META_PAGE_ACCESS_TOKEN?.trim();
-  const instagramConfigured =
-    metaConfigured && !!process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID?.trim();
+  // Env-var presence checks via the central config table so the
+  // route doesn't need to know each platform's variable names.
+  const metaCfg = getOAuthConfig("meta");
+  const xCfg = getOAuthConfig("x");
+  const linkedinCfg = getOAuthConfig("linkedin");
 
-  // X (Twitter) API v2 — either OAuth 1.0a (4 keys) or OAuth 2.0
-  // bearer token suffices for posting on behalf of the brand
-  // account. Treating either as configured.
-  const xOAuth1 =
-    !!process.env.TWITTER_API_KEY?.trim() &&
-    !!process.env.TWITTER_API_SECRET?.trim() &&
-    !!process.env.TWITTER_ACCESS_TOKEN?.trim() &&
-    !!process.env.TWITTER_ACCESS_SECRET?.trim();
-  const xOAuth2 = !!process.env.TWITTER_BEARER_TOKEN?.trim();
-  const xConfigured = xOAuth1 || xOAuth2;
+  const metaEnv = !!metaCfg?.readCredentials();
+  const xEnv = !!xCfg?.readCredentials();
+  const linkedinEnv = !!linkedinCfg?.readCredentials();
 
-  // LinkedIn org-page posting — OAuth 2.0 client + refresh token
-  // + the org URN that identifies which company page to post to.
-  const linkedinConfigured =
-    !!process.env.LINKEDIN_CLIENT_ID?.trim() &&
-    !!process.env.LINKEDIN_CLIENT_SECRET?.trim() &&
-    !!process.env.LINKEDIN_ACCESS_TOKEN?.trim() &&
-    !!process.env.LINKEDIN_ORGANIZATION_URN?.trim();
+  // Connected = token saved in the encrypted store.
+  const connected = await listConnectedSocialPlatforms();
+  const metaConnected = connected.includes("meta");
+  const xConnected = connected.includes("x");
+  const linkedinConnected = connected.includes("linkedin");
 
   return NextResponse.json({
-    instagram: instagramConfigured,
-    facebook: metaConfigured,
-    x: xConfigured,
-    linkedin: linkedinConfigured,
+    // Backwards-compat keys (instagram + facebook share Meta).
+    instagram: metaConnected,
+    facebook: metaConnected,
+    x: xConnected,
+    linkedin: linkedinConnected,
+    // Detailed env vs connected breakdown for the new connect buttons.
+    detail: {
+      meta: { envConfigured: metaEnv, connected: metaConnected },
+      x: { envConfigured: xEnv, connected: xConnected },
+      linkedin: { envConfigured: linkedinEnv, connected: linkedinConnected },
+    },
   });
 }

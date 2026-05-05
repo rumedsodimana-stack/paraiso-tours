@@ -538,6 +538,36 @@ export type SocialPostTargetKind =
   | "tour" // a real completed tour (testimonial-style)
   | "generic"; // brand / seasonal / general
 
+/**
+ * OAuth 2.0 credentials for a connected social platform. Tokens
+ * are encrypted at rest before they hit the DB; the SocialOAuthToken
+ * shape on the wire is the decrypted form used by the publisher
+ * runtime.
+ *
+ * One row per connected platform. Meta (Facebook + Instagram) lives
+ * in a single row because they share the same long-lived page
+ * access token — the InstagramBusinessAccountId is part of the
+ * row's metadata so the IG publisher can find the right account.
+ */
+export type SocialConnectedPlatform = "meta" | "x" | "linkedin";
+
+export interface SocialOAuthToken {
+  id: string;
+  platform: SocialConnectedPlatform;
+  /** Decrypted access token. Encrypted at rest. */
+  accessToken: string;
+  /** Decrypted refresh token (X + LinkedIn). Encrypted at rest. */
+  refreshToken?: string;
+  /** ISO timestamp when the access token expires. Used by the
+   *  publisher to decide whether to refresh first. */
+  expiresAt?: string;
+  /** Free-form per-platform extras: Meta page id, IG business
+   *  account id, LinkedIn org URN. Not encrypted (no secrets). */
+  metadata: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SocialPostDraft {
   id: string;
   platform: SocialPlatform;
