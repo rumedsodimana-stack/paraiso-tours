@@ -5,6 +5,7 @@ import { getPlannerDestinations } from "@/lib/route-planner";
 import { GenerateDraftsForm } from "./GenerateDraftsForm";
 import { DraftCard } from "./DraftCard";
 import { PlatformTabs } from "./PlatformTabs";
+import { SuggestTopicsPanel } from "./SuggestTopicsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,8 @@ export default async function MarketingPage({
           platform's app. Drafts persist between sessions.
         </p>
       </header>
+
+      <SuggestTopicsPanel />
 
       <GenerateDraftsForm
         packages={packages.map((p) => ({ id: p.id, name: p.name }))}

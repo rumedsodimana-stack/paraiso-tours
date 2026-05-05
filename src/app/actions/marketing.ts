@@ -353,3 +353,203 @@ export const SOCIAL_POST_STATUSES: ReadonlyArray<SocialPostStatus> = [
   "posted",
   "archived",
 ];
+
+// ── Suggest topics ─────────────────────────────────────────────
+//
+// Reduces the admin's cognitive load: instead of asking "which
+// package should I post about?", the agent looks at the catalog +
+// recent activity + drafts already generated and proposes the
+// best topics to focus on right now.
+
+export interface MarketingTopicSuggestion {
+  /** Stable client-side key — used by the UI as the React key. */
+  id: string;
+  /** Short topic label, e.g. "Sigiriya at sunrise". */
+  title: string;
+  /** 1-2 sentence rationale shown under the title. */
+  rationale: string;
+  /** Pre-filled targetKind so admin can one-click draft. */
+  targetKind: SocialPostTargetKind;
+  /** Pre-filled targetId where applicable. */
+  targetId?: string;
+  /** Pre-filled brief the AI should use for the draft. */
+  brief: string;
+  /** Suggested platforms — admin can override. */
+  platforms: SocialPlatform[];
+}
+
+/**
+ * Ask the AI for 3-5 topic suggestions based on the current catalog
+ * + recent booking activity + drafts already in the system.
+ *
+ * Heuristic seeds passed to the AI as grounding:
+ *  - Top published packages by booking count (popularity signal)
+ *  - Packages with NO drafts in the last 30 days (coverage gap)
+ *  - Recent completed tours (testimonial fodder)
+ *  - Current month name (seasonal angle)
+ */
+export async function suggestMarketingTopicsAction(): Promise<{
+  suggestions?: MarketingTopicSuggestion[];
+  error?: string;
+}> {
+  await requireAdmin();
+
+  // ── Build grounding context ──
+  const [packages, tours, drafts] = await Promise.all([
+    getPackages(),
+    getTours(),
+    (async () => {
+      // Reuse the DB module so the same schema-tolerant path is used.
+      const { getSocialPostDrafts: g } = await import("@/lib/db");
+      return g({ limit: 200 });
+    })(),
+  ]);
+  const destinations = getPlannerDestinations().filter(
+    (d) => d.id !== "airport"
+  );
+
+  // Booking-volume-by-package — package popularity signal. Custom-route
+  // tours have no packageId, so we skip them here (they show up in the
+  // "recently completed" testimonial section instead).
+  const bookingsByPackage = new Map<string, number>();
+  for (const t of tours) {
+    if (t.status === "cancelled") continue;
+    if (!t.packageId) continue;
+    bookingsByPackage.set(
+      t.packageId,
+      (bookingsByPackage.get(t.packageId) ?? 0) + 1
+    );
+  }
+  const popularPackages = packages
+    .filter((p) => p.published !== false)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      destination: p.destination,
+      bookingCount: bookingsByPackage.get(p.id) ?? 0,
+    }))
+    .sort((a, b) => b.bookingCount - a.bookingCount)
+    .slice(0, 8);
+
+  // Coverage gap: packages without any draft in the last 30 days.
+  const cutoffMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recentlyDraftedPackageIds = new Set<string>();
+  for (const d of drafts) {
+    if (
+      d.targetKind === "package" &&
+      d.targetId &&
+      new Date(d.createdAt).getTime() >= cutoffMs
+    ) {
+      recentlyDraftedPackageIds.add(d.targetId);
+    }
+  }
+  const coverageGaps = popularPackages.filter(
+    (p) => !recentlyDraftedPackageIds.has(p.id)
+  );
+
+  // Recent completed tours (last 8) — testimonial fodder.
+  const recentCompleted = tours
+    .filter((t) => t.status === "completed")
+    .sort((a, b) => (a.endDate < b.endDate ? 1 : -1))
+    .slice(0, 8);
+
+  const monthName = new Date().toLocaleString("en-US", { month: "long" });
+  const groundingBlock = [
+    `Current month: ${monthName}`,
+    "",
+    `Top packages by booking count:`,
+    ...popularPackages.map(
+      (p) => `- ${p.name} (${p.destination}, ${p.bookingCount} bookings, id: ${p.id})`
+    ),
+    "",
+    coverageGaps.length > 0
+      ? `Packages WITHOUT a recent draft (coverage gaps to fill):\n${coverageGaps
+          .slice(0, 5)
+          .map((p) => `- ${p.name} (id: ${p.id})`)
+          .join("\n")}`
+      : "All popular packages have recent drafts.",
+    "",
+    recentCompleted.length > 0
+      ? `Recent completed tours (testimonial candidates):\n${recentCompleted
+          .slice(0, 5)
+          .map(
+            (t) =>
+              `- ${t.packageName} for ${t.clientName}, ended ${t.endDate} (tour id: ${t.id})`
+          )
+          .join("\n")}`
+      : "No recently completed tours.",
+    "",
+    `Destinations on offer: ${destinations
+      .slice(0, 12)
+      .map((d) => `${d.name} (id: ${d.id})`)
+      .join(", ")}`,
+  ].join("\n");
+
+  const systemPrompt = [
+    "You are the marketing strategist for Paraíso Tours, a Sri Lanka travel company.",
+    "Look at the catalog + booking activity + draft coverage and propose 3-5 social-post topics for THIS WEEK.",
+    "Prioritize: coverage gaps (popular packages with no recent drafts), seasonal angles (use the current month), and testimonial moments (recent completed tours).",
+    "",
+    "Return strict JSON:",
+    `{ "suggestions": [{ "title": "...", "rationale": "...", "targetKind": "package|destination|tour|generic", "targetId": "...", "brief": "...", "platforms": ["instagram", "facebook"] }] }`,
+    "",
+    "- `targetKind` must reference real catalog records using the exact IDs in the grounding context. Use 'generic' only for brand/seasonal posts.",
+    "- `targetId` is the matching id from the grounding block; omit for generic.",
+    "- `platforms` should fit the topic (visual destinations → Instagram + Facebook; B2B angles → LinkedIn; quick news → X).",
+    "- Each `rationale` is one sentence explaining WHY this topic right now (e.g. 'No drafts in 6 weeks despite 12 bookings').",
+  ].join("\n");
+
+  const userPrompt = `Grounding context:\n\n${groundingBlock}\n\nReturn 3-5 well-reasoned topic suggestions.`;
+
+  let aiResult: { suggestions?: MarketingTopicSuggestion[] };
+  try {
+    const r = await generateAiJsonResult<{
+      suggestions?: MarketingTopicSuggestion[];
+    }>({
+      feature: "marketing_assistant",
+      title: "Marketing topic suggestions",
+      systemPrompt,
+      userPrompt,
+      usePromptCache: true,
+    });
+    aiResult = r.data;
+  } catch (err) {
+    return { error: `Couldn't reach the AI: ${extractErrorMessage(err)}` };
+  }
+
+  const suggestions: MarketingTopicSuggestion[] = (aiResult.suggestions ?? [])
+    .filter(
+      (s) =>
+        s &&
+        typeof s.title === "string" &&
+        s.title.trim().length > 0 &&
+        typeof s.rationale === "string"
+    )
+    .slice(0, 5)
+    .map((s, idx) => ({
+      id: `sugg_${idx}_${Date.now()}`,
+      title: s.title.trim(),
+      rationale: s.rationale.trim(),
+      targetKind: (
+        ["package", "destination", "tour", "generic"] as SocialPostTargetKind[]
+      ).includes(s.targetKind as SocialPostTargetKind)
+        ? (s.targetKind as SocialPostTargetKind)
+        : "generic",
+      targetId: s.targetId?.toString().trim() || undefined,
+      brief: s.brief?.toString().trim() ?? "",
+      platforms: Array.isArray(s.platforms)
+        ? (s.platforms.filter((p) =>
+            PLATFORMS.includes(p as SocialPlatform)
+          ) as SocialPlatform[])
+        : ["instagram", "facebook"],
+    }));
+
+  if (suggestions.length === 0) {
+    return {
+      error:
+        "AI returned no suggestions. Try again, or generate a draft manually using the form below.",
+    };
+  }
+
+  return { suggestions };
+}

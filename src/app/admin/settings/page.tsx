@@ -6,6 +6,7 @@ import {
   Globe2,
   KeyRound,
   Palette,
+  Sparkles,
 } from "lucide-react";
 import { getAppSettings } from "@/lib/app-config";
 import { getAiRuntimeStatus } from "@/lib/ai";
@@ -13,10 +14,18 @@ import { CompanySettingsSection } from "./CompanySettingsSection";
 import { PortalSettingsSection } from "./PortalSettingsSection";
 import { NotificationsSection } from "./NotificationsSection";
 import { AiSettingsSection } from "./AiSettingsSection";
+import { MarketingSection } from "./MarketingSection";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 
-type SectionId = "company" | "portal" | "notifications" | "ai" | "appearance" | "security";
+type SectionId =
+  | "company"
+  | "portal"
+  | "notifications"
+  | "ai"
+  | "marketing"
+  | "appearance"
+  | "security";
 
 const SECTIONS: Array<{
   id: SectionId;
@@ -54,6 +63,13 @@ const SECTIONS: Array<{
     icon: Bot,
   },
   {
+    id: "marketing",
+    title: "Marketing",
+    eyebrow: "Social platforms",
+    description: "Instagram, Facebook, X, LinkedIn",
+    icon: Sparkles,
+  },
+  {
     id: "appearance",
     title: "Appearance",
     eyebrow: "Theme",
@@ -70,7 +86,15 @@ const SECTIONS: Array<{
 ];
 
 function resolveSection(value?: string): SectionId {
-  const valid: SectionId[] = ["company", "portal", "notifications", "ai", "appearance", "security"];
+  const valid: SectionId[] = [
+    "company",
+    "portal",
+    "notifications",
+    "ai",
+    "marketing",
+    "appearance",
+    "security",
+  ];
   return valid.includes(value as SectionId) ? (value as SectionId) : "company";
 }
 
@@ -137,6 +161,7 @@ export default async function SettingsPage({
           {activeId === "portal" && <PortalSettingsSection settings={settings} />}
           {activeId === "notifications" && <NotificationsSection />}
           {activeId === "ai" && <AiSettingsSection settings={settings} runtime={aiRuntime} />}
+          {activeId === "marketing" && <MarketingSection />}
           {activeId === "appearance" && <ThemeSelector />}
           {activeId === "security" && <ChangePasswordSection />}
         </div>
