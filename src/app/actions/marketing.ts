@@ -36,7 +36,6 @@ import { requireAdmin } from "@/lib/admin-session";
 import type {
   SocialPlatform,
   SocialPostDraft,
-  SocialPostStatus,
   SocialPostTargetKind,
 } from "@/lib/types";
 
@@ -482,14 +481,12 @@ export async function deleteSocialPostDraftAction(
   }
 }
 
-// Tiny helper for the page to surface known SocialPostStatus values
-// without re-typing them.
-export const SOCIAL_POST_STATUSES: ReadonlyArray<SocialPostStatus> = [
-  "draft",
-  "approved",
-  "posted",
-  "archived",
-];
+// NOTE: a non-async const export was previously here
+// (SOCIAL_POST_STATUSES). Next.js disallows non-async-function
+// exports from a "use server" file — the runtime error is what
+// caused the /admin/marketing page to 500. Type/interface exports
+// further down the file are fine because TypeScript types are
+// erased at compile time.
 
 // ── Suggest topics ─────────────────────────────────────────────
 //
