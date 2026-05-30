@@ -10,10 +10,12 @@ import {
   Trash2,
   Archive,
   Zap,
+  Clock,
 } from "lucide-react";
 import {
   deleteSocialPostDraftAction,
   publishSocialPostDraftAction,
+  scheduleSocialPostDraftAction,
   updateSocialPostDraftAction,
 } from "@/app/actions/marketing";
 import type { SocialPostDraft } from "@/lib/types";
@@ -35,9 +37,28 @@ const STATUS_BADGES: Record<
 > = {
   draft: { label: "Draft", bg: "bg-[#f4ecdd]", text: "text-[#5e7279]" },
   approved: { label: "Approved", bg: "bg-emerald-100", text: "text-emerald-700" },
+  scheduled: { label: "Scheduled", bg: "bg-purple-100", text: "text-purple-800" },
   posted: { label: "Posted", bg: "bg-[#dce8dc]", text: "text-[#375a3f]" },
   archived: { label: "Archived", bg: "bg-stone-100", text: "text-stone-600" },
 };
+
+/**
+ * Format an ISO datetime for the <input type="datetime-local"> value
+ * attribute, which expects "YYYY-MM-DDTHH:MM" in local time. We
+ * derive a "now + 1 hour" default for the picker on first render so
+ * admin doesn't have to type a date from scratch.
+ */
+function isoToDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 16);
+}
+function defaultScheduledLocal(): string {
+  const d = new Date(Date.now() + 60 * 60 * 1000);
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 16);
+}
 
 export function DraftCard({
   draft,
@@ -132,6 +153,61 @@ export function DraftCard({
           window.open(r.postUrl, "_blank", "noopener");
         }
         router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Network error");
+      }
+    });
+  };
+
+  // Inline schedule picker. Open/close + the local datetime value
+  // are component state — the server action runs only when admin
+  // clicks "Confirm schedule".
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduledLocal, setScheduledLocal] = useState(() =>
+    draft.scheduledFor
+      ? isoToDatetimeLocal(draft.scheduledFor)
+      : defaultScheduledLocal()
+  );
+
+  const handleSchedule = () => {
+    if (draft.platform === "instagram" && !draft.imageUrl) {
+      setError(
+        "Instagram needs an image. Upload one above before scheduling."
+      );
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      try {
+        // The picker emits "YYYY-MM-DDTHH:MM" in LOCAL time. Convert
+        // to a real ISO string before sending to the server so the
+        // schedule action sees the correct moment.
+        const iso = new Date(scheduledLocal).toISOString();
+        const r = await scheduleSocialPostDraftAction(draft.id, iso);
+        if (r.error) {
+          setError(r.error);
+          return;
+        }
+        setScheduling(false);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Network error");
+      }
+    });
+  };
+
+  const cancelSchedule = () => {
+    setError(null);
+    startTransition(async () => {
+      try {
+        // Clearing scheduledFor + flipping status back to "approved"
+        // takes the draft out of the cron worker's queue.
+        const r = await updateSocialPostDraftAction(draft.id, {
+          status: "approved",
+          scheduledFor: undefined,
+        });
+        if (r.error) setError(r.error);
+        else router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Network error");
       }
@@ -284,6 +360,16 @@ export function DraftCard({
               </button>
               <button
                 type="button"
+                onClick={() => setScheduling(true)}
+                disabled={pending || scheduling}
+                title="Schedule for a future date — cron worker publishes automatically"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 disabled:opacity-50"
+              >
+                <Clock className="h-3.5 w-3.5" />
+                Schedule
+              </button>
+              <button
+                type="button"
                 onClick={() => updateStatus("posted")}
                 disabled={pending}
                 title="Manually mark as posted (after copy-pasting yourself)"
@@ -294,6 +380,19 @@ export function DraftCard({
               </button>
             </>
           )}
+        {draft.status === "scheduled" && !editing && (
+          <>
+            <button
+              type="button"
+              onClick={cancelSchedule}
+              disabled={pending}
+              title="Take this out of the cron worker's queue"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#e0e4dd] bg-[#fffbf4] px-3 py-1.5 text-xs font-medium text-[#5e7279] hover:bg-[#f4ecdd] disabled:opacity-50"
+            >
+              Cancel schedule
+            </button>
+          </>
+        )}
         {draft.status !== "archived" && draft.status !== "posted" && !editing && (
           <button
             type="button"

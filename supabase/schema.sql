@@ -490,3 +490,14 @@ CREATE TABLE IF NOT EXISTS social_oauth_tokens (
 -- Instagram Container API can fetch the image during media-publish.
 ALTER TABLE social_post_drafts
   ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- Scheduled publish: admin drafts a post, picks a future datetime,
+-- the cron worker (vercel.json schedule) finds rows with
+-- status = 'scheduled' AND scheduled_for <= NOW() and publishes them
+-- via the existing publishSocialPostDraftAction.
+ALTER TABLE social_post_drafts
+  ADD COLUMN IF NOT EXISTS scheduled_for TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_social_post_drafts_scheduled
+  ON social_post_drafts(status, scheduled_for)
+  WHERE status = 'scheduled';

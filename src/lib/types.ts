@@ -524,6 +524,7 @@ export type SocialPlatform = "instagram" | "facebook" | "x" | "linkedin";
 export type SocialPostStatus =
   | "draft" // freshly generated, awaiting admin review
   | "approved" // admin reviewed + edited; ready to post
+  | "scheduled" // approved + datetime-picked; cron will publish at scheduledFor
   | "posted" // admin marked it as posted to the platform
   | "archived"; // shelved without posting (rejected idea, stale)
 
@@ -596,6 +597,11 @@ export interface SocialPostDraft {
   generatedBy: string;
   /** ISO timestamp set when status flipped to "posted". */
   postedAt?: string;
+  /** ISO timestamp the draft is scheduled to publish at. Set when
+   *  status flips to "scheduled". The cron worker at
+   *  /api/cron/publish-scheduled-posts polls for rows where
+   *  status = "scheduled" AND scheduledFor <= NOW(). */
+  scheduledFor?: string;
   createdAt: string;
   updatedAt: string;
 }

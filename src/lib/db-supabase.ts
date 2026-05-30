@@ -2267,6 +2267,7 @@ function toSocialPostDraft(row: Record<string, unknown>): SocialPostDraft {
     imageDirection:
       (row.image_direction as string | null) ?? undefined,
     imageUrl: (row.image_url as string | null) ?? undefined,
+    scheduledFor: (row.scheduled_for as string | null) ?? undefined,
     targetKind:
       (row.target_kind as SocialPostDraft["targetKind"]) ?? "generic",
     targetId: (row.target_id as string | null) ?? undefined,
@@ -2321,6 +2322,7 @@ export async function createSocialPostDraft(
     copy: data.copy,
     image_direction: toNullable(data.imageDirection),
     image_url: toNullable(data.imageUrl),
+    scheduled_for: toNullable(data.scheduledFor),
     target_kind: data.targetKind,
     target_id: toNullable(data.targetId),
     tags: data.tags ?? [],
@@ -2350,6 +2352,9 @@ export async function updateSocialPostDraft(
   }
   if (data.imageUrl !== undefined) {
     update.image_url = toNullable(data.imageUrl);
+  }
+  if (data.scheduledFor !== undefined) {
+    update.scheduled_for = toNullable(data.scheduledFor);
   }
   if (data.targetKind !== undefined) update.target_kind = data.targetKind;
   if (data.targetId !== undefined) {

@@ -558,6 +558,92 @@ export async function uploadMarketingImageAction(
 }
 
 /**
+ * Schedule a draft for future publish. Status flips to "scheduled"
+ * and the cron worker (vercel.json schedule → /api/cron/publish-
+ * scheduled-posts) finds it when scheduledFor <= NOW() and publishes
+ * via the regular publishSocialPostDraftAction pipeline (so token
+ * refresh, image-URL precedence, audit events all flow normally).
+ *
+ * Validations:
+ *  - scheduledFor must parse as a valid ISO datetime
+ *  - must be at least 5 minutes in the future (cron runs every
+ *    15 min; anything closer can't reliably hit the window)
+ *  - draft must not already be in a terminal state (posted /
+ *    archived) — admin should clone or duplicate instead
+ *  - Instagram drafts must have an imageUrl saved (we can't prompt
+ *    the admin at cron time; the check has to happen now)
+ *
+ * Cancellation: admin can flip the draft back to "approved" or
+ * "draft" via the regular updateSocialPostDraftAction to cancel
+ * the scheduled run.
+ */
+export async function scheduleSocialPostDraftAction(
+  id: string,
+  scheduledForIso: string
+): Promise<{ success?: boolean; error?: string }> {
+  await requireAdmin();
+  try {
+    const draft = await getSocialPostDraft(id);
+    if (!draft) return { error: "Draft not found" };
+    if (draft.status === "posted" || draft.status === "archived") {
+      return {
+        error: `Cannot schedule a ${draft.status} draft. Duplicate it first if you want to repost.`,
+      };
+    }
+
+    const trimmed = scheduledForIso?.trim();
+    if (!trimmed) return { error: "Pick a date + time first." };
+    const scheduled = new Date(trimmed);
+    const ms = scheduled.getTime();
+    if (Number.isNaN(ms)) {
+      return { error: `That date didn't parse: "${trimmed}"` };
+    }
+    const minimumMs = Date.now() + 5 * 60 * 1000;
+    if (ms < minimumMs) {
+      return {
+        error:
+          "Pick a time at least 5 minutes from now. The publish worker runs every 15 minutes — anything closer can't reliably hit the window.",
+      };
+    }
+
+    if (draft.platform === "instagram" && !draft.imageUrl) {
+      return {
+        error:
+          "Instagram requires an image. Upload one on the draft before scheduling — the cron worker can't prompt you at publish time.",
+      };
+    }
+
+    const updated = await updateSocialPostDraft(id, {
+      status: "scheduled",
+      scheduledFor: scheduled.toISOString(),
+    });
+    if (!updated) return { error: "Failed to schedule draft." };
+
+    await recordAuditEvent({
+      entityType: "social_post",
+      entityId: id,
+      action: "scheduled",
+      summary: `Scheduled ${draft.platform} post for ${scheduled.toISOString()}`,
+      details: [
+        `Platform: ${draft.platform}`,
+        `Scheduled for: ${scheduled.toISOString()}`,
+      ],
+      metadata: {
+        channel: "marketing",
+        platform: draft.platform,
+        template: "social_post_draft",
+        status: "scheduled",
+        scheduledFor: scheduled.toISOString(),
+      },
+    });
+    revalidatePath("/admin/marketing");
+    return { success: true };
+  } catch (err) {
+    return { error: extractErrorMessage(err) };
+  }
+}
+
+/**
  * Disconnect a social platform — wipes the encrypted token row.
  * Used by the "Disconnect" button on the Marketing settings panel.
  */
